@@ -24,7 +24,7 @@ $danger: #ff6b6b;
 $radius: 4px;
 
 $font-mono: 'Courier Prime Code', 'Manrope', 'Segoe UI', sans-serif;
-$font-heading: 'Saiba 45', 'Cormorant Garamond', Georgia, serif;
+$font-heading: 'Manrope', 'Segoe UI', system-ui, sans-serif;
 
 @mixin handle-shadow {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -71,8 +71,8 @@ $font-heading: 'Saiba 45', 'Cormorant Garamond', Georgia, serif;
 // Display heading with the accent bar on its left.
 @mixin bar-heading {
   font-family: $font-heading;
-  font-weight: normal;
-  letter-spacing: 0.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
   color: $text-main;
   border-left: 2px solid $accent;
   padding-left: 0.6rem;

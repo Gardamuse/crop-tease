@@ -389,9 +389,9 @@ $side-pad: 18px;
     flex: 1;
     margin: 0;
     font-family: $font-heading;
-    font-size: 1.3rem;
-    font-weight: normal;
-    letter-spacing: 1px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: 0.2px;
     color: $text-main;
     cursor: default;
 
