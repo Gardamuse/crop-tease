@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 
 import {
   FONT_SIZE_STEPS,
@@ -14,7 +14,7 @@ import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { screenCenter, trackPointer } from '@/lib/pointer'
 import { clamp } from '@/lib/math'
-import { removeElement, selectElement, stageSize, store, type TextElement } from '@/lib/store'
+import { outlineStyle, removeElement, selectElement, stageSize, store, type TextElement } from '@/lib/store'
 
 const MIN_W = 60
 const MIN_H = 30
@@ -42,6 +42,18 @@ const rootEl = useTemplateRef('root')
 const faceEl = useTemplateRef('face')
 const editing = ref(false)
 const cursor = ref<string>()
+
+// Unframed text uses the page's line outline, stroked around the letters.
+// The stroke is painted behind the fill, so only its outer half shows:
+// doubling the width gives an outline of the chosen thickness.
+const faceStyle = computed(() => {
+  const outline = el.style === 'none' ? outlineStyle.value : null
+  return {
+    fontSize: `${el.fontSize}px`,
+    color: el.color,
+    ...(outline && { WebkitTextStroke: `${outline.width * 2}px ${outline.color}`, paintOrder: 'stroke fill' }),
+  }
+})
 
 // The face is contenteditable, so its text is written once here and read
 // back on blur rather than rendered by Vue (which would fight the caret).
@@ -238,7 +250,7 @@ function onContextMenu(e: MouseEvent) {
       class="face"
       :class="`style-${el.style}`"
       :contenteditable="editing"
-      :style="{ fontSize: `${el.fontSize}px`, color: el.color }"
+      :style="faceStyle"
       @dblclick.stop="startEdit"
       @blur="stopEdit"
     />
@@ -287,9 +299,11 @@ function onContextMenu(e: MouseEvent) {
   line-height: 1.25;
   text-align: center;
 
+  // while editing, a dashed line shows the box's bounds (useful when unframed)
   &[contenteditable='true'] {
     cursor: text;
-    box-shadow: 0 0 0 3px $teal inset;
+    outline: 2px dashed $teal;
+    outline-offset: 3px;
   }
 
   // just the text
