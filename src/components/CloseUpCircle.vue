@@ -46,18 +46,31 @@ function onPointerDown(e: PointerEvent) {
   })
 }
 
-// resizes around the circle's center, proportional to the pointer's distance from it
+// Resizes around the circle's center, proportional to the pointer's distance
+// from it. The photo scales along with the circle, so the close-up keeps the
+// same framing and just gets bigger or smaller.
 function onResize(e: PointerEvent) {
   const { cx, cy } = screenCenter(rootEl.value!)
   const centerX = el.x + el.d / 2
   const centerY = el.y + el.d / 2
   const startD = el.d
   const startDist = Math.hypot(e.clientX - cx, e.clientY - cy)
+  // scale from the values at the start of the drag, so repeated moves don't drift
+  const startFrame = el.frame && { ...el.frame }
   trackPointer(e, (_dx, _dy, ev) => {
     const dist = Math.hypot(ev.clientX - cx, ev.clientY - cy)
     el.d = clamp(startD * (dist / startDist), MIN_D, MAX_D)
     el.x = centerX - el.d / 2
     el.y = centerY - el.d / 2
+    // frame offsets are relative to the circle's top-left, so scaling them
+    // with the zoom keeps every point of the photo at the same relative spot
+    if (el.frame && startFrame && el.frame.imageId === startFrame.imageId) {
+      const k = el.d / startD
+      el.frame.scale = startFrame.scale * k
+      el.frame.baseScale = startFrame.baseScale * k
+      el.frame.tx = startFrame.tx * k
+      el.frame.ty = startFrame.ty * k
+    }
   })
 }
 
