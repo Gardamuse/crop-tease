@@ -6,6 +6,8 @@ import { computeLayout } from '@/lib/layout'
 import {
   borderStageWidth,
   dividerStageWidth,
+  outlineStyle,
+  pageNumberText,
   stageSize,
   store,
   type CircleElement,
@@ -16,13 +18,20 @@ import {
 // A small SVG drawing of a page for the page bar: panels (photo or
 // placeholder color), dividers, border, close-ups and text boxes. It's a
 // simplified sketch of the stage, not a pixel-exact render.
-const { page } = defineProps<{
+const { page, index } = defineProps<{
   page: ComicPage
+  /** position in the comic, for the page-number text */
+  index: number
 }>()
 
 const geom = computed(() => computeLayout(page.layout, stageSize.value))
 const circles = computed(() => page.elements.filter((e): e is CircleElement => e.kind === 'circle'))
 const texts = computed(() => page.elements.filter((e): e is TextElement => e.kind === 'text' && e.style !== 'none'))
+
+const pageNumber = computed(() => {
+  const pn = store.pageNumber
+  return pn && { el: pn, text: pageNumberText(pn.text, index) }
+})
 
 const points = (pts: [number, number][]) => pts.map((p) => p.join(',')).join(' ')
 const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
@@ -101,6 +110,33 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
       stroke="#241b30"
       stroke-width="4"
     />
+    <g
+      v-if="pageNumber"
+      :transform="`rotate(${pageNumber.el.rot} ${pageNumber.el.x + pageNumber.el.w / 2} ${pageNumber.el.y + pageNumber.el.h / 2})`"
+    >
+      <rect
+        v-if="pageNumber.el.style !== 'none'"
+        :x="pageNumber.el.x"
+        :y="pageNumber.el.y"
+        :width="pageNumber.el.w"
+        :height="pageNumber.el.h"
+        :rx="pageNumber.el.style === 'speech' ? 26 : 4"
+        fill="#fffaf3"
+        stroke="#241b30"
+        stroke-width="4"
+      />
+      <text
+        class="page-number"
+        :x="pageNumber.el.x + pageNumber.el.w / 2"
+        :y="pageNumber.el.y + pageNumber.el.h / 2"
+        :font-size="pageNumber.el.fontSize"
+        :fill="pageNumber.el.color"
+        :stroke="pageNumber.el.style === 'none' ? outlineStyle?.color : undefined"
+        :stroke-width="(outlineStyle?.width ?? 0) * 2"
+      >
+        {{ pageNumber.text }}
+      </text>
+    </g>
   </svg>
 </template>
 
@@ -109,5 +145,13 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
   display: block;
   height: 100%;
   width: auto;
+}
+
+.page-number {
+  font-family: $ui-font;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke fill;
 }
 </style>

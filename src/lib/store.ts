@@ -1,4 +1,4 @@
-import { computed, reactive } from 'vue'
+import { computed, reactive, toRaw } from 'vue'
 
 import {
   DEFAULT_BORDER,
@@ -83,14 +83,14 @@ function barIds(node: Region): number[] {
 
 /** Moves the id and z-order counters past everything in the project (ids are unique across pages). */
 export function syncCounters(): void {
-  const ids = store.pages.flatMap((p) => [
+  const ids = [store.pageNumber?.id ?? 0, ...store.pages.flatMap((p) => [
     p.id,
     ...leaves(p.layout).map((l) => l.id),
     ...barIds(p.layout),
     ...p.elements.map((e) => e.id),
-  ])
+  ])]
   nextId = Math.max(0, ...ids) + 1
-  zTop = Math.max(10, ...store.pages.flatMap((p) => p.elements.map((e) => e.z)))
+  zTop = Math.max(10, store.pageNumber?.z ?? 0, ...store.pages.flatMap((p) => p.elements.map((e) => e.z)))
 }
 
 function newLeaf(frame: ImageFrame | null = null): Leaf {
@@ -121,6 +121,11 @@ export const store = reactive({
    */
   border: { ...DEFAULT_BORDER },
   closeUps: { ...DEFAULT_CLOSE_UPS },
+  /**
+   * Text shown on every page at the same spot and style, with `{n}` replaced
+   * by that page's number and `{total}` by the page count. Null for none.
+   */
+  pageNumber: null as TextElement | null,
   exportFormat: 'webp' as ExportFormat,
   /** Current render scale of the stage (screen px per stage unit). */
   displayScale: 1,
@@ -163,6 +168,7 @@ function resetEditing(): void {
 export function clearContent(): void {
   store.pages = [newPage()]
   store.pageIndex = 0
+  store.pageNumber = null
   resetEditing()
 }
 
@@ -180,6 +186,52 @@ export function switchPage(index: number): void {
 export function addPage(): void {
   store.pages.splice(store.pageIndex + 1, 0, newPage())
   store.pageIndex++
+  resetEditing()
+}
+
+/** Moves the page at `from` so it ends up at index `to`; the current page stays current. */
+export function movePage(from: number, to: number): void {
+  const n = store.pages.length
+  if (from === to || from < 0 || from >= n || to < 0 || to >= n) return
+  const current = store.pages[store.pageIndex]
+  const [page] = store.pages.splice(from, 1)
+  store.pages.splice(to, 0, page!)
+  store.pageIndex = store.pages.indexOf(current!)
+}
+
+/**
+ * Copies a page, inserts the copy after it and switches to it. Panels, bars
+ * and elements get new ids, and bar ends hooked onto other bars are
+ * re-pointed at the copies of those bars.
+ */
+export function duplicatePage(index: number): void {
+  const source = store.pages[index]
+  if (!source) return
+  // a plain deep copy (the page holds only JSON-safe data; photos stay shared by id)
+  const copy = JSON.parse(JSON.stringify(toRaw(source))) as ComicPage
+  const barMap = new Map<number, number>()
+  const renumber = (node: Region) => {
+    if (node.kind === 'leaf') {
+      node.id = nextId++
+      return
+    }
+    barMap.set(node.bar.id, nextId)
+    node.bar.id = nextId++
+    renumber(node.front)
+    renumber(node.back)
+  }
+  const rehook = (node: Region) => {
+    if (node.kind === 'leaf') return
+    for (const end of [node.bar.a, node.bar.b]) if (end.host !== 'border') end.host = barMap.get(end.host) ?? end.host
+    rehook(node.front)
+    rehook(node.back)
+  }
+  renumber(copy.layout)
+  rehook(copy.layout)
+  copy.id = nextId++
+  for (const el of copy.elements) el.id = nextId++
+  store.pages.splice(index + 1, 0, copy)
+  store.pageIndex = index + 1
   resetEditing()
 }
 
@@ -272,11 +324,13 @@ export function deselectAll(): void {
 }
 
 export function findElement(id: number): ComicElement | undefined {
+  if (store.pageNumber?.id === id) return store.pageNumber
   return store.elements.find((e) => e.id === id)
 }
 
 export function removeElement(id: number): void {
-  store.elements = store.elements.filter((e) => e.id !== id)
+  if (store.pageNumber?.id === id) store.pageNumber = null
+  else store.elements = store.elements.filter((e) => e.id !== id)
   if (store.selectedId === id) store.selectedId = null
 }
 
@@ -446,6 +500,33 @@ export function addText(opts: Partial<TextElement> = {}): TextElement {
 }
 
 /** The starting page: placeholder panels and a single close-up. */
+/** The page-number text for a page (0-based index), from its template. */
+export function pageNumberText(template: string, index: number): string {
+  return template.split('{n}').join(String(index + 1)).split('{total}').join(String(store.pages.length))
+}
+
+/** Adds the page-number text (one shared item shown on every page) at the bottom center. */
+export function addPageNumber(): void {
+  if (store.pageNumber) return
+  const { w, h } = stageSize.value
+  store.pageNumber = {
+    id: nextId++,
+    kind: 'text',
+    style: 'none',
+    tail: 'bottom-left',
+    x: w / 2 - 60,
+    y: h - 80,
+    z: 0,
+    w: 120,
+    h: 50,
+    rot: 0,
+    text: '{n}',
+    fontSize: 20,
+    color: '#ffffff',
+  }
+  selectElement(store.pageNumber.id)
+}
+
 export function loadStarterPage(): void {
   addCircle(null, { d: 180, x: stageSize.value.w / 2 - 260, y: stageSize.value.h * 0.34 - 90 })
   deselectAll()

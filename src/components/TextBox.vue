@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import {
   FONT_SIZE_STEPS,
@@ -14,7 +14,15 @@ import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { screenCenter, trackPointer } from '@/lib/pointer'
 import { clamp } from '@/lib/math'
-import { outlineStyle, removeElement, selectElement, stageSize, store, type TextElement } from '@/lib/store'
+import {
+  outlineStyle,
+  pageNumberText,
+  removeElement,
+  selectElement,
+  stageSize,
+  store,
+  type TextElement,
+} from '@/lib/store'
 
 const MIN_W = 60
 const MIN_H = 30
@@ -57,8 +65,18 @@ const faceStyle = computed(() => {
 
 // The face is contenteditable, so its text is written once here and read
 // back on blur rather than rendered by Vue (which would fight the caret).
+// The page-number text stores a template ({n}, {total}) and shows it filled
+// in for the current page; while being edited it shows the template itself.
+const isPageNumber = computed(() => store.pageNumber?.id === el.id)
+const shownText = computed(() => (isPageNumber.value ? pageNumberText(el.text, store.pageIndex) : el.text))
+
 onMounted(() => {
-  faceEl.value!.textContent = el.text
+  faceEl.value!.textContent = shownText.value
+})
+
+// e.g. the page number changes when pages are reordered
+watch(shownText, (text) => {
+  if (!editing.value) faceEl.value!.textContent = text
 })
 
 /**
@@ -154,6 +172,7 @@ async function startEdit() {
   cursor.value = undefined
   await nextTick()
   const face = faceEl.value!
+  if (isPageNumber.value) face.textContent = el.text
   face.focus()
   const range = document.createRange()
   range.selectNodeContents(face)
@@ -165,6 +184,7 @@ async function startEdit() {
 function stopEdit() {
   editing.value = false
   el.text = faceEl.value!.innerText
+  faceEl.value!.textContent = shownText.value
 }
 
 function onContextMenu(e: MouseEvent) {
@@ -217,10 +237,19 @@ function onContextMenu(e: MouseEvent) {
       })),
     },
     { kind: 'separator' },
-    { label: 'Edit text', icon: '✎', action: startEdit },
+    {
+      label: isPageNumber.value ? 'Edit text ({n} = page number)' : 'Edit text',
+      icon: '✎',
+      action: startEdit,
+    },
   ]
   if (Math.abs(el.rot) > 0.01) entries.push({ label: 'Reset rotation', icon: '⟲', action: () => (el.rot = 0) })
-  entries.push({ label: 'Delete text', icon: '🗑', danger: true, action: () => removeElement(el.id) })
+  entries.push({
+    label: isPageNumber.value ? 'Remove page numbers' : 'Delete text',
+    icon: '🗑',
+    danger: true,
+    action: () => removeElement(el.id),
+  })
   openContextMenu(e, entries)
 }
 </script>

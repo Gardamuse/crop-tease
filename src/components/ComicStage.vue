@@ -157,6 +157,12 @@ defineExpose({ renderImage })
           <CloseUpCircle v-if="el.kind === 'circle'" :element="el" />
           <TextBox v-else :element="el" />
         </template>
+        <!-- one shared item drawn on every page -->
+        <TextBox
+          v-if="store.pageNumber"
+          :key="`${store.generation}-${store.pageNumber.id}`"
+          :element="store.pageNumber"
+        />
       </div>
     </div>
     <div v-if="store.splitMode" class="split-banner">

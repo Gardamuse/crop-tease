@@ -5,7 +5,9 @@ page into panels with divider bars (each bar hooks onto the page border or
 onto other bars), drop a photo into each panel, add circular close-ups and
 text (plain, speech bubble or caption box), then export a page as WebP or JPG
 at any size (1600x2000 by default). A project can have several pages, which
-share its page size and line settings.
+share its page size and line settings; pages can be reordered, duplicated and
+exported together, and an optional page number (`{n}` / `{total}`) appears on
+every page.
 
 Everything runs in the browser; nothing is uploaded. The current project
 (images included) is autosaved to IndexedDB and reopened on the next visit,

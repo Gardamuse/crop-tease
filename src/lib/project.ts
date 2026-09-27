@@ -47,7 +47,7 @@ export const PROJECT_FORMAT = 'comic-maker'
  */
 export const PROJECT_EXTENSION = 'comic'
 export const PROJECT_MIME = 'application/x-comic-maker'
-export const PROJECT_VERSION = 2
+export const PROJECT_VERSION = 3
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
@@ -66,6 +66,8 @@ const MIGRATIONS: Record<number, Migration> = {
       currentPage: 0,
     }
   },
+  // v3 added the page-number text shown on every page
+  2: (doc) => ({ ...doc, version: 3, pageNumber: null }),
 }
 
 const FrameSchema = z.object({
@@ -118,6 +120,19 @@ const ElementBase = {
   z: z.number(),
 }
 
+const TextSchema = z.object({
+  ...ElementBase,
+  kind: z.literal('text'),
+  style: z.enum(['none', 'speech', 'square']),
+  tail: z.enum(['top-left', 'top', 'top-right', 'left', 'right', 'bottom-left', 'bottom', 'bottom-right']),
+  w: z.number().positive(),
+  h: z.number().positive(),
+  rot: z.number(),
+  text: z.string(),
+  fontSize: z.number().positive(),
+  color: z.string(),
+})
+
 const ElementSchema = z.discriminatedUnion('kind', [
   z.object({
     ...ElementBase,
@@ -125,18 +140,7 @@ const ElementSchema = z.discriminatedUnion('kind', [
     d: z.number().positive(),
     frame: FrameSchema.nullable(),
   }),
-  z.object({
-    ...ElementBase,
-    kind: z.literal('text'),
-    style: z.enum(['none', 'speech', 'square']),
-    tail: z.enum(['top-left', 'top', 'top-right', 'left', 'right', 'bottom-left', 'bottom', 'bottom-right']),
-    w: z.number().positive(),
-    h: z.number().positive(),
-    rot: z.number(),
-    text: z.string(),
-    fontSize: z.number().positive(),
-    color: z.string(),
-  }),
+  TextSchema,
 ])
 
 const ProjectSchema = z.object({
@@ -169,6 +173,8 @@ const ProjectSchema = z.object({
     .min(1),
   /** the page that was open when saved */
   currentPage: z.number().int().min(0),
+  /** text on every page with {n} / {total} filled in, or null */
+  pageNumber: TextSchema.nullable(),
   /** every image the project uses, with its MIME type */
   images: z.array(z.object({ id: z.string(), type: z.string() })),
 })
@@ -264,6 +270,7 @@ export function serializeProject(): ProjectDoc {
     closeUps: { ...store.closeUps },
     pages,
     currentPage: store.pageIndex,
+    pageNumber: store.pageNumber && { ...toRaw(store.pageNumber) },
     images,
   }
 }
@@ -294,6 +301,7 @@ function applyProject(doc: ProjectDoc): void {
     ),
   }))
   store.pageIndex = Math.min(doc.currentPage, doc.pages.length - 1)
+  store.pageNumber = doc.pageNumber && { ...doc.pageNumber }
   store.selectedId = null
   store.selectedBarId = null
   store.splitMode = false
@@ -340,7 +348,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.pageSize, store.exportFormat, store.border, store.closeUps, store.pages, store.pageIndex],
+    () => [store.pageSize, store.exportFormat, store.border, store.closeUps, store.pages, store.pageIndex, store.pageNumber],
     () => {
       if (suspendAutosave) return
       onStatus('saving')

@@ -1,3 +1,5 @@
+import { zipSync, type Zippable } from 'fflate'
+
 import { EXPORT_QUALITY } from './constants'
 
 export type ExportFormat = 'webp' | 'jpg'
@@ -136,4 +138,11 @@ export async function renderStageImage(
   const image = await rasterize(svg, opts, onProgress)
   onProgress(1, 'Done')
   return image
+}
+
+/** Packs exported images into one zip (stored as-is: they're already compressed). */
+export async function zipImages(files: { name: string; blob: Blob }[]): Promise<Blob> {
+  const entries: Zippable = {}
+  for (const { name, blob } of files) entries[name] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }]
+  return new Blob([zipSync(entries) as BlobPart], { type: 'application/zip' })
 }

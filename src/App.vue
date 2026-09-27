@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref, useTemplateRef } from 'vue'
+import { nextTick, onMounted, ref, useTemplateRef } from 'vue'
 
 import ComicSidebar, { type SaveStatus } from '@/components/ComicSidebar.vue'
 import ComicStage from '@/components/ComicStage.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import PageBar from '@/components/PageBar.vue'
 import TaskDialog from '@/components/TaskDialog.vue'
-import { EXPORT_MIME } from '@/lib/exportImage'
+import { EXPORT_MIME, zipImages } from '@/lib/exportImage'
 import {
   buildProjectZip,
   newProject,
@@ -18,11 +18,13 @@ import {
 } from '@/lib/project'
 import {
   addCircle,
+  addPageNumber,
   addText,
   clearContent,
   firstPanelImage,
   loadStarterPage,
   store,
+  switchPage,
 } from '@/lib/store'
 import { offerFile, runWithProgress } from '@/lib/task'
 
@@ -117,6 +119,45 @@ async function onExport() {
   }
 }
 
+/**
+ * Renders every page in turn (switching the stage to each one) and saves
+ * them together as a zip of page-01.webp, page-02.webp, ..., then returns to
+ * the page that was open.
+ */
+async function onExportAll() {
+  const { width, height } = store.pageSize
+  const format = store.exportFormat
+  const count = store.pages.length
+  const startPage = store.pageIndex
+  const digits = Math.max(2, String(count).length) // page-01, page-02, ... sort correctly
+  try {
+    await runWithProgress(`Exporting ${count} pages`, async (report) => {
+      const files: { name: string; blob: Blob }[] = []
+      for (let i = 0; i < count; i++) {
+        switchPage(i)
+        await nextTick() // let the page's panels and elements mount
+        const label = `Page ${i + 1} of ${count}`
+        const blob = await stage.value!.renderImage((f) => report(((i + f) / count) * 0.95, label))
+        files.push({ name: `page-${String(i + 1).padStart(digits, '0')}.${format}`, blob })
+      }
+      switchPage(startPage)
+      report(0.97, 'Packing pages')
+      const zip = await zipImages(files)
+      report(1, 'Choosing where to save')
+      await offerFile(zip, {
+        name: `comic-pages-${width}x${height}-${format}.zip`,
+        description: 'Zip of page images',
+        mime: 'application/zip',
+        extension: 'zip',
+      })
+    })
+  } catch (err) {
+    reportError('Export', err)
+  } finally {
+    switchPage(startPage)
+  }
+}
+
 onMounted(async () => {
   if (!(await restoreAutosave())) loadStarterPage()
   startAutosave((status) => (saveStatus.value = status))
@@ -133,6 +174,8 @@ onMounted(async () => {
       @save-project="onSaveProject"
       @add-circle="onAddCircle"
       @add-text="addText()"
+      @add-page-number="addPageNumber()"
+      @export-all="onExportAll"
       @export="onExport"
     />
     <div class="workspace">

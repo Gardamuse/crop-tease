@@ -18,7 +18,7 @@ import {
   PAGE_PRESETS,
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
+import { selectElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
 
 const props = defineProps<{
   saveStatus: SaveStatus
@@ -30,6 +30,8 @@ defineEmits<{
   saveProject: []
   addCircle: []
   addText: []
+  addPageNumber: []
+  exportAll: []
   export: []
 }>()
 
@@ -101,10 +103,25 @@ const lineColor = computed({
             title="Then click the panel to split"
             @click="store.splitMode = !store.splitMode"
           >
-            <span class="icon">➗</span>Split panel
+            <span class="icon">➗</span>Split
           </button>
           <button @click="$emit('addCircle')"><span class="icon">◯</span>Close-up</button>
           <button @click="$emit('addText')"><span class="icon">💬</span>Text</button>
+          <button
+            v-if="!store.pageNumber"
+            title="Add a page number shown on every page"
+            @click="$emit('addPageNumber')"
+          >
+            <span class="icon">#</span>Page no.
+          </button>
+          <button
+            v-else
+            class="active"
+            title="Page numbers are on every page; right-click them to edit or remove"
+            @click="selectElement(store.pageNumber.id)"
+          >
+            <span class="icon">#</span>Page no.
+          </button>
         </div>
       </section>
 
@@ -186,7 +203,11 @@ const lineColor = computed({
       <details class="tips" open>
         <summary>How to</summary>
         <ul>
-          <li><b>Pages:</b> use the strip under the page to switch, add (＋) or delete them.</li>
+          <li>
+            <b>Pages:</b> the strip under the page switches, adds (＋), duplicates (⧉) and deletes them; drag a
+            page there to reorder, right-click one for more.
+          </li>
+          <li><b>Page numbers:</b> one text shown on every page; <code>{n}</code> is the page number.</li>
           <li><b>Split a panel:</b> click it; hold and drag to choose which side gets the new panel.</li>
           <li><b>Move a bar:</b> drag it. <b>Tilt it:</b> drag an end along the border or another bar.</li>
           <li><b>Remove a bar:</b> right-click it, or click it and then its ×.</li>
@@ -217,6 +238,9 @@ const lineColor = computed({
         </div>
         <button class="primary" @click="$emit('export')">
           ⬇ Export {{ store.pages.length > 1 ? `page ${store.pageIndex + 1}` : store.exportFormat.toUpperCase() }}
+        </button>
+        <button v-if="store.pages.length > 1" class="export-all" @click="$emit('exportAll')">
+          ⬇ Export all {{ store.pages.length }} pages (.zip)
         </button>
       </div>
       <p class="footnote">
@@ -359,7 +383,7 @@ input[type='number'] {
 
 .add-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 
   // tiles: icon above label
@@ -481,6 +505,11 @@ input[type='number'] {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.export-all {
+  grid-column: 1 / -1;
+  justify-content: center;
 }
 
 .footnote {
