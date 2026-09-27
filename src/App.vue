@@ -7,6 +7,7 @@ import ContextMenu from '@/components/ContextMenu.vue'
 import PageBar from '@/components/PageBar.vue'
 import TaskDialog from '@/components/TaskDialog.vue'
 import { EXPORT_MIME, zipImages, type ExportFormat } from '@/lib/exportImage'
+import { MAX_PAGE_SIDE } from '@/lib/constants'
 import { buildPdf } from '@/lib/pdf'
 import {
   buildProjectZip,
@@ -126,7 +127,7 @@ async function onExport() {
  * Renders every page in turn (switching the stage to each one), reporting
  * progress up to `share` of the bar, then returns to the page that was open.
  */
-async function renderAllPages(format: ExportFormat, report: Report, share: number): Promise<Blob[]> {
+async function renderAllPages(format: ExportFormat, report: Report, share: number, resolution = 1): Promise<Blob[]> {
   const count = store.pages.length
   const startPage = store.pageIndex
   const blobs: Blob[] = []
@@ -135,7 +136,7 @@ async function renderAllPages(format: ExportFormat, report: Report, share: numbe
       switchPage(i)
       await nextTick() // let the page's panels and elements mount
       const label = `Page ${i + 1} of ${count}`
-      blobs.push(await stage.value!.renderImage((f) => report(((i + f) / count) * share, label), format))
+      blobs.push(await stage.value!.renderImage((f) => report(((i + f) / count) * share, label), format, resolution))
     }
   } finally {
     switchPage(startPage)
@@ -164,15 +165,31 @@ async function onExportAll() {
   }
 }
 
+// PDF pages are rendered at twice the page's pixel size and embedded at
+// twice 96 dpi, so they keep the same physical size (1 px = 1/96 inch, e.g.
+// 1600x2000 -> 1200x1500 pt) but are twice as sharp. The factor shrinks for
+// very large pages so the longest side stays within MAX_PAGE_SIDE, which
+// keeps the render inside browsers' canvas limits.
+const PDF_RESOLUTION = 2
+const BASE_DPI = 96
+
 /** Saves every page into one PDF, a page each (rendered as JPEG, which PDF embeds natively). */
 async function onExportPdf() {
   const { width, height } = store.pageSize
+  const resolution = Math.max(1, Math.min(PDF_RESOLUTION, MAX_PAGE_SIDE / Math.max(width, height)))
+  const pixelWidth = Math.round(width * resolution)
+  const pixelHeight = Math.round(height * resolution)
   try {
     await runWithProgress(`Exporting PDF`, async (report) => {
-      const blobs = await renderAllPages('jpg', report, 0.95)
+      const blobs = await renderAllPages('jpg', report, 0.95, resolution)
       report(0.97, 'Building PDF')
       const pages = await Promise.all(
-        blobs.map(async (blob) => ({ jpeg: new Uint8Array(await blob.arrayBuffer()), width, height })),
+        blobs.map(async (blob) => ({
+          jpeg: new Uint8Array(await blob.arrayBuffer()),
+          width: pixelWidth,
+          height: pixelHeight,
+          dpi: BASE_DPI * (pixelWidth / width),
+        })),
       )
       const pdf = buildPdf(pages, store.name.trim() || fileBaseName())
       report(1, 'Choosing where to save')

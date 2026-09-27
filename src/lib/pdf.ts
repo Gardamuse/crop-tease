@@ -8,10 +8,9 @@ export interface PdfPage {
   /** image size in pixels */
   width: number
   height: number
+  /** pixels per inch; sets the page's physical size (72 pt per inch) */
+  dpi: number
 }
-
-/** Pixels are mapped at 96 dpi (CSS pixels): 1 px = 0.75 pt. */
-const PT_PER_PX = 72 / 96
 
 const encoder = new TextEncoder()
 
@@ -48,8 +47,8 @@ export function buildPdf(pages: PdfPage[], title: string): Blob {
   )
   object(3, () => write(`<< /Title ${pdfText(title)} /Producer (Comic Maker) >>`))
   pages.forEach((page, i) => {
-    const w = (page.width * PT_PER_PX).toFixed(2)
-    const h = (page.height * PT_PER_PX).toFixed(2)
+    const w = ((page.width * 72) / page.dpi).toFixed(2)
+    const h = ((page.height * 72) / page.dpi).toFixed(2)
     const [pageNum, imageNum, contentNum] = [pageObj(i), pageObj(i) + 1, pageObj(i) + 2]
     object(pageNum, () =>
       write(

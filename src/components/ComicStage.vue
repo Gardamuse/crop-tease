@@ -117,17 +117,25 @@ function onSplitPointerMove(e: PointerEvent) {
   showPlan(planSplit(stagePoint(e)))
 }
 
-/** Renders the current page at output size; `format` defaults to the chosen export format. */
-async function renderImage(onProgress?: ExportProgress, format: ExportFormat = store.exportFormat): Promise<Blob> {
+/**
+ * Renders the current page at output size times `resolution` (text, lines
+ * and photos are redrawn at that size, not upscaled); `format` defaults to
+ * the chosen export format.
+ */
+async function renderImage(
+  onProgress?: ExportProgress,
+  format: ExportFormat = store.exportFormat,
+  resolution = 1,
+): Promise<Blob> {
   deselectAll()
   store.splitMode = false
   await nextTick() // let selection chrome disappear before cloning the DOM
   return renderStageImage(
     stageEl.value!,
     {
-      width: store.pageSize.width,
-      height: store.pageSize.height,
-      scale: stageSize.value.exportScale,
+      width: Math.round(store.pageSize.width * resolution),
+      height: Math.round(store.pageSize.height * resolution),
+      scale: stageSize.value.exportScale * resolution,
       format,
     },
     onProgress,
