@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 
 import CloseUpCircle from './CloseUpCircle.vue'
 import BorderOutlines from './BorderOutlines.vue'
@@ -23,6 +23,10 @@ export interface SplitPreview {
   fresh: Point[]
 }
 const splitPreview = ref<SplitPreview | null>(null)
+
+const panelsClip = computed(() =>
+  borderStageWidth.value > 1 ? `inset(${borderStageWidth.value - 1}px)` : undefined,
+)
 // true while the mouse is held down to choose a side
 let choosingSide = false
 
@@ -145,7 +149,13 @@ defineExpose({ renderImage })
         @pointermove="onSplitPointerMove"
         @pointerleave="!choosingSide && (splitPreview = null)"
       >
-        <ImagePanel v-for="(p, i) in layout.panels" :key="`${store.generation}-${p.leaf.id}`" :panel="p" :index="i" />
+        <!-- Photos are clipped just inside the page border (which overlaps them
+             by 1 unit, so there's no gap). Otherwise a photo reaching the page
+             edge bleeds through the border's anti-aliased outer edge as a
+             hairline while the page is shown scaled. -->
+        <div class="panels" :style="{ clipPath: panelsClip }">
+          <ImagePanel v-for="(p, i) in layout.panels" :key="`${store.generation}-${p.leaf.id}`" :panel="p" :index="i" />
+        </div>
         <SplitBars :preview="splitPreview" />
         <div
           v-if="store.border.width > 0"
@@ -205,6 +215,11 @@ defineExpose({ renderImage })
   &.splitting :deep(*) {
     cursor: crosshair !important;
   }
+}
+
+.panels {
+  position: absolute;
+  inset: 0;
 }
 
 .page-border {

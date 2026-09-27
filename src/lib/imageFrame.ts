@@ -8,13 +8,16 @@ export interface ImageFrame {
   src: string
   natW: number
   natH: number
-  /** The "cover" scale; zooming is limited to baseScale..baseScale*MAX_ZOOM. */
+  /** The "cover" scale; zooming is limited to baseScale*MIN_ZOOM..baseScale*MAX_ZOOM. */
   baseScale: number
   scale: number
   tx: number
   ty: number
 }
 
+// Zoom range relative to the cover scale. Below 1 the photo no longer fills
+// its area and the background shows around it.
+const MIN_ZOOM = 0.1
 const MAX_ZOOM = 5
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -47,7 +50,7 @@ export async function coverFrame(image: StoredImage, boxW: number, boxH: number)
 /** Zooms one wheel step in or out, keeping (cx, cy) fixed. */
 export function zoomFrame(f: ImageFrame, deltaY: number, cx: number, cy: number): void {
   const factor = deltaY < 0 ? 1.08 : 0.93
-  const newScale = clamp(f.scale * factor, f.baseScale, f.baseScale * MAX_ZOOM)
+  const newScale = clamp(f.scale * factor, f.baseScale * MIN_ZOOM, f.baseScale * MAX_ZOOM)
   f.tx = cx - (cx - f.tx) * (newScale / f.scale)
   f.ty = cy - (cy - f.ty) * (newScale / f.scale)
   f.scale = newScale
