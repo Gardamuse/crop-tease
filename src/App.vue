@@ -86,7 +86,7 @@ async function onSaveProject() {
       report(1, 'Choosing where to save')
       await offerFile(zip, {
         name: `${fileBaseName()}.${PROJECT_EXTENSION}`,
-        description: 'Comic Maker project',
+        description: 'Crop Tease project',
         mime: PROJECT_MIME,
         extension: PROJECT_EXTENSION,
       })

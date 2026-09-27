@@ -29,7 +29,7 @@ import { store, syncCounters, type ComicElement } from './store'
 //
 // A project is saved as a JSON document plus its images. The same document
 // is used for the browser autosave (IndexedDB) and as project.json inside a
-// saved .comic file (a zip archive), next to images/<id>.<ext>.
+// saved .ct file (a zip archive), next to images/<id>.<ext>.
 //
 // VERSIONING: every document carries `version`. When the format changes:
 //   1. bump PROJECT_VERSION,
@@ -39,38 +39,19 @@ import { store, syncCounters, type ComicElement } from './store'
 // ever saved stays openable.
 // ---------------------------------------------------------------------------
 
-export const PROJECT_FORMAT = 'comic-maker'
+export const PROJECT_FORMAT = 'crop-tease'
 
 /**
  * Saved project files use their own extension. Inside they're ordinary zip
  * archives (rename to .zip to look inside).
  */
-export const PROJECT_EXTENSION = 'comic'
-export const PROJECT_MIME = 'application/x-comic-maker'
-export const PROJECT_VERSION = 4
+export const PROJECT_EXTENSION = 'ct'
+export const PROJECT_MIME = 'application/x-crop-tease'
+export const PROJECT_VERSION = 1
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
-const MIGRATIONS: Record<number, Migration> = {
-  // v2 added multiple pages: v1's single layout and elements become page 1,
-  // and the page size field was renamed from `page` to `pageSize`
-  1: (doc) => {
-    const { page, layout, elements, ...rest } = doc
-    // the new page's id must not clash with any existing panel, bar or element id
-    const ids = [...JSON.stringify({ layout, elements }).matchAll(/"id":(\d+)/g)].map((m) => Number(m[1]))
-    return {
-      ...rest,
-      version: 2,
-      pageSize: page,
-      pages: [{ id: Math.max(0, ...ids) + 1, layout, elements }],
-      currentPage: 0,
-    }
-  },
-  // v3 added the page-number text shown on every page
-  2: (doc) => ({ ...doc, version: 3, pageNumber: null }),
-  // v4 added the project name used for file names
-  3: (doc) => ({ ...doc, version: 4, name: 'comic' }),
-}
+const MIGRATIONS: Record<number, Migration> = {}
 
 const FrameSchema = z.object({
   imageId: z.string(),
@@ -189,7 +170,7 @@ export class ProjectFileError extends Error {}
 /** Upgrades any saved document to the current version and validates it. */
 export function upgradeProject(raw: unknown): ProjectDoc {
   if (typeof raw !== 'object' || raw === null || (raw as { format?: unknown }).format !== PROJECT_FORMAT) {
-    throw new ProjectFileError("This isn't a Comic Maker project.")
+    throw new ProjectFileError("This isn't a Crop Tease project.")
   }
   let doc = raw as Record<string, unknown>
   const version = doc.version
@@ -198,7 +179,7 @@ export function upgradeProject(raw: unknown): ProjectDoc {
   }
   if (version > PROJECT_VERSION) {
     throw new ProjectFileError(
-      `This project was saved by a newer version of Comic Maker (format v${version}; this app reads up to v${PROJECT_VERSION}).`,
+      `This project was saved by a newer version of Crop Tease (format v${version}; this app reads up to v${PROJECT_VERSION}).`,
     )
   }
   for (let v = version; v < PROJECT_VERSION; v++) {
@@ -392,7 +373,7 @@ export async function newProject(reset: () => void): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Project files (.comic, a zip archive inside)
+// Project files (.ct, a zip archive inside)
 // ---------------------------------------------------------------------------
 
 const PROJECT_JSON = 'project.json'
@@ -401,7 +382,7 @@ function imagePath(id: string, type: string): string {
   return `images/${id}.${extensionFor(type)}`
 }
 
-/** Packs the project into a .comic file: a zip of project.json plus images/<id>.<ext>. */
+/** Packs the project into a .ct file: a zip of project.json plus images/<id>.<ext>. */
 export async function buildProjectZip(onProgress?: (fraction: number) => void): Promise<Blob> {
   const doc = serializeProject()
   const files: Zippable = {
@@ -418,16 +399,16 @@ export async function buildProjectZip(onProgress?: (fraction: number) => void): 
   return new Blob([zipped as BlobPart], { type: 'application/zip' })
 }
 
-/** Opens a saved .comic file, upgrading it if it's from an older version, and makes it the current project. */
+/** Opens a saved .ct file, upgrading it if it's from an older version, and makes it the current project. */
 export async function openProjectZip(file: Blob): Promise<void> {
   let entries: Record<string, Uint8Array>
   try {
     entries = unzipSync(new Uint8Array(await file.arrayBuffer()))
   } catch {
-    throw new ProjectFileError(`This isn't a Comic Maker project file (.${PROJECT_EXTENSION}).`)
+    throw new ProjectFileError(`This isn't a Crop Tease project file (.${PROJECT_EXTENSION}).`)
   }
   const json = entries[PROJECT_JSON]
-  if (!json) throw new ProjectFileError(`This file has no ${PROJECT_JSON}, so it isn't a Comic Maker project.`)
+  if (!json) throw new ProjectFileError(`This file has no ${PROJECT_JSON}, so it isn't a Crop Tease project.`)
   let raw: unknown
   try {
     raw = JSON.parse(strFromU8(json))

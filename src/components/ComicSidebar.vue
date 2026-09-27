@@ -80,7 +80,8 @@ const lineColor = computed({
 <template>
   <aside class="sidebar">
     <header class="sidebar-header">
-      <h1>Split-Panel Comic Maker</h1>
+      <h1>Crop Tease</h1>
+      <p class="tagline">Crop and zoom your photos into comic pages.</p>
     </header>
 
     <div class="sidebar-body">
@@ -92,8 +93,8 @@ const lineColor = computed({
         </label>
         <div class="button-row">
           <button title="Start a new, empty project" @click="$emit('new')">✦ New</button>
-          <button title="Open a saved .comic project" @click="$emit('open')">📂 Open…</button>
-          <button title="Save the project and its images as a .comic file" @click="$emit('saveProject')">
+          <button title="Open a saved .ct project" @click="$emit('open')">📂 Open…</button>
+          <button title="Save the project and its images as a .ct file" @click="$emit('saveProject')">
             💾 Save
           </button>
         </div>
@@ -286,6 +287,12 @@ $side-pad: 20px;
     margin: 0;
     font-size: 1.2rem;
     letter-spacing: 0.3px;
+  }
+
+  .tagline {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+    color: $muted;
   }
 }
 

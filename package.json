@@ -1,9 +1,9 @@
 {
-  "name": "comic-maker",
+  "name": "crop-tease",
   "version": "0.1.0",
   "private": true,
   "author": "Gardamuse",
-  "description": "A simple split-panel comic layout app.",
+  "description": "Crop and zoom your photos into comic pages.",
   "type": "module",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

@@ -45,7 +45,7 @@ export function buildPdf(pages: PdfPage[], title: string): Blob {
   object(2, () =>
     write(`<< /Type /Pages /Kids [${pages.map((_, i) => `${pageObj(i)} 0 R`).join(' ')}] /Count ${pages.length} >>`),
   )
-  object(3, () => write(`<< /Title ${pdfText(title)} /Producer (Comic Maker) >>`))
+  object(3, () => write(`<< /Title ${pdfText(title)} /Producer (Crop Tease) >>`))
   pages.forEach((page, i) => {
     const w = ((page.width * 72) / page.dpi).toFixed(2)
     const h = ((page.height * 72) / page.dpi).toFixed(2)
