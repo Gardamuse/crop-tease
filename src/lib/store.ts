@@ -3,10 +3,24 @@ import { computed, reactive } from 'vue'
 import { DEFAULT_PAGE, MAX_PAGE_SIDE, MIN_PAGE_SIDE, STAGE_SHORT } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
+import {
+  anchorAt,
+  barSegments,
+  closestOnBoundary,
+  computeLayout,
+  countBars,
+  findSplit,
+  leaves,
+  lineChord,
+  MIN_BAR_LEN,
+  pointInPoly,
+  replaceNode,
+  shareEdge,
+  type Leaf,
+  type Point,
+  type Region,
+} from './layout'
 import { clamp } from './math'
-import { perimPoint, type Seam } from './seam'
-
-export type PanelSide = 'left' | 'right'
 
 interface ElementBase {
   id: number
@@ -38,17 +52,32 @@ export type ComicElement = CircleElement | TextElement
 let nextId = 1
 let zTop = 10
 
+function newLeaf(frame: ImageFrame | null = null): Leaf {
+  return { kind: 'leaf', id: nextId++, frame }
+}
+
+// default: one vertical bar through the middle (top-mid to bottom-mid)
+function starterLayout(): Region {
+  return {
+    kind: 'split',
+    bar: { id: nextId++, a: { host: 'border', t: 0.5 }, b: { host: 'border', t: 2.5 } },
+    front: newLeaf(),
+    back: newLeaf(),
+  }
+}
+
 export const store = reactive({
   /** Output size in pixels. */
   page: { ...DEFAULT_PAGE },
   exportFormat: 'webp' as ExportFormat,
   /** Current render scale of the stage (screen px per stage unit). */
   displayScale: 1,
-  // default: a vertical split through the middle (top-mid to bottom-mid)
-  seam: { a: 0.5, b: 2.5 } as Seam,
-  panels: { left: null, right: null } as Record<PanelSide, ImageFrame | null>,
+  layout: starterLayout(),
   elements: [] as ComicElement[],
   selectedId: null as number | null,
+  selectedBarId: null as number | null,
+  /** true while waiting for a click on the panel to split */
+  splitMode: false,
 })
 
 /** The page in stage units (see STAGE_SHORT), and the factor that scales it to output pixels. */
@@ -57,24 +86,32 @@ export const stageSize = computed(() => {
   return { w: store.page.width / exportScale, h: store.page.height / exportScale, exportScale }
 })
 
+export const layout = computed(() => computeLayout(store.layout, stageSize.value))
+
 export async function setPageSize(width: number, height: number): Promise<void> {
   store.page.width = Math.round(clamp(width, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
   store.page.height = Math.round(clamp(height, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
-  // re-fit panel photos so they still cover the reshaped page
-  for (const side of ['left', 'right'] as const) {
-    const frame = store.panels[side]
-    if (frame) await setPanelImage(side, frame.src)
+  // re-fit panel photos so they still cover their reshaped panels
+  for (const leaf of leaves(store.layout)) {
+    if (leaf.frame) await setPanelImage(leaf.id, leaf.frame.src)
   }
 }
 
 export function selectElement(id: number): void {
   store.selectedId = id
+  store.selectedBarId = null
   const el = findElement(id)
   if (el) el.z = ++zTop
 }
 
+export function selectBar(id: number): void {
+  store.selectedBarId = id
+  store.selectedId = null
+}
+
 export function deselectAll(): void {
   store.selectedId = null
+  store.selectedBarId = null
 }
 
 export function findElement(id: number): ComicElement | undefined {
@@ -91,8 +128,95 @@ export function clearElements(): void {
   store.selectedId = null
 }
 
-export async function setPanelImage(side: PanelSide, src: string): Promise<void> {
-  store.panels[side] = await coverFrame(src, stageSize.value.w, stageSize.value.h)
+// ---------------------------------------------------------------------------
+// Panels and split bars
+// ---------------------------------------------------------------------------
+
+export function firstPanelImage(): string | null {
+  return leaves(store.layout).find((l) => l.frame)?.frame?.src ?? null
+}
+
+/** Loads a photo into a panel, fitted to cover the panel's bounding box. */
+export async function setPanelImage(leafId: number, src: string): Promise<void> {
+  const panel = layout.value.panels.find((p) => p.leaf.id === leafId)
+  if (!panel) return
+  const { x, y, w, h } = panel.bbox
+  const frame = await coverFrame(src, w, h)
+  frame.tx += x
+  frame.ty += y
+  panel.leaf.frame = frame
+}
+
+/** The chord a split at `point` would use: across the panel's longer side. */
+export function splitChordAt(point: Point) {
+  const panel = layout.value.panels.find((p) => pointInPoly(p.poly, point))
+  if (!panel) return null
+  const vertical = panel.bbox.w > panel.bbox.h
+  const chord = lineChord(panel.poly, point, vertical ? [0, 1] : [1, 0])
+  return chord && { panel, chord, vertical }
+}
+
+/** Splits the panel under `point` in two with a new bar through it. */
+export function splitPanelAt(point: Point): boolean {
+  const found = splitChordAt(point)
+  if (!found) return false
+  const { panel, chord, vertical } = found
+  const segs = barSegments(layout.value)
+  const size = stageSize.value
+  const bar = {
+    id: nextId++,
+    a: anchorAt(chord.a.host, chord.a.point, segs, size),
+    b: anchorAt(chord.b.host, chord.b.point, segs, size),
+  }
+  // the existing photo stays in the left (vertical bar) or top (horizontal bar) half
+  const kept = panel.leaf
+  const fresh = newLeaf()
+  store.layout = replaceNode(store.layout, kept, {
+    kind: 'split',
+    bar,
+    front: vertical ? kept : fresh,
+    back: vertical ? fresh : kept,
+  })
+  selectBar(bar.id)
+  return true
+}
+
+/**
+ * Removes a bar, merging its two sides into one panel. Any bars inside
+ * those sides go too, since they were hooked into the removed bar's regions.
+ */
+export function removeBar(barId: number): void {
+  const split = findSplit(store.layout, barId)
+  if (!split) return
+  const extra = countBars(split) - 1
+  if (extra > 0 && !confirm(`This also removes ${extra} bar${extra > 1 ? 's' : ''} inside the merged panel.`)) return
+  const all = leaves(split)
+  const keep = all.find((l) => l.frame) ?? all[0]!
+  store.layout = replaceNode(store.layout, split, keep)
+  if (store.selectedBarId === barId) store.selectedBarId = null
+}
+
+/** Slides one end of a bar to the region-boundary point closest to `pointer`. */
+export function moveBarEnd(barId: number, end: 'a' | 'b', pointer: Point): void {
+  const geom = layout.value.bars.find((g) => g.bar.id === barId)
+  if (!geom) return
+  const hit = closestOnBoundary(geom.region, pointer)
+  const other = end === 'a' ? geom.b : geom.a
+  const dx = hit.point[0] - other[0]
+  const dy = hit.point[1] - other[1]
+  if (Math.hypot(dx, dy) < MIN_BAR_LEN || shareEdge(geom.region, hit.point, other)) return
+  geom.bar[end] = anchorAt(hit.host, hit.point, barSegments(layout.value), stageSize.value)
+}
+
+/** Moves a bar so it passes through `through`, keeping its angle, re-hooking both ends. */
+export function translateBar(barId: number, through: Point, dir: Point): void {
+  const geom = layout.value.bars.find((g) => g.bar.id === barId)
+  if (!geom) return
+  const chord = lineChord(geom.region, through, dir)
+  if (!chord) return
+  const segs = barSegments(layout.value)
+  geom.bar.a = anchorAt(chord.a.host, chord.a.point, segs, stageSize.value)
+  geom.bar.b = anchorAt(chord.b.host, chord.b.point, segs, stageSize.value)
 }
 
 export function addCircle(src: string | null, opts: Partial<CircleElement> = {}): CircleElement {
@@ -141,7 +265,6 @@ export function addText(kind: TextElement['kind'], text: string, opts: Partial<T
 
 /** The starting page: placeholder panels and a single close-up. */
 export function loadStarterPage(): void {
-  const seamTopX = perimPoint(store.seam.a, stageSize.value)[0]
-  addCircle(null, { d: 180, x: seamTopX - 260, y: stageSize.value.h * 0.34 - 90 })
+  addCircle(null, { d: 180, x: stageSize.value.w / 2 - 260, y: stageSize.value.h * 0.34 - 90 })
   deselectAll()
 }

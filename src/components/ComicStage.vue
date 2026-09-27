@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, useTemplateRef, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 
 import CloseUpCircle from './CloseUpCircle.vue'
 import ImagePanel from './ImagePanel.vue'
-import SeamLine from './SeamLine.vue'
+import SplitBars from './SplitBars.vue'
 import TextBox from './TextBox.vue'
 import { exportStageImage } from '@/lib/exportImage'
-import { seamPanels } from '@/lib/seam'
-import { deselectAll, stageSize, store } from '@/lib/store'
+import type { Point } from '@/lib/layout'
+import { deselectAll, layout, splitChordAt, splitPanelAt, stageSize, store } from '@/lib/store'
 
 const CARD_PAD = 40 // .stage-card padding (20px each side)
 const OUTER_PAD = 40 // .stage-outer padding (20px each side)
@@ -16,7 +16,7 @@ const outerEl = useTemplateRef('outer')
 const stageEl = useTemplateRef('stage')
 const card = reactive({ w: 0, h: 0 })
 
-const panelShapes = computed(() => seamPanels(store.seam, stageSize.value))
+const splitPreview = ref<[Point, Point] | null>(null)
 
 // Scale the stage to fill the space available to it. Every
 // pointer handler that turns a screen delta into stage coordinates divides
@@ -34,16 +34,51 @@ function fitStage() {
 }
 watch(stageSize, fitStage)
 
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') store.splitMode = false
+}
+
 let observer: ResizeObserver | undefined
 onMounted(() => {
   observer = new ResizeObserver(fitStage)
   observer.observe(outerEl.value!)
   fitStage()
+  window.addEventListener('keydown', onKeyDown)
 })
-onBeforeUnmount(() => observer?.disconnect())
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  window.removeEventListener('keydown', onKeyDown)
+})
+
+watch(
+  () => store.splitMode,
+  (on) => {
+    if (!on) splitPreview.value = null
+  },
+)
+
+function stagePoint(e: PointerEvent): Point {
+  const rect = stageEl.value!.getBoundingClientRect()
+  return [(e.clientX - rect.left) / store.displayScale, (e.clientY - rect.top) / store.displayScale]
+}
 
 function onStagePointerDown(e: PointerEvent) {
   if (e.target === stageEl.value) deselectAll()
+}
+
+// While splitting, the stage swallows clicks (in the capture phase, before
+// any panel, bar or element sees them) and shows where the cut would go.
+function onSplitPointerDown(e: PointerEvent) {
+  if (!store.splitMode) return
+  e.stopPropagation()
+  e.preventDefault()
+  if (splitPanelAt(stagePoint(e))) store.splitMode = false
+}
+
+function onSplitPointerMove(e: PointerEvent) {
+  if (!store.splitMode) return
+  const found = splitChordAt(stagePoint(e))
+  splitPreview.value = found ? [found.chord.a.point, found.chord.b.point] : null
 }
 
 async function exportImage() {
@@ -66,23 +101,30 @@ defineExpose({ exportImage })
       <div
         ref="stage"
         class="stage"
+        :class="{ splitting: store.splitMode }"
         :style="{ width: `${stageSize.w}px`, height: `${stageSize.h}px`, transform: `scale(${store.displayScale})` }"
         @pointerdown="onStagePointerDown"
+        @pointerdown.capture="onSplitPointerDown"
+        @pointermove="onSplitPointerMove"
+        @pointerleave="splitPreview = null"
       >
-        <ImagePanel side="left" :shape="panelShapes.left" />
-        <ImagePanel side="right" :shape="panelShapes.right" />
-        <SeamLine />
+        <ImagePanel v-for="(p, i) in layout.panels" :key="p.leaf.id" :panel="p" :index="i" />
+        <SplitBars :preview="splitPreview" />
         <template v-for="el in store.elements" :key="el.id">
           <CloseUpCircle v-if="el.kind === 'circle'" :element="el" />
           <TextBox v-else :element="el" />
         </template>
       </div>
     </div>
+    <div v-if="store.splitMode" class="split-banner">
+      Click the panel to split &middot; <kbd>Esc</kbd> to cancel
+    </div>
   </main>
 </template>
 
 <style scoped lang="scss">
 .stage-outer {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
@@ -106,5 +148,32 @@ defineExpose({ exportImage })
   outline: 3px solid $ink;
   user-select: none;
   touch-action: none;
+
+  &.splitting,
+  &.splitting :deep(*) {
+    cursor: crosshair !important;
+  }
+}
+
+.split-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: $ink;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(36, 27, 48, 0.25);
+  pointer-events: none;
+
+  kbd {
+    font: inherit;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: $ink-soft;
+  }
 }
 </style>

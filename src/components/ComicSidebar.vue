@@ -41,13 +41,16 @@ defineEmits<{
     <div>
       <h1>Split-Panel Comic Maker</h1>
       <p class="tagline">
-        Drag the seam to move or tilt it, anywhere around the border. Drop images into each half. Add close-ups and
-        captions, then export.
+        Split the page into panels with bars, drop an image into each panel, add close-ups and captions, then
+        export.
       </p>
     </div>
 
     <div class="tool-group">
       <div class="tool-group-label">Add</div>
+      <button :class="{ active: store.splitMode }" @click="store.splitMode = !store.splitMode">
+        ➗ Split a panel
+      </button>
       <button @click="$emit('addCircle')">◯ Close-up</button>
       <button @click="$emit('addCaption')">▭ Caption</button>
       <button @click="$emit('addBubble')">💬 Speech bubble</button>
@@ -108,11 +111,13 @@ defineEmits<{
     <hr />
 
     <p class="hint">
+      <b>Move a bar</b> by dragging it; <b>tilt</b> it by dragging an end, which can slide along the border or
+      another bar.<br />
       <b>Move</b> an element by dragging it.<br />
       <b>Rotate</b>/<b>resize</b> a selected caption or bubble with its handles.<br />
       <b>Reposition a photo</b> by dragging a panel, or Ctrl+dragging a close-up.<br />
       <b>Zoom a photo</b> by scrolling over it.<br />
-      <b>Set a photo</b> by clicking an empty panel, or dropping an image on a panel or close-up.<br />
+      <b>Set a photo</b> by clicking an empty panel or close-up, or dropping an image on it.<br />
       <b>Edit text</b> by double-clicking a caption or bubble.
     </p>
 
@@ -187,6 +192,12 @@ button {
   &:hover {
     background: #fff0f8;
     border-color: $pink;
+  }
+
+  &.active {
+    background: #fff0f8;
+    border-color: $pink-deep;
+    color: $pink-deep;
   }
 
   &.primary {

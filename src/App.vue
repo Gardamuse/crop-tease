@@ -3,12 +3,12 @@ import { onMounted, useTemplateRef } from 'vue'
 
 import ComicSidebar from '@/components/ComicSidebar.vue'
 import ComicStage from '@/components/ComicStage.vue'
-import { addCircle, addText, clearElements, loadStarterPage, store } from '@/lib/store'
+import { addCircle, addText, clearElements, firstPanelImage, loadStarterPage } from '@/lib/store'
 
 const stage = useTemplateRef('stage')
 
 function onAddCircle() {
-  addCircle(store.panels.left?.src ?? null)
+  addCircle(firstPanelImage())
 }
 
 function onClear() {

@@ -19,11 +19,8 @@ export const PAGE_PRESETS = [
 
 export const EXPORT_QUALITY = 0.92
 
-// shown where no image has been set yet
-export const PLACEHOLDER_COLORS = {
-  left: '#f4b6d2',
-  right: '#a9dede',
-  closeUp: '#ffd9a8',
-}
+// flat fills shown where no image has been set yet; panels cycle through the list
+export const PANEL_PLACEHOLDER_COLORS = ['#f4b6d2', '#a9dede', '#cbbcf2', '#fbeaa0', '#b9e5bf', '#f7c3a3']
+export const CLOSE_UP_PLACEHOLDER_COLOR = '#ffd9a8'
 
 export const TEXT_PALETTE = ['#241b30', '#ffffff', '#ff6fb0', '#78d2d2', '#de3c8d']

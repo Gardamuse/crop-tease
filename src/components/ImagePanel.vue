@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 
-import { PLACEHOLDER_COLORS } from '@/lib/constants'
+import { PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, readFileAsDataURL, zoomFrame } from '@/lib/imageFrame'
-import type { PanelShape } from '@/lib/seam'
-import { deselectAll, setPanelImage, stageSize, store, type PanelSide } from '@/lib/store'
+import type { PanelGeom } from '@/lib/layout'
+import { deselectAll, setPanelImage, store } from '@/lib/store'
 
 const props = defineProps<{
-  side: PanelSide
-  shape: PanelShape
+  panel: PanelGeom
+  /** position in the panel list, for the placeholder color */
+  index: number
 }>()
 
 const fileInput = useTemplateRef('fileInput')
-const frame = computed(() => store.panels[props.side])
+const frame = computed(() => props.panel.leaf.frame)
+const placeholderColor = computed(() => PANEL_PLACEHOLDER_COLORS[props.index % PANEL_PLACEHOLDER_COLORS.length])
 const dragOver = ref(false)
 let panning = false
 let lastX = 0
@@ -22,7 +24,7 @@ let lastY = 0
 async function useFile(file: File | undefined) {
   if (!file) return
   try {
-    await setPanelImage(props.side, await readFileAsDataURL(file))
+    await setPanelImage(props.panel.leaf.id, await readFileAsDataURL(file))
   } catch {
     alert(`Couldn't load "${file.name}" as an image.`)
   }
@@ -47,7 +49,8 @@ function onPointerMove(e: PointerEvent) {
 }
 
 function onWheel(e: WheelEvent) {
-  if (frame.value) zoomFrame(frame.value, e.deltaY, stageSize.value.w / 2, stageSize.value.h / 2)
+  const { x, y, w, h } = props.panel.bbox
+  if (frame.value) zoomFrame(frame.value, e.deltaY, x + w / 2, y + h / 2)
 }
 
 function onClick() {
@@ -70,7 +73,7 @@ function onDrop(e: DragEvent) {
   <div
     class="panel"
     :class="{ dragover: dragOver }"
-    :style="{ clipPath: shape.clipPath }"
+    :style="{ clipPath: panel.clipPath }"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="panning = false"
@@ -81,13 +84,13 @@ function onDrop(e: DragEvent) {
     @dragleave="dragOver = false"
     @drop.prevent="onDrop"
   >
-    <div v-if="!frame" class="placeholder" :style="{ background: PLACEHOLDER_COLORS[side] }">
+    <div v-if="!frame" class="placeholder" :style="{ background: placeholderColor }">
       <span
         class="hint"
-        :style="{ left: `${shape.center[0]}px`, top: `${shape.center[1]}px` }"
+        :style="{ left: `${panel.center[0]}px`, top: `${panel.center[1]}px` }"
         v-bind="{ [NO_EXPORT_ATTR]: '' }"
       >
-        Drop or click to set<br />the {{ side.toUpperCase() }} image
+        Drop or click to<br />set an image
       </span>
     </div>
     <img v-else class="panel-img" :src="frame.src" :style="{ transform: frameTransform(frame) }" draggable="false" />

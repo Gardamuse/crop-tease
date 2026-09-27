@@ -2,7 +2,8 @@
 import { computed, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
-import { PLACEHOLDER_COLORS } from '@/lib/constants'
+import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
+import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, readFileAsDataURL, zoomFrame } from '@/lib/imageFrame'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
@@ -10,19 +11,27 @@ import { removeElement, selectElement, setCircleImage, store, type CircleElement
 
 const MIN_D = 60
 const MAX_D = 700
+// pointer travel (screen px) below which a press counts as a click, not a drag
+const CLICK_SLOP = 4
 
 const { element: el } = defineProps<{
   element: CircleElement
 }>()
 
 const rootEl = useTemplateRef('root')
+const fileInput = useTemplateRef('fileInput')
+let dragged = false
 const selected = computed(() => store.selectedId === el.id)
 
 // plain drag moves the circle; Ctrl+drag pans the photo inside it
 function onPointerDown(e: PointerEvent) {
   selectElement(el.id)
   const panPhoto = e.ctrlKey
+  dragged = false
+  let travel = 0
   trackPointer(e, (dx, dy) => {
+    travel += Math.hypot(dx, dy)
+    if (travel > CLICK_SLOP) dragged = true
     const s = store.displayScale
     if (panPhoto) {
       if (el.frame) {
@@ -55,8 +64,22 @@ function onWheel(e: WheelEvent) {
   if (el.frame) zoomFrame(el.frame, e.deltaY, el.d / 2, el.d / 2)
 }
 
-async function onDrop(e: DragEvent) {
-  const file = firstDroppedFile(e)
+// an empty close-up opens the file picker on a plain click
+function onClick() {
+  if (!el.frame && !dragged) fileInput.value?.click()
+}
+
+function onFileChosen() {
+  const input = fileInput.value!
+  useFile(input.files?.[0])
+  input.value = ''
+}
+
+function onDrop(e: DragEvent) {
+  useFile(firstDroppedFile(e))
+}
+
+async function useFile(file: File | undefined) {
   if (!file) return
   try {
     await setCircleImage(el, await readFileAsDataURL(file))
@@ -73,15 +96,18 @@ async function onDrop(e: DragEvent) {
     :class="{ selected, 'pink-ring': el.ring === 'pink' }"
     :style="{ left: `${el.x}px`, top: `${el.y}px`, width: `${el.d}px`, height: `${el.d}px`, zIndex: el.z }"
     @pointerdown.stop="onPointerDown"
+    @click="onClick"
     @wheel.prevent.stop="onWheel"
     @dragover.prevent
     @drop.prevent.stop="onDrop"
   >
     <!-- the outer element carries the ring and handles (never clipped); this
          inner layer clips just the photo, so handles can stick out past the ring -->
-    <div class="clip" :style="{ background: PLACEHOLDER_COLORS.closeUp }">
+    <div class="clip" :style="{ background: CLOSE_UP_PLACEHOLDER_COLOR }">
       <img v-if="el.frame" :src="el.frame.src" :style="{ transform: frameTransform(el.frame) }" draggable="false" />
+      <span v-else class="hint" v-bind="{ [NO_EXPORT_ATTR]: '' }">Click or drop<br />an image</span>
     </div>
+    <input ref="fileInput" type="file" accept="image/*" v-bind="{ [NO_EXPORT_ATTR]: '' }" @change="onFileChosen" />
     <template v-if="selected">
       <ElementHandle type="delete" @grab="removeElement(el.id)" />
       <ElementHandle type="resize" @grab="onResize" />
@@ -122,5 +148,21 @@ async function onDrop(e: DragEvent) {
     -webkit-user-drag: none;
     pointer-events: none;
   }
+}
+
+.hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba($ink, 0.6);
+  pointer-events: none;
+}
+
+input[type='file'] {
+  display: none;
 }
 </style>
