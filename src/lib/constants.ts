@@ -24,10 +24,10 @@ export const EXPORT_QUALITY = 0.92
 // split bars and the close-up rings; the color is shared by all three. The
 // outline (null color = none) runs along both sides of all of them.
 export const DEFAULT_BORDER = {
-  width: 0,
+  width: 40,
   dividerWidth: 20,
-  color: '#000000',
-  outlineColor: null as string | null,
+  color: '#ffffff',
+  outlineColor: '#000000' as string | null,
   outlineWidth: 2,
 }
 export const MAX_BORDER_WIDTH = 200
@@ -36,9 +36,9 @@ export const MIN_OUTLINE_WIDTH = 1
 export const MAX_OUTLINE_WIDTH = 10
 
 export const DEFAULT_CLOSE_UPS = {
-  shadow: false,
+  shadow: true,
   /** clip close-ups at the inner edge of the page border instead of drawing over it */
-  withinBorder: true,
+  withinBorder: false,
 }
 export const COLOR_PRESETS = [
   { label: 'Black', color: '#000000' },
