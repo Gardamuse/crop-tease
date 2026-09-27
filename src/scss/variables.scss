@@ -10,17 +10,31 @@ $ui-font: 'Segoe UI', system-ui, -apple-system, sans-serif; // page numbers, han
 $caption-font: Georgia, 'Times New Roman', serif;
 
 // ---- app chrome, in the Neo Pink Mini style ----
-$bg-void: #1c2028; // behind everything; the workspace around the page
-$bg-panel: #22262f;
-$bg-panel-alt: #282d38;
-$line: rgba(#fff, 0.12);
-$text-main: #eef1f5;
-$text-dim: #9aa0aa;
+// The workspace around the page (and the page rail on it) is dark; the
+// sidebar, menus and dialogs are light.
+// Lighter than Neo Pink Mini's own slate, so black page borders stand out.
+$dark-void: #3a3f4a;
+$dark-panel: #444a56;
+$dark-panel-alt: #4c5260;
+$dark-line: rgba(#fff, 0.14);
+$dark-text: #eef1f5;
+$dark-dim: #b2b8c2;
+$shade: #1c2028; // near-black for text on the accent, shadows and scrims
+
+$bg-panel: #f4f5f7;
+$bg-panel-alt: #ffffff;
+$bg-sunken: #e9ebef;
+$bg-field: #ffffff;
+$line: rgba($shade, 0.14);
+$text-main: #22262f;
+$text-dim: #6b707c;
+
 $accent: $pink;
+$accent-ink: #c9267a; // accent-colored text and icons on light backgrounds
 $accent-soft: rgba($accent, 0.18);
 $accent-dim: rgba($accent, 0.45);
 $line-accent: rgba($accent, 0.5);
-$danger: #ff6b6b;
+$danger: #d93f4c;
 $radius: 4px;
 
 $font-mono: 'Courier Prime Code', 'Manrope', 'Segoe UI', sans-serif;
@@ -82,7 +96,7 @@ $font-heading: 'Manrope', 'Segoe UI', system-ui, sans-serif;
 @mixin accent-button {
   font-family: $font-mono;
   font-weight: 600;
-  color: $bg-void;
+  color: $shade;
   background: $accent;
   border: none;
   border-radius: $radius;
@@ -125,9 +139,8 @@ $font-heading: 'Manrope', 'Segoe UI', system-ui, sans-serif;
   padding: 6px 8px;
   border-radius: $radius;
   border: 1px solid $line;
-  background: $bg-void;
+  background: $bg-field;
   color: $text-main;
-  color-scheme: dark;
 
   &:focus {
     outline: none;

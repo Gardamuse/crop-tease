@@ -139,8 +139,8 @@ $rail-w: 84px;
   width: $rail-w;
   display: flex;
   flex-direction: column;
-  background: rgba($bg-panel, 0.6);
-  border-right: 1px solid $line;
+  background: rgba($dark-panel, 0.6);
+  border-right: 1px solid $dark-line;
 }
 
 .tabs {
@@ -153,7 +153,7 @@ $rail-w: 84px;
   overflow-y: auto;
   padding: 18px 0 20px;
   scrollbar-width: thin;
-  scrollbar-color: $line transparent;
+  scrollbar-color: $dark-line transparent;
 }
 
 button {
@@ -161,7 +161,7 @@ button {
   cursor: pointer;
   border: none;
   background: none;
-  color: $text-main;
+  color: $dark-text;
 }
 
 .page-slot {
@@ -202,7 +202,7 @@ button {
   padding: 0;
   border-radius: 2px;
   overflow: hidden;
-  outline: 1px solid $line;
+  outline: 1px solid $dark-line;
   outline-offset: 3px;
   opacity: 0.55;
   transition:
@@ -229,7 +229,7 @@ button {
   }
 
   &:focus-visible {
-    outline-color: $text-main;
+    outline-color: $dark-text;
   }
 
   &.dragging {
@@ -244,9 +244,9 @@ button {
   min-width: 17px;
   padding: 0 4px;
   border-radius: 2px;
-  background: $bg-panel-alt;
-  border: 1px solid $line;
-  color: $text-dim;
+  background: $dark-panel-alt;
+  border: 1px solid $dark-line;
+  color: $dark-dim;
   font-family: $font-mono;
   font-size: 0.66rem;
   line-height: 15px;
@@ -256,7 +256,7 @@ button {
   .active + & {
     background: $accent;
     border-color: $accent;
-    color: $bg-void;
+    color: $shade;
   }
 }
 
@@ -268,8 +268,8 @@ button {
   height: 17px;
   padding: 0;
   border-radius: 2px;
-  background: $bg-panel-alt;
-  border: 1px solid $line;
+  background: $dark-panel-alt;
+  border: 1px solid $dark-line;
   font-size: 0.7rem;
   line-height: 1;
   letter-spacing: -1px;
@@ -290,10 +290,10 @@ button {
   flex: none;
   width: 52px;
   height: 36px;
-  border: 1px dashed $line;
+  border: 1px dashed $dark-line;
   border-radius: 2px;
   font-size: 1.05rem;
-  color: $text-dim;
+  color: $dark-dim;
   transition:
     border-color 0.2s,
     color 0.2s,

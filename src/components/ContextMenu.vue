@@ -132,7 +132,7 @@ onBeforeUnmount(() => {
   border-radius: $radius;
   background: $bg-panel-alt;
   border: 1px solid $line;
-  box-shadow: 0 12px 32px rgba(#000, 0.45);
+  box-shadow: 0 12px 32px rgba($shade, 0.3);
   display: flex;
   flex-direction: column;
   font-family: $font-mono;
@@ -224,7 +224,7 @@ hr {
 
     &.active {
       border-color: $accent;
-      color: $accent;
+      color: $accent-ink;
       background: $accent-soft;
     }
 
@@ -232,7 +232,7 @@ hr {
       width: 22px;
       height: 22px;
       padding: 0;
-      border: 1px solid rgba(#fff, 0.3);
+      border: 1px solid rgba($shade, 0.25);
       border-radius: 50%;
 
       &.active {

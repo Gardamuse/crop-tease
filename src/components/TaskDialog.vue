@@ -32,7 +32,7 @@ import { cancelPendingSave, confirmPendingSave, task } from '@/lib/task'
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba($bg-void, 0.7);
+  background: rgba($shade, 0.55);
   backdrop-filter: blur(2px);
 }
 
@@ -43,7 +43,7 @@ import { cancelPendingSave, confirmPendingSave, task } from '@/lib/task'
   border-radius: $radius;
   background: $bg-panel;
   border: 1px solid $line;
-  box-shadow: 0 16px 40px rgba(#000, 0.5);
+  box-shadow: 0 16px 40px rgba($shade, 0.4);
   font-family: $font-mono;
   color: $text-main;
   animation: dialog-in 0.28s ease-out;

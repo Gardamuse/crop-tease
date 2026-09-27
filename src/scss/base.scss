@@ -27,9 +27,8 @@ body {
 
 body {
   margin: 0;
-  background: $bg-void;
+  background: $dark-void;
   color: $text-main;
   font-family: $font-mono;
   overflow: hidden; // the app is sized to fit the viewport; no page scroll
-  color-scheme: dark;
 }

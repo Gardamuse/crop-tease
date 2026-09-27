@@ -248,9 +248,9 @@ defineExpose({ renderImage })
   transform: translateX(-50%);
   padding: 7px 14px;
   border-radius: $radius;
-  background: $bg-panel-alt;
+  background: $dark-panel-alt;
   border: 1px solid $line-accent;
-  color: $text-main;
+  color: $dark-text;
   font-family: $font-mono;
   font-size: 0.78rem;
   white-space: nowrap;
@@ -261,7 +261,7 @@ defineExpose({ renderImage })
     font: inherit;
     padding: 0 5px;
     border-radius: 4px;
-    border: 1px solid $line;
+    border: 1px solid $dark-line;
     color: $accent;
   }
 }

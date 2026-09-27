@@ -76,8 +76,8 @@ $dot: 24px;
   height: $dot;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid rgba(#fff, 0.3);
-  background: $bg-void;
+  border: 1px solid rgba($shade, 0.25);
+  background: $bg-field;
   cursor: pointer;
   transition: transform 0.1s;
 

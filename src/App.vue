@@ -249,7 +249,7 @@ onMounted(async () => {
   min-width: 0;
   display: flex;
   background:
-    radial-gradient(rgba(#fff, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
-    $bg-void;
+    radial-gradient(rgba(#fff, 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
+    $dark-void;
 }
 </style>

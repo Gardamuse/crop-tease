@@ -397,7 +397,7 @@ $side-pad: 18px;
 
     &::after {
       content: '_';
-      color: $accent;
+      color: $accent-ink;
       text-shadow: 0 0 6px $accent-soft;
     }
   }
@@ -489,7 +489,7 @@ button {
   &:hover:not(:disabled),
   &.active {
     border-color: transparent;
-    color: $accent;
+    color: $accent-ink;
     filter: drop-shadow(0 0 6px $accent-soft);
   }
 }
@@ -540,7 +540,7 @@ input[type='number'] {
       transform: translateY(-2px);
 
       .ui-icon {
-        color: $accent;
+        color: $accent-ink;
       }
     }
 
@@ -549,7 +549,7 @@ input[type='number'] {
       background: $accent-soft;
 
       .ui-icon {
-        color: $accent;
+        color: $accent-ink;
       }
     }
   }
@@ -573,7 +573,7 @@ input[type='number'] {
     }
 
     &:hover .chevron {
-      color: $accent;
+      color: $accent-ink;
     }
   }
 
@@ -708,7 +708,7 @@ input[type='number'] {
   display: flex;
   padding: 2px;
   border-radius: $radius;
-  background: $bg-void;
+  background: $bg-sunken;
   border: 1px solid $line;
 
   button {
@@ -726,8 +726,9 @@ input[type='number'] {
     }
 
     &.active {
-      background: $accent-soft;
-      color: $accent;
+      background: $bg-panel-alt;
+      color: $accent-ink;
+      box-shadow: 0 1px 2px rgba($shade, 0.15);
     }
   }
 }
@@ -762,7 +763,7 @@ input[type='number'] {
   border-radius: $radius;
   background: $bg-panel-alt;
   border: 1px solid $line;
-  box-shadow: 0 12px 32px rgba(#000, 0.45);
+  box-shadow: 0 12px 32px rgba($shade, 0.35);
   font-size: 0.78rem;
   line-height: 1.5;
   color: $text-dim;
@@ -791,7 +792,7 @@ input[type='number'] {
   }
 
   li::marker {
-    color: $accent;
+    color: $accent-ink;
   }
 
   b {
@@ -803,7 +804,7 @@ input[type='number'] {
     padding: 0 4px;
     border-radius: 2px;
     background: $accent-soft;
-    color: $accent;
+    color: $accent-ink;
   }
 }
 
