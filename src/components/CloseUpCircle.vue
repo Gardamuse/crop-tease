@@ -94,8 +94,15 @@ async function useFile(file: File | undefined) {
   <div
     ref="root"
     class="circle"
-    :class="{ selected, 'pink-ring': el.ring === 'pink' }"
-    :style="{ left: `${el.x}px`, top: `${el.y}px`, width: `${el.d}px`, height: `${el.d}px`, zIndex: el.z }"
+    :class="{ selected }"
+    :style="{
+      left: `${el.x}px`,
+      top: `${el.y}px`,
+      width: `${el.d}px`,
+      height: `${el.d}px`,
+      zIndex: el.z,
+      outlineColor: store.border.color,
+    }"
     @pointerdown.stop="onPointerDown"
     @click="onClick"
     @wheel.prevent.stop="onWheel"
@@ -122,15 +129,11 @@ async function useFile(file: File | undefined) {
   border-radius: 50%;
   box-shadow: 0 6px 16px rgba(20, 14, 30, 0.35);
   border: 8px solid #fff;
-  outline: 5px solid $ink;
+  outline: 5px solid; // color follows the page border color
   cursor: grab;
 
   &:active {
     cursor: grabbing;
-  }
-
-  &.pink-ring {
-    outline-color: $pink;
   }
 }
 

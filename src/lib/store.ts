@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
 
-import { DEFAULT_PAGE, MAX_PAGE_SIDE, MIN_PAGE_SIDE, STAGE_SHORT } from './constants'
+import { DEFAULT_BORDER, DEFAULT_PAGE, MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE, STAGE_SHORT } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
 import { getImage, type StoredImage } from './images'
@@ -33,7 +33,6 @@ interface ElementBase {
 export interface CircleElement extends ElementBase {
   kind: 'circle'
   d: number
-  ring: 'ink' | 'pink'
   /** null shows a flat placeholder color */
   frame: ImageFrame | null
 }
@@ -81,6 +80,8 @@ function starterLayout(): Region {
 export const store = reactive({
   /** Output size in pixels. */
   page: { ...DEFAULT_PAGE },
+  /** page border: width in output pixels (0 = none); color also used for bars and close-up rings */
+  border: { ...DEFAULT_BORDER },
   exportFormat: 'webp' as ExportFormat,
   /** Current render scale of the stage (screen px per stage unit). */
   displayScale: 1,
@@ -97,6 +98,7 @@ export const store = reactive({
 /** Replaces the project with a blank one: default page, one bar, no elements. */
 export function resetProject(): void {
   store.page = { ...DEFAULT_PAGE }
+  store.border = { ...DEFAULT_BORDER }
   store.layout = starterLayout()
   store.elements = []
   store.selectedId = null
@@ -121,6 +123,10 @@ export async function setPageSize(width: number, height: number): Promise<void> 
     const image = leaf.frame && getImage(leaf.frame.imageId)
     if (image) await setPanelImage(leaf.id, image)
   }
+}
+
+export function setBorderWidth(width: number): void {
+  store.border.width = Math.round(clamp(width, 0, MAX_BORDER_WIDTH))
 }
 
 export function selectElement(id: number): void {
@@ -255,7 +261,6 @@ export function addCircle(image: StoredImage | null, opts: Partial<CircleElement
     y: stageSize.value.h / 2 - d / 2,
     z: 0,
     d,
-    ring: 'ink',
     frame: null,
     ...opts,
   })

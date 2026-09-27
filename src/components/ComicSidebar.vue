@@ -5,9 +5,9 @@ export type SaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { MAX_PAGE_SIDE, MIN_PAGE_SIDE, PAGE_PRESETS } from '@/lib/constants'
+import { BORDER_COLOR_PRESETS, MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE, PAGE_PRESETS } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { setPageSize, store } from '@/lib/store'
+import { setBorderWidth, setPageSize, store } from '@/lib/store'
 
 const FORMATS: ExportFormat[] = ['webp', 'jpg']
 
@@ -26,6 +26,21 @@ const presetIndex = computed(() =>
 function onPreset(e: Event) {
   const preset = PAGE_PRESETS[Number((e.target as HTMLSelectElement).value)]
   if (preset) setPageSize(preset.width, preset.height)
+}
+
+const isPresetColor = computed(() =>
+  BORDER_COLOR_PRESETS.some((p) => p.color === store.border.color.toLowerCase()),
+)
+
+function onBorderWidth(e: Event) {
+  const input = e.target as HTMLInputElement
+  const value = Number(input.value)
+  if (Number.isFinite(value)) setBorderWidth(value)
+  input.value = String(store.border.width) // show the clamped value
+}
+
+function onBorderColor(e: Event) {
+  store.border.color = (e.target as HTMLInputElement).value
 }
 
 function onDimension(axis: 'width' | 'height', e: Event) {
@@ -118,6 +133,57 @@ defineEmits<{
           @change="onDimension('height', $event)"
         />
       </div>
+    </div>
+
+    <hr />
+
+    <div class="tool-group">
+      <div class="tool-group-label">Border &amp; dividers</div>
+      <div class="border-width">
+        <input
+          type="range"
+          min="0"
+          :max="MAX_BORDER_WIDTH"
+          :value="store.border.width"
+          aria-label="Border width"
+          @input="onBorderWidth"
+        />
+        <input
+          type="number"
+          min="0"
+          :max="MAX_BORDER_WIDTH"
+          :value="store.border.width"
+          aria-label="Border width in pixels"
+          @change="onBorderWidth"
+        />
+        <span>px</span>
+      </div>
+      <div class="color-options" role="radiogroup" aria-label="Border color">
+        <button
+          v-for="p in BORDER_COLOR_PRESETS"
+          :key="p.color"
+          role="radio"
+          :aria-checked="store.border.color.toLowerCase() === p.color"
+          :class="{ active: store.border.color.toLowerCase() === p.color }"
+          @click="store.border.color = p.color"
+        >
+          <span class="swatch" :style="{ background: p.color }" />{{ p.label }}
+        </button>
+        <label
+          class="custom-color"
+          :class="{ active: !isPresetColor }"
+          role="radio"
+          :aria-checked="!isPresetColor"
+          title="Pick a custom color"
+        >
+          <span class="swatch" :style="{ background: isPresetColor ? undefined : store.border.color }" />Custom
+          <input type="color" :value="store.border.color" @input="onBorderColor" />
+        </label>
+      </div>
+      <p class="option-note">
+        {{ store.border.width ? 'Border' : 'No border' }}; the color also applies to the split bars and close-up
+        rings.
+      </p>
     </div>
 
     <hr />
@@ -270,6 +336,87 @@ input[type='number'] {
     outline: 2px solid $pink;
     outline-offset: -1px;
   }
+}
+
+.border-width {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: $muted;
+
+  input[type='range'] {
+    flex: 1;
+    min-width: 0;
+    accent-color: $pink-deep;
+  }
+
+  input[type='number'] {
+    width: 64px;
+  }
+}
+
+.color-options {
+  display: flex;
+  gap: 6px;
+
+  button,
+  .custom-color {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 6px;
+    font-size: 0.78rem;
+  }
+
+  .custom-color {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid $toolbar-border;
+    background: #fff;
+    cursor: pointer;
+
+    &:hover {
+      background: #fff0f8;
+      border-color: $pink;
+    }
+
+    &.active {
+      background: #fff0f8;
+      border-color: $pink-deep;
+      color: $pink-deep;
+    }
+
+    // the native picker covers the whole label so any click opens it
+    input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+  }
+
+  .swatch {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba($ink, 0.35);
+    // an empty custom swatch shows a rainbow hint
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  }
+}
+
+.option-note {
+  margin: 0;
+  font-size: 0.72rem;
+  color: $muted;
+  line-height: 1.4;
 }
 
 .button-row {

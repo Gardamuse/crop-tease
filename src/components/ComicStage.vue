@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 
 import CloseUpCircle from './CloseUpCircle.vue'
 import ImagePanel from './ImagePanel.vue'
@@ -9,8 +9,7 @@ import { renderStageImage, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
 import { deselectAll, layout, splitChordAt, splitPanelAt, stageSize, store } from '@/lib/store'
 
-const CARD_PAD = 40 // .stage-card padding (20px each side)
-const OUTER_PAD = 40 // .stage-outer padding (20px each side)
+const OUTER_PAD = 48 // .stage-outer padding (24px each side)
 
 const outerEl = useTemplateRef('outer')
 const stageEl = useTemplateRef('stage')
@@ -18,19 +17,22 @@ const card = reactive({ w: 0, h: 0 })
 
 const splitPreview = ref<[Point, Point] | null>(null)
 
+/** The border's width in stage units (it's set in output pixels). */
+const borderWidth = computed(() => store.border.width / stageSize.value.exportScale)
+
 // Scale the stage to fill the space available to it. Every
 // pointer handler that turns a screen delta into stage coordinates divides
 // by store.displayScale.
 function fitStage() {
   const outer = outerEl.value
   if (!outer) return
-  const availW = outer.clientWidth - OUTER_PAD - CARD_PAD
-  const availH = outer.clientHeight - OUTER_PAD - CARD_PAD
+  const availW = outer.clientWidth - OUTER_PAD
+  const availH = outer.clientHeight - OUTER_PAD
   const { w, h } = stageSize.value
   const scale = Math.max(0.05, Math.min(availW / w, availH / h))
   store.displayScale = scale
-  card.w = Math.ceil(w * scale + CARD_PAD)
-  card.h = Math.ceil(h * scale + CARD_PAD)
+  card.w = Math.ceil(w * scale)
+  card.h = Math.ceil(h * scale)
 }
 watch(stageSize, fitStage)
 
@@ -115,6 +117,11 @@ defineExpose({ renderImage })
       >
         <ImagePanel v-for="(p, i) in layout.panels" :key="`${store.generation}-${p.leaf.id}`" :panel="p" :index="i" />
         <SplitBars :preview="splitPreview" />
+        <div
+          v-if="store.border.width > 0"
+          class="page-border"
+          :style="{ borderWidth: `${borderWidth}px`, borderColor: store.border.color }"
+        />
         <template v-for="el in store.elements" :key="`${store.generation}-${el.id}`">
           <CloseUpCircle v-if="el.kind === 'circle'" :element="el" />
           <TextBox v-else :element="el" />
@@ -135,14 +142,15 @@ defineExpose({ renderImage })
   align-items: center;
   justify-content: center;
   overflow: auto; // fallback if the viewport is ever too small
-  padding: 20px;
+  padding: 24px;
+  background: $workspace;
 }
 
+// sized to the scaled stage; no padding or frame of its own, so nothing
+// around the page can be mistaken for a border that will be exported
 .stage-card {
-  background: #fff;
-  padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(36, 27, 48, 0.12);
+  flex: none;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
 }
 
 .stage {
@@ -150,7 +158,6 @@ defineExpose({ renderImage })
   transform-origin: top left;
   background: #000; // shows wherever a photo doesn't cover its panel
   overflow: hidden;
-  outline: 3px solid $ink;
   user-select: none;
   touch-action: none;
 
@@ -158,6 +165,14 @@ defineExpose({ renderImage })
   &.splitting :deep(*) {
     cursor: crosshair !important;
   }
+}
+
+.page-border {
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  z-index: 6; // over panels and bars, under close-ups and text
+  pointer-events: none;
 }
 
 .split-banner {

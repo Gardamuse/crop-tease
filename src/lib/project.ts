@@ -3,7 +3,7 @@ import { get, set } from 'idb-keyval'
 import { toRaw, watch } from 'vue'
 import { z } from 'zod'
 
-import { MAX_PAGE_SIDE, MIN_PAGE_SIDE } from './constants'
+import { MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE } from './constants'
 import type { ImageFrame } from './imageFrame'
 import {
   addImage,
@@ -33,12 +33,25 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
-export const PROJECT_VERSION = 1
+export const PROJECT_VERSION = 2
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
 const MIGRATIONS: Record<number, Migration> = {
-  // e.g. 1: (doc) => ({ ...doc, version: 2, newField: 'default' }),
+  // v2 added the page border. v1 drew bars and close-up rings in the dark
+  // ink color, so keep that look; per-close-up ring colors were dropped in
+  // favor of the shared border color.
+  1: (doc) => ({
+    ...doc,
+    version: 2,
+    border: { width: 0, color: '#241b30' },
+    elements: Array.isArray(doc.elements)
+      ? doc.elements.map((el: Record<string, unknown>) => {
+          const { ring: _ring, ...rest } = el
+          return rest
+        })
+      : doc.elements,
+  }),
 }
 
 const FrameSchema = z.object({
@@ -96,7 +109,6 @@ const ElementSchema = z.discriminatedUnion('kind', [
     ...ElementBase,
     kind: z.literal('circle'),
     d: z.number().positive(),
-    ring: z.enum(['ink', 'pink']),
     frame: FrameSchema.nullable(),
   }),
   z.object({
@@ -119,6 +131,10 @@ const ProjectSchema = z.object({
     height: z.number().int().min(MIN_PAGE_SIDE).max(MAX_PAGE_SIDE),
   }),
   exportFormat: z.enum(['webp', 'jpg']),
+  border: z.object({
+    width: z.number().min(0).max(MAX_BORDER_WIDTH),
+    color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  }),
   layout: RegionSchema,
   elements: z.array(ElementSchema),
   /** every image the project uses, with its MIME type */
@@ -203,6 +219,7 @@ export function serializeProject(): ProjectDoc {
     version: PROJECT_VERSION,
     page: { ...store.page },
     exportFormat: store.exportFormat,
+    border: { ...store.border },
     layout,
     elements,
     images,
@@ -225,6 +242,7 @@ function applyProject(doc: ProjectDoc): void {
 
   store.page = { ...doc.page }
   store.exportFormat = doc.exportFormat
+  store.border = { ...doc.border }
   store.layout = loadRegion(doc.layout)
   store.elements = doc.elements.map(
     (el): ComicElement => (el.kind === 'circle' ? { ...el, frame: loadFrame(el.frame) } : { ...el }),
@@ -275,7 +293,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.page, store.exportFormat, store.layout, store.elements],
+    () => [store.page, store.exportFormat, store.border, store.layout, store.elements],
     () => {
       if (suspendAutosave) return
       onStatus('saving')

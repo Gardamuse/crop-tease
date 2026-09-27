@@ -89,7 +89,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
       :key="b.id"
       v-bind="b.line"
       :clip-path="`url(#${b.clipId})`"
-      stroke="#241b30"
+      :stroke="store.border.color"
       stroke-width="9"
     />
     <g v-bind="{ [NO_EXPORT_ATTR]: '' }">

@@ -19,6 +19,16 @@ export const PAGE_PRESETS = [
 
 export const EXPORT_QUALITY = 0.92
 
+// The page border's width is in output pixels, so it stays the same when the
+// page size changes. Its color is shared by the border, the split bars and
+// the close-up rings.
+export const DEFAULT_BORDER = { width: 0, color: '#000000' }
+export const MAX_BORDER_WIDTH = 200
+export const BORDER_COLOR_PRESETS = [
+  { label: 'Black', color: '#000000' },
+  { label: 'White', color: '#ffffff' },
+]
+
 // flat fills shown where no image has been set yet; panels cycle through the list
 export const PANEL_PLACEHOLDER_COLORS = ['#f4b6d2', '#a9dede', '#cbbcf2', '#fbeaa0', '#b9e5bf', '#f7c3a3']
 export const CLOSE_UP_PLACEHOLDER_COLOR = '#ffd9a8'
