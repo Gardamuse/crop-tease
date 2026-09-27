@@ -47,12 +47,25 @@ export const PROJECT_FORMAT = 'comic-maker'
  */
 export const PROJECT_EXTENSION = 'comic'
 export const PROJECT_MIME = 'application/x-comic-maker'
-export const PROJECT_VERSION = 1
+export const PROJECT_VERSION = 2
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
 const MIGRATIONS: Record<number, Migration> = {
-  // e.g. 1: (doc) => ({ ...doc, version: 2, newField: 'default' }),
+  // v2 added multiple pages: v1's single layout and elements become page 1,
+  // and the page size field was renamed from `page` to `pageSize`
+  1: (doc) => {
+    const { page, layout, elements, ...rest } = doc
+    // the new page's id must not clash with any existing panel, bar or element id
+    const ids = [...JSON.stringify({ layout, elements }).matchAll(/"id":(\d+)/g)].map((m) => Number(m[1]))
+    return {
+      ...rest,
+      version: 2,
+      pageSize: page,
+      pages: [{ id: Math.max(0, ...ids) + 1, layout, elements }],
+      currentPage: 0,
+    }
+  },
 }
 
 const FrameSchema = z.object({
@@ -129,7 +142,7 @@ const ElementSchema = z.discriminatedUnion('kind', [
 const ProjectSchema = z.object({
   format: z.literal(PROJECT_FORMAT),
   version: z.literal(PROJECT_VERSION),
-  page: z.object({
+  pageSize: z.object({
     width: z.number().int().min(MIN_PAGE_SIDE).max(MAX_PAGE_SIDE),
     height: z.number().int().min(MIN_PAGE_SIDE).max(MAX_PAGE_SIDE),
   }),
@@ -145,8 +158,17 @@ const ProjectSchema = z.object({
     shadow: z.boolean(),
     withinBorder: z.boolean(),
   }),
-  layout: RegionSchema,
-  elements: z.array(ElementSchema),
+  pages: z
+    .array(
+      z.object({
+        id: z.number().int(),
+        layout: RegionSchema,
+        elements: z.array(ElementSchema),
+      }),
+    )
+    .min(1),
+  /** the page that was open when saved */
+  currentPage: z.number().int().min(0),
   /** every image the project uses, with its MIME type */
   images: z.array(z.object({ id: z.string(), type: z.string() })),
 })
@@ -200,7 +222,9 @@ function saveRegion(node: Region): SavedRegion {
   }
 }
 
-function usedImageIds(doc: Pick<ProjectDoc, 'layout' | 'elements'>): Set<string> {
+type SavedPage = ProjectDoc['pages'][number]
+
+function usedImageIds(doc: Pick<ProjectDoc, 'pages'>): Set<string> {
   const ids = new Set<string>()
   const walk = (node: SavedRegion) => {
     if (node.kind === 'leaf') {
@@ -210,29 +234,36 @@ function usedImageIds(doc: Pick<ProjectDoc, 'layout' | 'elements'>): Set<string>
       walk(node.back)
     }
   }
-  walk(doc.layout)
-  for (const el of doc.elements) if (el.kind === 'circle' && el.frame) ids.add(el.frame.imageId)
+  for (const page of doc.pages) {
+    walk(page.layout)
+    for (const el of page.elements) if (el.kind === 'circle' && el.frame) ids.add(el.frame.imageId)
+  }
   return ids
 }
 
 export function serializeProject(): ProjectDoc {
-  const layout = saveRegion(store.layout)
-  const elements = store.elements.map((el): ProjectDoc['elements'][number] =>
-    el.kind === 'circle' ? { ...toRaw(el), frame: saveFrame(el.frame) } : { ...toRaw(el) },
+  const pages = store.pages.map(
+    (page): SavedPage => ({
+      id: page.id,
+      layout: saveRegion(page.layout),
+      elements: page.elements.map((el): SavedPage['elements'][number] =>
+        el.kind === 'circle' ? { ...toRaw(el), frame: saveFrame(el.frame) } : { ...toRaw(el) },
+      ),
+    }),
   )
-  const images = [...usedImageIds({ layout, elements })].map((id) => ({
+  const images = [...usedImageIds({ pages })].map((id) => ({
     id,
     type: getImage(id)?.blob.type || 'application/octet-stream',
   }))
   return {
     format: PROJECT_FORMAT,
     version: PROJECT_VERSION,
-    page: { ...store.page },
+    pageSize: { ...store.pageSize },
     exportFormat: store.exportFormat,
     border: { ...store.border },
     closeUps: { ...store.closeUps },
-    layout,
-    elements,
+    pages,
+    currentPage: store.pageIndex,
     images,
   }
 }
@@ -251,14 +282,18 @@ function applyProject(doc: ProjectDoc): void {
       ? { kind: 'leaf', id: node.id, frame: loadFrame(node.frame) }
       : { kind: 'split', bar: node.bar, front: loadRegion(node.front), back: loadRegion(node.back) }
 
-  store.page = { ...doc.page }
+  store.pageSize = { ...doc.pageSize }
   store.exportFormat = doc.exportFormat
   store.border = { ...doc.border }
   store.closeUps = { ...doc.closeUps }
-  store.layout = loadRegion(doc.layout)
-  store.elements = doc.elements.map(
-    (el): ComicElement => (el.kind === 'circle' ? { ...el, frame: loadFrame(el.frame) } : { ...el }),
-  )
+  store.pages = doc.pages.map((page) => ({
+    id: page.id,
+    layout: loadRegion(page.layout),
+    elements: page.elements.map(
+      (el): ComicElement => (el.kind === 'circle' ? { ...el, frame: loadFrame(el.frame) } : { ...el }),
+    ),
+  }))
+  store.pageIndex = Math.min(doc.currentPage, doc.pages.length - 1)
   store.selectedId = null
   store.selectedBarId = null
   store.splitMode = false
@@ -305,7 +340,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.page, store.exportFormat, store.border, store.closeUps, store.layout, store.elements],
+    () => [store.pageSize, store.exportFormat, store.border, store.closeUps, store.pages, store.pageIndex],
     () => {
       if (suspendAutosave) return
       onStatus('saving')

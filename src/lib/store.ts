@@ -67,18 +67,30 @@ export interface TextElement extends ElementBase {
 
 export type ComicElement = CircleElement | TextElement
 
+/** One page of the comic: its panels and dividers, plus close-ups and text. */
+export interface ComicPage {
+  id: number
+  layout: Region
+  elements: ComicElement[]
+}
+
 let nextId = 1
 let zTop = 10
 
-/** Moves the id and z-order counters past everything in the current project. */
+function barIds(node: Region): number[] {
+  return node.kind === 'leaf' ? [] : [node.bar.id, ...barIds(node.front), ...barIds(node.back)]
+}
+
+/** Moves the id and z-order counters past everything in the project (ids are unique across pages). */
 export function syncCounters(): void {
-  const ids = [
-    ...leaves(store.layout).map((l) => l.id),
-    ...layout.value.bars.map((g) => g.bar.id),
-    ...store.elements.map((e) => e.id),
-  ]
+  const ids = store.pages.flatMap((p) => [
+    p.id,
+    ...leaves(p.layout).map((l) => l.id),
+    ...barIds(p.layout),
+    ...p.elements.map((e) => e.id),
+  ])
   nextId = Math.max(0, ...ids) + 1
-  zTop = Math.max(10, ...store.elements.map((e) => e.z))
+  zTop = Math.max(10, ...store.pages.flatMap((p) => p.elements.map((e) => e.z)))
 }
 
 function newLeaf(frame: ImageFrame | null = null): Leaf {
@@ -95,9 +107,14 @@ function starterLayout(): Region {
   }
 }
 
+/** An empty page: one full-page panel, nothing on it. */
+function newPage(layout: Region = newLeaf()): ComicPage {
+  return { id: nextId++, layout, elements: [] }
+}
+
 export const store = reactive({
   /** Output size in pixels. */
-  page: { ...DEFAULT_PAGE },
+  pageSize: { ...DEFAULT_PAGE },
   /**
    * page border: width in output pixels (0 = none); color also used for bars
    * and close-up rings; the outline runs along all of those
@@ -107,8 +124,23 @@ export const store = reactive({
   exportFormat: 'webp' as ExportFormat,
   /** Current render scale of the stage (screen px per stage unit). */
   displayScale: 1,
-  layout: starterLayout(),
-  elements: [] as ComicElement[],
+  pages: [newPage(starterLayout())] as ComicPage[],
+  /** index into pages of the page being edited */
+  pageIndex: 0,
+  /** the current page's panels and dividers */
+  get layout(): Region {
+    return this.pages[this.pageIndex]!.layout
+  },
+  set layout(value: Region) {
+    this.pages[this.pageIndex]!.layout = value
+  },
+  /** the current page's close-ups and text */
+  get elements(): ComicElement[] {
+    return this.pages[this.pageIndex]!.elements
+  },
+  set elements(value: ComicElement[]) {
+    this.pages[this.pageIndex]!.elements = value
+  },
   selectedId: null as number | null,
   selectedBarId: null as number | null,
   /** true while waiting for a click on the panel to split */
@@ -117,23 +149,52 @@ export const store = reactive({
   generation: 0,
 })
 
-/**
- * Clears the page's content (photos, dividers, close-ups, text) for a new
- * project, keeping the settings: page size, lines, close-up options and export format.
- */
-export function clearContent(): void {
-  store.layout = newLeaf()
-  store.elements = []
+function resetEditing(): void {
   store.selectedId = null
   store.selectedBarId = null
   store.splitMode = false
   store.generation++
 }
 
+/**
+ * Clears the content (all pages, photos, dividers, close-ups, text) for a new
+ * project, keeping the settings: page size, lines, close-up options and export format.
+ */
+export function clearContent(): void {
+  store.pages = [newPage()]
+  store.pageIndex = 0
+  resetEditing()
+}
+
+// ---------------------------------------------------------------------------
+// Pages
+// ---------------------------------------------------------------------------
+
+export function switchPage(index: number): void {
+  if (index === store.pageIndex || index < 0 || index >= store.pages.length) return
+  store.pageIndex = index
+  resetEditing()
+}
+
+/** Adds an empty page after the current one and switches to it. */
+export function addPage(): void {
+  store.pages.splice(store.pageIndex + 1, 0, newPage())
+  store.pageIndex++
+  resetEditing()
+}
+
+/** Removes a page (never the last one left), staying on a neighbouring page. */
+export function removePage(index: number): void {
+  if (store.pages.length <= 1 || index < 0 || index >= store.pages.length) return
+  store.pages.splice(index, 1)
+  if (store.pageIndex > index || store.pageIndex >= store.pages.length) store.pageIndex--
+  resetEditing()
+}
+
 /** The page in stage units (see STAGE_SHORT), and the factor that scales it to output pixels. */
 export const stageSize = computed(() => {
-  const exportScale = Math.min(store.page.width, store.page.height) / STAGE_SHORT
-  return { w: store.page.width / exportScale, h: store.page.height / exportScale, exportScale }
+  const exportScale = Math.min(store.pageSize.width, store.pageSize.height) / STAGE_SHORT
+  return { w: store.pageSize.width / exportScale, h: store.pageSize.height / exportScale, exportScale }
 })
 
 export const layout = computed(() => computeLayout(store.layout, stageSize.value))
@@ -162,13 +223,23 @@ export const closeUpBounds = computed(() => {
 })
 
 export async function setPageSize(width: number, height: number): Promise<void> {
-  store.page.width = Math.round(clamp(width, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
-  store.page.height = Math.round(clamp(height, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
-  // re-fit panel photos so they still cover their reshaped panels
-  for (const leaf of leaves(store.layout)) {
-    const image = leaf.frame && getImage(leaf.frame.imageId)
-    if (image) await setPanelImage(leaf.id, image)
+  store.pageSize.width = Math.round(clamp(width, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
+  store.pageSize.height = Math.round(clamp(height, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
+  // re-fit panel photos on every page so they still cover their reshaped panels
+  for (const page of store.pages) {
+    for (const panel of computeLayout(page.layout, stageSize.value).panels) {
+      const image = panel.leaf.frame && getImage(panel.leaf.frame.imageId)
+      if (image) panel.leaf.frame = await coverPanel(image, panel.bbox)
+    }
   }
+}
+
+/** A frame fitting an image to cover a panel's bounding box. */
+async function coverPanel(image: StoredImage, box: { x: number; y: number; w: number; h: number }) {
+  const frame = await coverFrame(image, box.w, box.h)
+  frame.tx += box.x
+  frame.ty += box.y
+  return frame
 }
 
 export function setBorderWidth(width: number): void {
@@ -221,12 +292,7 @@ export function firstPanelImage(): StoredImage | null {
 /** Loads a photo into a panel, fitted to cover the panel's bounding box. */
 export async function setPanelImage(leafId: number, image: StoredImage): Promise<void> {
   const panel = layout.value.panels.find((p) => p.leaf.id === leafId)
-  if (!panel) return
-  const { x, y, w, h } = panel.bbox
-  const frame = await coverFrame(image, w, h)
-  frame.tx += x
-  frame.ty += y
-  panel.leaf.frame = frame
+  if (panel) panel.leaf.frame = await coverPanel(image, panel.bbox)
 }
 
 export function clearPanelImage(leafId: number): void {

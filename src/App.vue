@@ -4,6 +4,7 @@ import { onMounted, ref, useTemplateRef } from 'vue'
 import ComicSidebar, { type SaveStatus } from '@/components/ComicSidebar.vue'
 import ComicStage from '@/components/ComicStage.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
+import PageBar from '@/components/PageBar.vue'
 import TaskDialog from '@/components/TaskDialog.vue'
 import { EXPORT_MIME } from '@/lib/exportImage'
 import {
@@ -95,14 +96,17 @@ async function onSaveProject() {
 }
 
 async function onExport() {
-  const { width, height } = store.page
+  const { width, height } = store.pageSize
   const format = store.exportFormat
+  // exports the page being edited; name it by page number once there are several
+  const pageNumber = store.pages.length > 1 ? `-${store.pageIndex + 1}` : ''
   try {
-    await runWithProgress(`Exporting ${format.toUpperCase()}`, async (report) => {
+    const title = store.pages.length > 1 ? `Exporting page ${store.pageIndex + 1}` : `Exporting ${format.toUpperCase()}`
+    await runWithProgress(title, async (report) => {
       const image = await stage.value!.renderImage(report)
       report(1, 'Choosing where to save')
       await offerFile(image, {
-        name: `comic-page-${width}x${height}.${format}`,
+        name: `comic-page${pageNumber}-${width}x${height}.${format}`,
         description: `${format.toUpperCase()} image`,
         mime: EXPORT_MIME[format],
         extension: format,
@@ -131,7 +135,10 @@ onMounted(async () => {
       @add-text="addText()"
       @export="onExport"
     />
-    <ComicStage ref="stage" />
+    <div class="workspace">
+      <ComicStage ref="stage" />
+      <PageBar />
+    </div>
     <TaskDialog />
     <ContextMenu />
     <input ref="projectInput" type="file" :accept="`.${PROJECT_EXTENSION}`" hidden @change="onProjectChosen" />
@@ -144,5 +151,13 @@ onMounted(async () => {
   align-items: stretch;
   height: 100vh;
   width: 100vw;
+}
+
+.workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: $workspace;
 }
 </style>

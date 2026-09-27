@@ -44,7 +44,7 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
 const statusText = computed(() => STATUS_TEXT[props.saveStatus])
 
 const presetIndex = computed(() =>
-  PAGE_PRESETS.findIndex((p) => p.width === store.page.width && p.height === store.page.height),
+  PAGE_PRESETS.findIndex((p) => p.width === store.pageSize.width && p.height === store.pageSize.height),
 )
 
 function onPreset(e: Event) {
@@ -56,11 +56,11 @@ function onDimension(axis: 'width' | 'height', e: Event) {
   const input = e.target as HTMLInputElement
   const value = Number(input.value)
   if (!Number.isFinite(value) || value <= 0) {
-    input.value = String(store.page[axis]) // reject junk, show the current size again
+    input.value = String(store.pageSize[axis]) // reject junk, show the current size again
     return
   }
-  if (axis === 'width') setPageSize(value, store.page.height)
-  else setPageSize(store.page.width, value)
+  if (axis === 'width') setPageSize(value, store.pageSize.height)
+  else setPageSize(store.pageSize.width, value)
 }
 
 const borderWidth = computed({ get: () => store.border.width, set: setBorderWidth })
@@ -119,7 +119,7 @@ const lineColor = computed({
             type="number"
             :min="MIN_PAGE_SIDE"
             :max="MAX_PAGE_SIDE"
-            :value="store.page.width"
+            :value="store.pageSize.width"
             aria-label="Page width in pixels"
             @change="onDimension('width', $event)"
           />
@@ -128,7 +128,7 @@ const lineColor = computed({
             type="number"
             :min="MIN_PAGE_SIDE"
             :max="MAX_PAGE_SIDE"
-            :value="store.page.height"
+            :value="store.pageSize.height"
             aria-label="Page height in pixels"
             @change="onDimension('height', $event)"
           />
@@ -186,6 +186,7 @@ const lineColor = computed({
       <details class="tips" open>
         <summary>How to</summary>
         <ul>
+          <li><b>Pages:</b> use the strip under the page to switch, add (＋) or delete them.</li>
           <li><b>Split a panel:</b> click it; hold and drag to choose which side gets the new panel.</li>
           <li><b>Move a bar:</b> drag it. <b>Tilt it:</b> drag an end along the border or another bar.</li>
           <li><b>Remove a bar:</b> right-click it, or click it and then its ×.</li>
@@ -214,10 +215,12 @@ const lineColor = computed({
             .{{ f }}
           </button>
         </div>
-        <button class="primary" @click="$emit('export')">⬇ Export {{ store.exportFormat.toUpperCase() }}</button>
+        <button class="primary" @click="$emit('export')">
+          ⬇ Export {{ store.pages.length > 1 ? `page ${store.pageIndex + 1}` : store.exportFormat.toUpperCase() }}
+        </button>
       </div>
       <p class="footnote">
-        {{ store.page.width }}&times;{{ store.page.height }} px &middot; everything stays in your browser
+        {{ store.pageSize.width }}&times;{{ store.pageSize.height }} px &middot; everything stays in your browser
       </p>
     </footer>
   </aside>

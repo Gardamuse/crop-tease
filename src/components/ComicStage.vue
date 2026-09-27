@@ -120,8 +120,8 @@ async function renderImage(onProgress?: ExportProgress): Promise<Blob> {
   return renderStageImage(
     stageEl.value!,
     {
-      width: store.page.width,
-      height: store.page.height,
+      width: store.pageSize.width,
+      height: store.pageSize.height,
       scale: stageSize.value.exportScale,
       format: store.exportFormat,
     },
@@ -169,12 +169,12 @@ defineExpose({ renderImage })
 .stage-outer {
   position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: auto; // fallback if the viewport is ever too small
   padding: 24px;
-  background: $workspace;
 }
 
 // sized to the scaled stage; no padding or frame of its own, so nothing
