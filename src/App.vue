@@ -9,7 +9,6 @@ import { buildProjectZip, newProject, openProjectZip, restoreAutosave, startAuto
 import {
   addCircle,
   addText,
-  clearElements,
   firstPanelImage,
   loadStarterPage,
   resetProject,
@@ -26,10 +25,6 @@ const REPLACE_WARNING =
 
 function onAddCircle() {
   addCircle(firstPanelImage())
-}
-
-function onClear() {
-  if (confirm('Remove all close-ups and text from the page?')) clearElements()
 }
 
 function reportError(action: string, err: unknown) {
@@ -123,7 +118,6 @@ onMounted(async () => {
       @add-circle="onAddCircle"
       @add-caption="addText('caption', 'Type your caption…')"
       @add-bubble="addText('bubble', 'Speech…')"
-      @clear="onClear"
       @export="onExport"
     />
     <ComicStage ref="stage" />

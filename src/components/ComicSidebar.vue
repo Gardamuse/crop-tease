@@ -65,7 +65,6 @@ defineEmits<{
   addCircle: []
   addCaption: []
   addBubble: []
-  clear: []
   export: []
 }>()
 </script>
@@ -189,7 +188,6 @@ defineEmits<{
     <hr />
 
     <div class="tool-group">
-      <button @click="$emit('clear')">🗑 Clear page</button>
       <div class="format-toggle" role="radiogroup" aria-label="Export format">
         <button
           v-for="f in FORMATS"

@@ -101,7 +101,6 @@ async function useFile(file: File | undefined) {
       width: `${el.d}px`,
       height: `${el.d}px`,
       zIndex: el.z,
-      outlineColor: store.border.color,
     }"
     @pointerdown.stop="onPointerDown"
     @click="onClick"
@@ -109,9 +108,15 @@ async function useFile(file: File | undefined) {
     @dragover.prevent
     @drop.prevent.stop="onDrop"
   >
-    <!-- the outer element carries the ring and handles (never clipped); this
-         inner layer clips just the photo, so handles can stick out past the ring -->
-    <div class="clip" :style="{ background: CLOSE_UP_PLACEHOLDER_COLOR }">
+    <!-- The rings are stacked solid discs (ring color, then white, then the
+         clipped photo) rather than border + outline. Each disc's anti-aliased
+         edge then blends with the disc underneath, instead of letting the page
+         show through as a hairline gap where two separate edges meet. The
+         outer element stays unclipped so handles can stick out past the ring. -->
+    <div class="ring" :style="{ background: store.border.color }" />
+    <div class="mat" />
+    <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->
+    <div class="clip" :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }">
       <img v-if="el.frame" :src="el.frame.src" :style="{ transform: frameTransform(el.frame) }" draggable="false" />
       <span v-else class="hint" v-bind="{ [NO_EXPORT_ATTR]: '' }">Click or drop<br />an image</span>
     </div>
@@ -124,12 +129,11 @@ async function useFile(file: File | undefined) {
 </template>
 
 <style scoped lang="scss">
+$ring-width: 5px; // outer ring, in the page border color
+$mat-width: 8px; // white band between the ring and the photo
+
 .circle {
   position: absolute;
-  border-radius: 50%;
-  box-shadow: 0 6px 16px rgba(20, 14, 30, 0.35);
-  border: 8px solid #fff;
-  outline: 5px solid; // color follows the page border color
   cursor: grab;
 
   &:active {
@@ -137,10 +141,25 @@ async function useFile(file: File | undefined) {
   }
 }
 
+.ring,
+.mat,
 .clip {
   position: absolute;
-  inset: 0;
   border-radius: 50%;
+}
+
+.ring {
+  inset: -$ring-width;
+  box-shadow: 0 6px 16px rgba(20, 14, 30, 0.35);
+}
+
+.mat {
+  inset: 0;
+  background: #fff;
+}
+
+.clip {
+  inset: $mat-width;
   overflow: hidden;
 
   img {

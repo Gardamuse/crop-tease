@@ -155,11 +155,6 @@ export function removeElement(id: number): void {
   if (store.selectedId === id) store.selectedId = null
 }
 
-export function clearElements(): void {
-  store.elements = []
-  store.selectedId = null
-}
-
 // ---------------------------------------------------------------------------
 // Panels and split bars
 // ---------------------------------------------------------------------------
