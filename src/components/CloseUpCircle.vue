@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
 import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
@@ -14,6 +14,11 @@ const MIN_D = 60
 const MAX_D = 700
 // pointer travel (screen px) below which a press counts as a click, not a drag
 const CLICK_SLOP = 4
+// how far (screen px) inside and outside the ring a press still grabs the border,
+// so even a thin or zero-width ring is easy to catch
+const EDGE_SLOP = 7
+// resize cursors for the eight compass directions, starting east, clockwise (y down)
+const EDGE_CURSORS = ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize']
 
 const { element: el } = defineProps<{
   element: CircleElement
@@ -23,10 +28,34 @@ const rootEl = useTemplateRef('root')
 const fileInput = useTemplateRef('fileInput')
 let dragged = false
 const selected = computed(() => store.selectedId === el.id)
+const cursor = ref<string>()
 
-// plain drag moves the circle; Ctrl+drag pans the photo inside it
+/** The resize cursor if the pointer is on the border band, else undefined. */
+function edgeCursor(e: PointerEvent): string | undefined {
+  const rect = rootEl.value!.getBoundingClientRect()
+  const cx = rect.left + rect.width / 2
+  const cy = rect.top + rect.height / 2
+  const dist = Math.hypot(e.clientX - cx, e.clientY - cy)
+  const photoR = rect.width / 2
+  const ringR = photoR + dividerStageWidth.value * store.displayScale
+  if (dist < photoR - EDGE_SLOP || dist > ringR + EDGE_SLOP) return undefined
+  const octant = Math.round(Math.atan2(e.clientY - cy, e.clientX - cx) / (Math.PI / 4))
+  return EDGE_CURSORS[((octant % 4) + 4) % 4]
+}
+
+function onHover(e: PointerEvent) {
+  cursor.value = e.ctrlKey ? undefined : edgeCursor(e)
+}
+
+// Dragging the border resizes; elsewhere a plain drag moves the circle and
+// Ctrl+drag pans the photo inside it.
 function onPointerDown(e: PointerEvent) {
   selectElement(el.id)
+  if (!e.ctrlKey && edgeCursor(e)) {
+    dragged = true // a border press never counts as a click on the photo
+    onResize(e)
+    return
+  }
   const panPhoto = e.ctrlKey
   dragged = false
   let travel = 0
@@ -114,8 +143,11 @@ async function useFile(file: File | undefined) {
       width: `${el.d}px`,
       height: `${el.d}px`,
       zIndex: el.z,
+      cursor,
     }"
     @pointerdown.stop="onPointerDown"
+    @pointermove="onHover"
+    @pointerleave="cursor = undefined"
     @click="onClick"
     @wheel.prevent.stop="onWheel"
     @dragover.prevent
@@ -126,6 +158,12 @@ async function useFile(file: File | undefined) {
          underneath instead of letting the page show through as a hairline
          gap. The outer element stays unclipped so handles can stick out past
          the ring. -->
+    <!-- invisible grab zone reaching a little past the ring, so the border is easy to catch -->
+    <div
+      class="edge-hit"
+      :style="{ inset: `${-(dividerStageWidth + EDGE_SLOP / store.displayScale)}px` }"
+      v-bind="{ [NO_EXPORT_ATTR]: '' }"
+    />
     <div
       v-if="outlineStyle"
       class="disc shadowed"
@@ -150,7 +188,6 @@ async function useFile(file: File | undefined) {
     <input ref="fileInput" type="file" accept="image/*" v-bind="{ [NO_EXPORT_ATTR]: '' }" @change="onFileChosen" />
     <template v-if="selected">
       <ElementHandle type="delete" @grab="removeElement(el.id)" />
-      <ElementHandle type="resize" @grab="onResize" />
     </template>
   </div>
 </template>
@@ -165,6 +202,7 @@ async function useFile(file: File | undefined) {
   }
 }
 
+.edge-hit,
 .disc,
 .clip,
 .inner-outline {
@@ -175,6 +213,11 @@ async function useFile(file: File | undefined) {
 // the shadow goes on whichever disc is outermost
 .shadowed {
   box-shadow: 0 6px 16px rgba(20, 14, 30, 0.35);
+}
+
+// transparent, only there to catch presses just outside the ring
+.edge-hit {
+  background: transparent;
 }
 
 .inner-outline {

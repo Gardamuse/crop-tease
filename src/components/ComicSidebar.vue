@@ -197,7 +197,8 @@ function onCustomColor(e: Event) {
           <li><b>Set a photo:</b> click an empty panel or close-up, or drop an image on it.</li>
           <li><b>Reposition a photo:</b> drag a panel, or Ctrl+drag a close-up.</li>
           <li><b>Zoom a photo:</b> scroll over it.</li>
-          <li><b>Move an element:</b> drag it. Resize or rotate with its handles.</li>
+          <li><b>Move an element:</b> drag it. <b>Resize a close-up:</b> drag its border.</li>
+          <li><b>Resize or rotate text:</b> use its handles.</li>
           <li><b>Edit text:</b> double-click a caption or bubble.</li>
         </ul>
       </details>
