@@ -12,6 +12,7 @@ const PATHS = {
   help: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7 M12 17h.01',
   chevron: 'M9 6l6 6-6 6',
   close: 'M6 6l12 12 M18 6L6 18',
+  back: 'M19 12H5 M11 6l-6 6 6 6',
 } as const
 
 export type IconName = keyof typeof PATHS

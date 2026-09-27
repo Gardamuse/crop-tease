@@ -48,6 +48,10 @@ defineEmits<{
 
 const FORMATS: ExportFormat[] = ['webp', 'jpg']
 
+// the web version links back to the app's page on the site; the desktop
+// builds (served from app://, see electron/main.js) have nowhere to go back to
+const BACK_URL = location.protocol === 'app:' ? null : 'https://www.blushingdefeat.com/apps/crop-tease/'
+
 const STATUS_TEXT: Record<SaveStatus, string> = {
   loading: 'Loading your last project…',
   saving: 'Saving in this browser…',
@@ -167,6 +171,9 @@ onBeforeUnmount(() => {
 <template>
   <aside class="sidebar">
     <header class="sidebar-header">
+      <a v-if="BACK_URL" class="icon-button back-link" :href="BACK_URL" title="Back to Blushing Defeat" aria-label="Back">
+        <UiIcon name="back" />
+      </a>
       <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
         <rect x="2" y="2" width="28" height="28" rx="4" fill="#fbf3f8" />
         <path d="M6 2 H13 L19 30 H6 A4 4 0 0 1 2 26 V6 A4 4 0 0 1 6 2 Z" fill="#7b2649" />
@@ -475,6 +482,16 @@ $side-pad: 18px;
   align-items: center;
   gap: 10px;
   padding: 18px $side-pad 14px;
+
+  .back-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: -8px;
+    margin-right: -4px;
+    border-radius: $radius;
+    transition: color 0.2s ease;
+  }
 
   .logo {
     width: 26px;
