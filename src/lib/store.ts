@@ -3,6 +3,7 @@ import { computed, reactive, toRaw } from 'vue'
 import {
   DEFAULT_BORDER,
   DEFAULT_CLOSE_UPS,
+  DEFAULT_NAME,
   DEFAULT_PAGE,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
@@ -113,6 +114,8 @@ function newPage(layout: Region = newLeaf()): ComicPage {
 }
 
 export const store = reactive({
+  /** project name, used for file names */
+  name: DEFAULT_NAME,
   /** Output size in pixels. */
   pageSize: { ...DEFAULT_PAGE },
   /**
@@ -169,6 +172,7 @@ export function clearContent(): void {
   store.pages = [newPage()]
   store.pageIndex = 0
   store.pageNumber = null
+  store.name = DEFAULT_NAME
   resetEditing()
 }
 
@@ -500,6 +504,16 @@ export function addText(opts: Partial<TextElement> = {}): TextElement {
 }
 
 /** The starting page: placeholder panels and a single close-up. */
+/** The project name made safe for use in a file name (never empty). */
+export function fileBaseName(): string {
+  const safe = store.name
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-') // characters not allowed in file names
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\.+/, '') // no hidden files
+  return safe || DEFAULT_NAME
+}
+
 /** The page-number text for a page (0-based index), from its template. */
 export function pageNumberText(template: string, index: number): string {
   return template.split('{n}').join(String(index + 1)).split('{total}').join(String(store.pages.length))

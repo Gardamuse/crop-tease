@@ -6,7 +6,8 @@ import ComicStage from '@/components/ComicStage.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import PageBar from '@/components/PageBar.vue'
 import TaskDialog from '@/components/TaskDialog.vue'
-import { EXPORT_MIME, zipImages } from '@/lib/exportImage'
+import { EXPORT_MIME, zipImages, type ExportFormat } from '@/lib/exportImage'
+import { buildPdf } from '@/lib/pdf'
 import {
   buildProjectZip,
   newProject,
@@ -21,12 +22,13 @@ import {
   addPageNumber,
   addText,
   clearContent,
+  fileBaseName,
   firstPanelImage,
   loadStarterPage,
   store,
   switchPage,
 } from '@/lib/store'
-import { offerFile, runWithProgress } from '@/lib/task'
+import { offerFile, runWithProgress, type Report } from '@/lib/task'
 
 const stage = useTemplateRef('stage')
 const projectInput = useTemplateRef('projectInput')
@@ -76,17 +78,13 @@ async function onProjectChosen() {
   }
 }
 
-function dateStamp() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 async function onSaveProject() {
   try {
     await runWithProgress('Saving project', async (report) => {
       const zip = await buildProjectZip((f) => report(f * 0.9, 'Packing images'))
       report(1, 'Choosing where to save')
       await offerFile(zip, {
-        name: `comic-project-${dateStamp()}.${PROJECT_EXTENSION}`,
+        name: `${fileBaseName()}.${PROJECT_EXTENSION}`,
         description: 'Comic Maker project',
         mime: PROJECT_MIME,
         extension: PROJECT_EXTENSION,
@@ -97,18 +95,23 @@ async function onSaveProject() {
   }
 }
 
+/** File name for one page's image: "name.webp", or "name-page-2.webp" once there are several pages. */
+function pageFileName(index: number, format: ExportFormat): string {
+  if (store.pages.length === 1) return `${fileBaseName()}.${format}`
+  const digits = Math.max(2, String(store.pages.length).length) // -01, -02, ... sort correctly
+  return `${fileBaseName()}-page-${String(index + 1).padStart(digits, '0')}.${format}`
+}
+
 async function onExport() {
-  const { width, height } = store.pageSize
   const format = store.exportFormat
-  // exports the page being edited; name it by page number once there are several
-  const pageNumber = store.pages.length > 1 ? `-${store.pageIndex + 1}` : ''
+  const index = store.pageIndex
   try {
-    const title = store.pages.length > 1 ? `Exporting page ${store.pageIndex + 1}` : `Exporting ${format.toUpperCase()}`
+    const title = store.pages.length > 1 ? `Exporting page ${index + 1}` : `Exporting ${format.toUpperCase()}`
     await runWithProgress(title, async (report) => {
       const image = await stage.value!.renderImage(report)
       report(1, 'Choosing where to save')
       await offerFile(image, {
-        name: `comic-page${pageNumber}-${width}x${height}.${format}`,
+        name: pageFileName(index, format),
         description: `${format.toUpperCase()} image`,
         mime: EXPORT_MIME[format],
         extension: format,
@@ -120,32 +123,37 @@ async function onExport() {
 }
 
 /**
- * Renders every page in turn (switching the stage to each one) and saves
- * them together as a zip of page-01.webp, page-02.webp, ..., then returns to
- * the page that was open.
+ * Renders every page in turn (switching the stage to each one), reporting
+ * progress up to `share` of the bar, then returns to the page that was open.
  */
-async function onExportAll() {
-  const { width, height } = store.pageSize
-  const format = store.exportFormat
+async function renderAllPages(format: ExportFormat, report: Report, share: number): Promise<Blob[]> {
   const count = store.pages.length
   const startPage = store.pageIndex
-  const digits = Math.max(2, String(count).length) // page-01, page-02, ... sort correctly
+  const blobs: Blob[] = []
   try {
-    await runWithProgress(`Exporting ${count} pages`, async (report) => {
-      const files: { name: string; blob: Blob }[] = []
-      for (let i = 0; i < count; i++) {
-        switchPage(i)
-        await nextTick() // let the page's panels and elements mount
-        const label = `Page ${i + 1} of ${count}`
-        const blob = await stage.value!.renderImage((f) => report(((i + f) / count) * 0.95, label))
-        files.push({ name: `page-${String(i + 1).padStart(digits, '0')}.${format}`, blob })
-      }
-      switchPage(startPage)
+    for (let i = 0; i < count; i++) {
+      switchPage(i)
+      await nextTick() // let the page's panels and elements mount
+      const label = `Page ${i + 1} of ${count}`
+      blobs.push(await stage.value!.renderImage((f) => report(((i + f) / count) * share, label), format))
+    }
+  } finally {
+    switchPage(startPage)
+  }
+  return blobs
+}
+
+/** Saves every page as an image, together in one zip. */
+async function onExportAll() {
+  const format = store.exportFormat
+  try {
+    await runWithProgress(`Exporting ${store.pages.length} pages`, async (report) => {
+      const blobs = await renderAllPages(format, report, 0.95)
       report(0.97, 'Packing pages')
-      const zip = await zipImages(files)
+      const zip = await zipImages(blobs.map((blob, i) => ({ name: pageFileName(i, format), blob })))
       report(1, 'Choosing where to save')
       await offerFile(zip, {
-        name: `comic-pages-${width}x${height}-${format}.zip`,
+        name: `${fileBaseName()}.zip`,
         description: 'Zip of page images',
         mime: 'application/zip',
         extension: 'zip',
@@ -153,8 +161,30 @@ async function onExportAll() {
     })
   } catch (err) {
     reportError('Export', err)
-  } finally {
-    switchPage(startPage)
+  }
+}
+
+/** Saves every page into one PDF, a page each (rendered as JPEG, which PDF embeds natively). */
+async function onExportPdf() {
+  const { width, height } = store.pageSize
+  try {
+    await runWithProgress(`Exporting PDF`, async (report) => {
+      const blobs = await renderAllPages('jpg', report, 0.95)
+      report(0.97, 'Building PDF')
+      const pages = await Promise.all(
+        blobs.map(async (blob) => ({ jpeg: new Uint8Array(await blob.arrayBuffer()), width, height })),
+      )
+      const pdf = buildPdf(pages, store.name.trim() || fileBaseName())
+      report(1, 'Choosing where to save')
+      await offerFile(pdf, {
+        name: `${fileBaseName()}.pdf`,
+        description: 'PDF document',
+        mime: 'application/pdf',
+        extension: 'pdf',
+      })
+    })
+  } catch (err) {
+    reportError('Export', err)
   }
 }
 
@@ -176,6 +206,7 @@ onMounted(async () => {
       @add-text="addText()"
       @add-page-number="addPageNumber()"
       @export-all="onExportAll"
+      @export-pdf="onExportPdf"
       @export="onExport"
     />
     <div class="workspace">

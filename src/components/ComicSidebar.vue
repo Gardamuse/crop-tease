@@ -18,7 +18,7 @@ import {
   PAGE_PRESETS,
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { selectElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
+import { fileBaseName, selectElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
 
 const props = defineProps<{
   saveStatus: SaveStatus
@@ -32,6 +32,7 @@ defineEmits<{
   addText: []
   addPageNumber: []
   exportAll: []
+  exportPdf: []
   export: []
 }>()
 
@@ -85,6 +86,10 @@ const lineColor = computed({
     <div class="sidebar-body">
       <section>
         <h2>Project</h2>
+        <label class="name-field">
+          <span>Name</span>
+          <input v-model="store.name" type="text" placeholder="comic" spellcheck="false" aria-label="Project name" />
+        </label>
         <div class="button-row">
           <button title="Start a new, empty project" @click="$emit('new')">✦ New</button>
           <button title="Open a saved .comic project" @click="$emit('open')">📂 Open…</button>
@@ -200,7 +205,7 @@ const lineColor = computed({
         </label>
       </section>
 
-      <details class="tips" open>
+      <details class="tips">
         <summary>How to</summary>
         <ul>
           <li>
@@ -239,12 +244,24 @@ const lineColor = computed({
         <button class="primary" @click="$emit('export')">
           ⬇ Export {{ store.pages.length > 1 ? `page ${store.pageIndex + 1}` : store.exportFormat.toUpperCase() }}
         </button>
-        <button v-if="store.pages.length > 1" class="export-all" @click="$emit('exportAll')">
-          ⬇ Export all {{ store.pages.length }} pages (.zip)
+        <button
+          v-if="store.pages.length > 1"
+          :title="`All pages as ${store.exportFormat.toUpperCase()} images in one zip`"
+          @click="$emit('exportAll')"
+        >
+          ⬇ All pages (.zip)
+        </button>
+        <button
+          :class="{ wide: store.pages.length === 1 }"
+          title="All pages in one PDF, a page each"
+          @click="$emit('exportPdf')"
+        >
+          ⬇ PDF{{ store.pages.length > 1 ? ` (${store.pages.length} pages)` : '' }}
         </button>
       </div>
       <p class="footnote">
-        {{ store.pageSize.width }}&times;{{ store.pageSize.height }} px &middot; everything stays in your browser
+        {{ store.pageSize.width }}&times;{{ store.pageSize.height }} px &middot; saved as
+        <b>{{ fileBaseName() }}</b>… &middot; everything stays in your browser
       </p>
     </footer>
   </aside>
@@ -507,9 +524,40 @@ input[type='number'] {
   gap: 8px;
 }
 
-.export-all {
-  grid-column: 1 / -1;
+.export-row > button {
   justify-content: center;
+}
+
+.export-row .wide {
+  grid-column: 1 / -1;
+}
+
+.name-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 7px 8px;
+    border-radius: 8px;
+    border: 1px solid $toolbar-border;
+    background: #fff;
+    color: $ink;
+
+    &:focus {
+      outline: 2px solid $pink;
+      outline-offset: -1px;
+    }
+  }
 }
 
 .footnote {

@@ -47,7 +47,7 @@ export const PROJECT_FORMAT = 'comic-maker'
  */
 export const PROJECT_EXTENSION = 'comic'
 export const PROJECT_MIME = 'application/x-comic-maker'
-export const PROJECT_VERSION = 3
+export const PROJECT_VERSION = 4
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
@@ -68,6 +68,8 @@ const MIGRATIONS: Record<number, Migration> = {
   },
   // v3 added the page-number text shown on every page
   2: (doc) => ({ ...doc, version: 3, pageNumber: null }),
+  // v4 added the project name used for file names
+  3: (doc) => ({ ...doc, version: 4, name: 'comic' }),
 }
 
 const FrameSchema = z.object({
@@ -146,6 +148,7 @@ const ElementSchema = z.discriminatedUnion('kind', [
 const ProjectSchema = z.object({
   format: z.literal(PROJECT_FORMAT),
   version: z.literal(PROJECT_VERSION),
+  name: z.string(),
   pageSize: z.object({
     width: z.number().int().min(MIN_PAGE_SIDE).max(MAX_PAGE_SIDE),
     height: z.number().int().min(MIN_PAGE_SIDE).max(MAX_PAGE_SIDE),
@@ -264,6 +267,7 @@ export function serializeProject(): ProjectDoc {
   return {
     format: PROJECT_FORMAT,
     version: PROJECT_VERSION,
+    name: store.name,
     pageSize: { ...store.pageSize },
     exportFormat: store.exportFormat,
     border: { ...store.border },
@@ -289,6 +293,7 @@ function applyProject(doc: ProjectDoc): void {
       ? { kind: 'leaf', id: node.id, frame: loadFrame(node.frame) }
       : { kind: 'split', bar: node.bar, front: loadRegion(node.front), back: loadRegion(node.back) }
 
+  store.name = doc.name
   store.pageSize = { ...doc.pageSize }
   store.exportFormat = doc.exportFormat
   store.border = { ...doc.border }
@@ -348,7 +353,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.pageSize, store.exportFormat, store.border, store.closeUps, store.pages, store.pageIndex, store.pageNumber],
+    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.pages, store.pageIndex, store.pageNumber],
     () => {
       if (suspendAutosave) return
       onStatus('saving')

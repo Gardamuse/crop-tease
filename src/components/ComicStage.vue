@@ -6,7 +6,7 @@ import BorderOutlines from './BorderOutlines.vue'
 import ImagePanel from './ImagePanel.vue'
 import SplitBars from './SplitBars.vue'
 import TextBox from './TextBox.vue'
-import { renderStageImage, type ExportProgress } from '@/lib/exportImage'
+import { renderStageImage, type ExportFormat, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
 import { borderStageWidth, deselectAll, layout, planSplit, splitPanelAt, stageSize, store } from '@/lib/store'
@@ -117,7 +117,8 @@ function onSplitPointerMove(e: PointerEvent) {
   showPlan(planSplit(stagePoint(e)))
 }
 
-async function renderImage(onProgress?: ExportProgress): Promise<Blob> {
+/** Renders the current page at output size; `format` defaults to the chosen export format. */
+async function renderImage(onProgress?: ExportProgress, format: ExportFormat = store.exportFormat): Promise<Blob> {
   deselectAll()
   store.splitMode = false
   await nextTick() // let selection chrome disappear before cloning the DOM
@@ -127,7 +128,7 @@ async function renderImage(onProgress?: ExportProgress): Promise<Blob> {
       width: store.pageSize.width,
       height: store.pageSize.height,
       scale: stageSize.value.exportScale,
-      format: store.exportFormat,
+      format,
     },
     onProgress,
   )

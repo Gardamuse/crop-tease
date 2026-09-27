@@ -5,6 +5,9 @@
 export const STAGE_SHORT = 700
 
 export const DEFAULT_PAGE = { width: 1600, height: 2000 }
+
+/** Project name, used for exported and saved file names. */
+export const DEFAULT_NAME = 'comic'
 export const MIN_PAGE_SIDE = 200
 // comfortably inside every browser's canvas size limit
 export const MAX_PAGE_SIDE = 8000
