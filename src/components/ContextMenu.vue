@@ -77,39 +77,48 @@ onBeforeUnmount(() => {
     @contextmenu.prevent
   >
     <template v-for="(item, i) in contextMenu.items" :key="i">
-      <hr v-if="item.kind === 'separator'" />
-      <div v-else-if="item.kind === 'slider'" class="slider-row">
-        <span class="row-label">{{ item.label }}</span>
-        <PixelSlider
-          class="slider"
-          :model-value="item.value()"
-          :min="item.min"
-          :max="item.max"
-          :label="item.label"
-          @update:model-value="item.set"
-        />
-      </div>
-      <div v-else-if="item.kind === 'choices'" class="choices-row" role="group" :aria-label="item.label">
-        <span class="row-label">{{ item.label }}</span>
-        <div class="choices">
-          <button
-            v-for="o in item.options"
-            :key="o.label"
-            role="menuitemradio"
-            :aria-checked="o.active?.() ?? false"
-            :aria-label="o.label"
-            :title="o.title ?? o.label"
-            :class="{ active: o.active?.(), swatch: o.swatch }"
-            :style="o.swatch ? { background: o.swatch } : undefined"
-            @click="o.pick()"
-          >
-            <template v-if="!o.swatch">{{ o.label }}</template>
-          </button>
+      <template v-if="!item.visible || item.visible()">
+        <hr v-if="item.kind === 'separator'" />
+        <div v-else-if="item.kind === 'slider'" class="slider-row">
+          <span class="row-label">{{ item.label }}</span>
+          <PixelSlider
+            class="slider"
+            :model-value="item.value()"
+            :min="item.min"
+            :max="item.max"
+            :steps="item.steps"
+            :label="item.label"
+            @update:model-value="item.set"
+          />
         </div>
-      </div>
-      <button v-else role="menuitem" :class="{ danger: item.danger }" @click="run(item)">
-        <span class="icon">{{ item.icon }}</span>{{ item.label }}
-      </button>
+        <div v-else-if="item.kind === 'choices'" class="choices-row" role="group" :aria-label="item.label">
+          <span class="row-label">{{ item.label }}</span>
+          <div
+            class="choices"
+            :class="{ grid: item.columns }"
+            :style="item.columns ? { gridTemplateColumns: `repeat(${item.columns}, auto)` } : undefined"
+          >
+            <template v-for="(o, j) in item.options" :key="j">
+              <span v-if="!o" class="spacer" />
+              <button
+                v-else
+                role="menuitemradio"
+                :aria-checked="o.active?.() ?? false"
+                :aria-label="o.title ?? o.label"
+                :title="o.title ?? o.label"
+                :class="{ active: o.active?.(), swatch: o.swatch }"
+                :style="o.swatch ? { background: o.swatch } : undefined"
+                @click="o.pick()"
+              >
+                <template v-if="!o.swatch">{{ o.label }}</template>
+              </button>
+            </template>
+          </div>
+        </div>
+        <button v-else role="menuitem" :class="{ danger: item.danger }" @click="run(item)">
+          <span class="icon">{{ item.icon }}</span>{{ item.label }}
+        </button>
+      </template>
     </template>
   </div>
 </template>
@@ -189,6 +198,10 @@ hr {
 .choices {
   display: flex;
   gap: 3px;
+
+  &.grid {
+    display: grid;
+  }
 
   button {
     padding: 4px 8px;

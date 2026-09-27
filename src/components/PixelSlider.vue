@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 // A slider paired with a number box, both editing the same pixel value.
 const props = withDefaults(
   defineProps<{
@@ -7,6 +9,8 @@ const props = withDefaults(
     min?: number
     label: string
     disabled?: boolean
+    /** if given, the slider snaps to these values (the number box still takes anything in min..max) */
+    steps?: number[]
   }>(),
   { min: 0, disabled: false },
 )
@@ -14,6 +18,22 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:modelValue': [value: number]
 }>()
+
+/** The step nearest the current value, for the slider's position. */
+const stepIndex = computed(() => {
+  const steps = props.steps
+  if (!steps?.length) return 0
+  let best = 0
+  steps.forEach((s, i) => {
+    if (Math.abs(s - props.modelValue) < Math.abs(steps[best]! - props.modelValue)) best = i
+  })
+  return best
+})
+
+function onSlide(e: Event) {
+  const value = Number((e.target as HTMLInputElement).value)
+  emit('update:modelValue', props.steps ? props.steps[value]! : value)
+}
 
 function onInput(e: Event) {
   const input = e.target as HTMLInputElement
@@ -32,12 +52,13 @@ function onChange(e: Event) {
   <div class="pixel-slider" :class="{ disabled }">
     <input
       type="range"
-      :min="min"
-      :max="max"
-      :value="modelValue"
+      :min="steps ? 0 : min"
+      :max="steps ? steps.length - 1 : max"
+      :value="steps ? stepIndex : modelValue"
       :aria-label="label"
+      :aria-valuetext="`${modelValue} px`"
       :disabled="disabled"
-      @input="onInput"
+      @input="onSlide"
     />
     <input
       type="number"

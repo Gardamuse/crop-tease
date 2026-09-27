@@ -56,4 +56,27 @@ export const TEXT_STYLES: { value: TextStyle; label: string }[] = [
   { value: 'square', label: 'Square' },
 ]
 
+/** Where a speech bubble's tail sits, as a compass position around the bubble. */
+export type TailPosition = 'top-left' | 'top' | 'top-right' | 'left' | 'right' | 'bottom-left' | 'bottom' | 'bottom-right'
+export const TAIL_POSITIONS: TailPosition[] = [
+  'top-left',
+  'top',
+  'top-right',
+  'left',
+  'right',
+  'bottom-left',
+  'bottom',
+  'bottom-right',
+]
+
+// Text size limits in output pixels: the slider snaps to these steps (fine
+// at small sizes, coarser at big ones); the number box accepts anything in
+// the typed range.
+export const FONT_SIZE_STEPS = [
+  2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 44, 48, 54, 60, 66, 72, 80, 90, 100,
+  110, 120, 135, 150, 165, 180, 200, 225, 250, 275, 300, 350, 400, 450, 500,
+]
+export const MIN_TYPED_FONT_PX = 1
+export const MAX_TYPED_FONT_PX = 1000
+
 export const TEXT_PALETTE = ['#241b30', '#ffffff', '#ff6fb0', '#78d2d2', '#de3c8d']

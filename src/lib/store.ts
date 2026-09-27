@@ -11,6 +11,7 @@ import {
   MIN_OUTLINE_WIDTH,
   MIN_PAGE_SIDE,
   STAGE_SHORT,
+  type TailPosition,
   type TextStyle,
 } from './constants'
 import type { ExportFormat } from './exportImage'
@@ -54,6 +55,8 @@ export interface TextElement extends ElementBase {
   kind: 'text'
   /** the frame around the text: none, a speech bubble, or a square caption box */
   style: TextStyle
+  /** where a speech bubble's tail sits */
+  tail: TailPosition
   w: number
   h: number
   rot: number
@@ -359,6 +362,7 @@ export function addText(opts: Partial<TextElement> = {}): TextElement {
     id: nextId++,
     kind: 'text',
     style: 'speech',
+    tail: 'bottom-left',
     x: stageSize.value.w / 2 - 130,
     y: 60,
     z: 0,

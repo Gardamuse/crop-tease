@@ -40,7 +40,7 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
-export const PROJECT_VERSION = 6
+export const PROJECT_VERSION = 7
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
@@ -103,6 +103,14 @@ const MIGRATIONS: Record<number, Migration> = {
       el.kind === 'caption' || el.kind === 'bubble'
         ? { ...el, kind: 'text', style: el.kind === 'bubble' ? 'speech' : 'square' }
         : el,
+    ),
+  }),
+  // v7 made the speech bubble tail movable; it used to sit at the bottom left
+  6: (doc) => ({
+    ...doc,
+    version: 7,
+    elements: (doc.elements as Record<string, unknown>[]).map((el) =>
+      el.kind === 'text' ? { ...el, tail: 'bottom-left' } : el,
     ),
   }),
 }
@@ -168,6 +176,7 @@ const ElementSchema = z.discriminatedUnion('kind', [
     ...ElementBase,
     kind: z.literal('text'),
     style: z.enum(['none', 'speech', 'square']),
+    tail: z.enum(['top-left', 'top', 'top-right', 'left', 'right', 'bottom-left', 'bottom', 'bottom-right']),
     w: z.number().positive(),
     h: z.number().positive(),
     rot: z.number(),
