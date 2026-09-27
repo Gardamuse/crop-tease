@@ -22,7 +22,13 @@ npm install
 npm run dev        # dev server
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build
+npm run deploy     # build and upload to the server (see below)
 ```
+
+`npm run deploy` and `npm run deploy:beta` copy the build to the web server
+over SSH. The server is read from `DEPLOY_HOST=user@host`, set in the
+environment or in `scripts/deploy.env` (git-ignored; copy
+`scripts/deploy.env.example`).
 
 ### Desktop builds (offline)
 
@@ -87,3 +93,39 @@ To change the format:
 Documents are upgraded one version at a time on load, so older saves (and old
 autosaves) keep opening. Files from a newer version are refused with a
 message rather than half-loaded.
+
+## Fonts
+
+The fonts in `public/fonts/` are third-party and keep their own licenses,
+which sit next to each font file; they are not covered by this project's
+license.
+
+| Font | Author | License |
+|------|--------|---------|
+| Courier Prime Code (interface) | Quote-Unquote Apps | SIL Open Font License |
+| Manrope (headings) | The Manrope Project Authors | SIL Open Font License |
+| Comic Neue | The Comic Neue Project Authors | SIL Open Font License |
+| Kalam | Indian Type Foundry | SIL Open Font License |
+| Patrick Hand | Patrick Wagesreiter | SIL Open Font License |
+| Solway | The Solway Project Authors | SIL Open Font License |
+| Luckiest Guy | Astigmatic | Apache License 2.0 |
+| White Rabbit | Matthew Welch | MIT-style (re-saved to fix a broken table; see its NOTES.txt) |
+| Komika Hand | Apostrophic Laboratories | Freeware; may be redistributed only unmodified |
+| Saiba 45 | Yuurin Bee | Free ("100% Free" on DaFont, no license file) |
+| Bubbly | heyy! | Free ("100% Free" on DaFont, no license file) |
+| Cloister Black | Dieter Steffmann | Free ("100% Free" on DaFont, no license file) |
+| My Handwriting Sucks | 123etcetera | Free ("100% Free" on DaFont, no license file) |
+
+For the DaFont fonts, a `LICENSE.txt` next to each records where it came
+from and its status when it was added. Fonts users add themselves are kept
+in their browser and packed into the `.ct` files that use them; they are
+never part of this repository.
+
+## License
+
+Crop Tease is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See [LICENSE](LICENSE).
+
+The bundled fonts are under their own licenses (see [Fonts](#fonts)).

@@ -3,6 +3,7 @@
   "version": "1.0.0-beta.1",
   "private": true,
   "author": "Gardamuse",
+  "license": "GPL-3.0-or-later",
   "description": "Crop and zoom your photos into comic pages.",
   "type": "module",
   "engines": {

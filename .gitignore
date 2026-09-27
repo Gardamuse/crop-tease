@@ -7,3 +7,13 @@ dist
 .vscode/*
 !.vscode/extensions.json
 release
+
+# local settings and secrets
+.env
+.env.*
+scripts/deploy.env
+.claude/settings.local.json
+
+# OS files
+.DS_Store
+Thumbs.db
