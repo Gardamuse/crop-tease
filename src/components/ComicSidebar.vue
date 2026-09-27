@@ -29,8 +29,7 @@ defineEmits<{
   open: []
   saveProject: []
   addCircle: []
-  addCaption: []
-  addBubble: []
+  addText: []
   export: []
 }>()
 
@@ -105,8 +104,7 @@ const lineColor = computed({
             <span class="icon">➗</span>Split panel
           </button>
           <button @click="$emit('addCircle')"><span class="icon">◯</span>Close-up</button>
-          <button @click="$emit('addCaption')"><span class="icon">▭</span>Caption</button>
-          <button @click="$emit('addBubble')"><span class="icon">💬</span>Speech bubble</button>
+          <button @click="$emit('addText')"><span class="icon">💬</span>Text</button>
         </div>
       </section>
 
@@ -194,9 +192,9 @@ const lineColor = computed({
           <li><b>Change or remove a photo, delete a close-up:</b> right-click it.</li>
           <li><b>Reposition a photo:</b> drag a panel, or Ctrl+drag a close-up.</li>
           <li><b>Zoom a photo:</b> scroll over it.</li>
-          <li><b>Move an element:</b> drag it. <b>Resize a close-up:</b> drag its border.</li>
-          <li><b>Resize or rotate text:</b> use its handles.</li>
-          <li><b>Edit text:</b> double-click a caption or bubble.</li>
+          <li><b>Move a close-up or text:</b> drag it. <b>Resize it:</b> drag its edge.</li>
+          <li><b>Edit text:</b> double-click it. <b>Rotate it:</b> Ctrl+drag.</li>
+          <li><b>Text style, size and color:</b> right-click it.</li>
         </ul>
       </details>
     </div>
@@ -357,12 +355,21 @@ input[type='number'] {
 
 .add-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 
+  // tiles: icon above label
+  button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 4px 8px;
+    font-size: 0.8rem;
+  }
+
   .icon {
-    width: 1.2em;
-    text-align: center;
+    font-size: 1.15rem;
+    line-height: 1;
   }
 }
 

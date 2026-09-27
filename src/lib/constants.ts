@@ -49,4 +49,11 @@ export const COLOR_PRESETS = [
 export const PANEL_PLACEHOLDER_COLORS = ['#f4b6d2', '#a9dede', '#cbbcf2', '#fbeaa0', '#b9e5bf', '#f7c3a3']
 export const CLOSE_UP_PLACEHOLDER_COLOR = '#ffd9a8'
 
+export type TextStyle = 'none' | 'speech' | 'square'
+export const TEXT_STYLES: { value: TextStyle; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'speech', label: 'Speech' },
+  { value: 'square', label: 'Square' },
+]
+
 export const TEXT_PALETTE = ['#241b30', '#ffffff', '#ff6fb0', '#78d2d2', '#de3c8d']

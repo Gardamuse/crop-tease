@@ -11,6 +11,7 @@ import {
   MIN_OUTLINE_WIDTH,
   MIN_PAGE_SIDE,
   STAGE_SHORT,
+  type TextStyle,
 } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
@@ -49,7 +50,9 @@ export interface CircleElement extends ElementBase {
 }
 
 export interface TextElement extends ElementBase {
-  kind: 'caption' | 'bubble'
+  kind: 'text'
+  /** the frame around the text: none, a speech bubble, or a square caption box */
+  style: TextStyle
   w: number
   h: number
   rot: number
@@ -322,17 +325,18 @@ export async function setCircleImage(el: CircleElement, image: StoredImage): Pro
   el.frame = await coverFrame(image, el.d, el.d)
 }
 
-export function addText(kind: TextElement['kind'], text: string, opts: Partial<TextElement> = {}): TextElement {
+export function addText(opts: Partial<TextElement> = {}): TextElement {
   store.elements.push({
     id: nextId++,
-    kind,
+    kind: 'text',
+    style: 'speech',
     x: stageSize.value.w / 2 - 130,
     y: 60,
     z: 0,
     w: 260,
     h: 90,
-    rot: kind === 'bubble' ? -2 : 0.6,
-    text,
+    rot: 0,
+    text: 'Text…',
     fontSize: 20,
     color: '#241b30',
     ...opts,

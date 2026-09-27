@@ -120,8 +120,7 @@ onMounted(async () => {
       @open="onOpen"
       @save-project="onSaveProject"
       @add-circle="onAddCircle"
-      @add-caption="addText('caption', 'Type your caption…')"
-      @add-bubble="addText('bubble', 'Speech…')"
+      @add-text="addText()"
       @export="onExport"
     />
     <ComicStage ref="stage" />

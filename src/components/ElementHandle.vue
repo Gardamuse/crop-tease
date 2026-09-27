@@ -2,7 +2,7 @@
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 
 defineProps<{
-  type: 'delete' | 'resize' | 'rotate'
+  type: 'delete'
 }>()
 
 defineEmits<{
@@ -29,35 +29,6 @@ defineEmits<{
   height: 20px;
   border: 3px solid #fff;
   @include handle-shadow;
-}
-
-.handle-resize {
-  right: -12px;
-  bottom: -12px;
-  background: $pink;
-  border-radius: 5px;
-  cursor: nwse-resize;
-}
-
-.handle-rotate {
-  left: 50%;
-  top: -46px;
-  margin-left: -10px;
-  background: $teal;
-  border-radius: 50%;
-  cursor: grab;
-
-  // the "stick" connecting the knob to the element
-  &::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 20px;
-    width: 2px;
-    height: 26px;
-    background: $ink;
-    transform: translateX(-1px);
-  }
 }
 
 .handle-delete {

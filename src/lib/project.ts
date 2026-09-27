@@ -40,7 +40,7 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
-export const PROJECT_VERSION = 5
+export const PROJECT_VERSION = 6
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
@@ -95,6 +95,16 @@ const MIGRATIONS: Record<number, Migration> = {
       closeUps: { shadow: true, withinBorder: false },
     }
   },
+  // v6 merged captions and speech bubbles into one text element with a style
+  5: (doc) => ({
+    ...doc,
+    version: 6,
+    elements: (doc.elements as Record<string, unknown>[]).map((el) =>
+      el.kind === 'caption' || el.kind === 'bubble'
+        ? { ...el, kind: 'text', style: el.kind === 'bubble' ? 'speech' : 'square' }
+        : el,
+    ),
+  }),
 }
 
 const FrameSchema = z.object({
@@ -156,7 +166,8 @@ const ElementSchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     ...ElementBase,
-    kind: z.enum(['caption', 'bubble']),
+    kind: z.literal('text'),
+    style: z.enum(['none', 'speech', 'square']),
     w: z.number().positive(),
     h: z.number().positive(),
     rot: z.number(),

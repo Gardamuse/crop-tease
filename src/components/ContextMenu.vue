@@ -75,15 +75,30 @@ onBeforeUnmount(() => {
     :style="{ left: `${pos.x}px`, top: `${pos.y}px` }"
     @contextmenu.prevent
   >
-    <button
-      v-for="item in contextMenu.items"
-      :key="item.label"
-      role="menuitem"
-      :class="{ danger: item.danger }"
-      @click="run(item)"
-    >
-      <span class="icon">{{ item.icon }}</span>{{ item.label }}
-    </button>
+    <template v-for="(item, i) in contextMenu.items" :key="i">
+      <hr v-if="item.kind === 'separator'" />
+      <div v-else-if="item.kind === 'choices'" class="choices-row" role="group" :aria-label="item.label">
+        <span class="row-label">{{ item.label }}</span>
+        <div class="choices">
+          <button
+            v-for="o in item.options"
+            :key="o.label"
+            role="menuitemradio"
+            :aria-checked="o.active?.() ?? false"
+            :aria-label="o.label"
+            :title="o.title ?? o.label"
+            :class="{ active: o.active?.(), swatch: o.swatch }"
+            :style="o.swatch ? { background: o.swatch } : undefined"
+            @click="o.pick()"
+          >
+            <template v-if="!o.swatch">{{ o.label }}</template>
+          </button>
+        </div>
+      </div>
+      <button v-else role="menuitem" :class="{ danger: item.danger }" @click="run(item)">
+        <span class="icon">{{ item.icon }}</span>{{ item.label }}
+      </button>
+    </template>
   </div>
 </template>
 
@@ -91,7 +106,7 @@ onBeforeUnmount(() => {
 .context-menu {
   position: fixed;
   z-index: 900;
-  min-width: 170px;
+  min-width: 190px;
   padding: 5px;
   border-radius: 10px;
   background: #fff;
@@ -124,6 +139,58 @@ button {
 
   &.danger {
     color: $pink-deep;
+  }
+}
+
+hr {
+  border: none;
+  border-top: 1px solid $toolbar-border;
+  margin: 4px 2px;
+}
+
+.choices-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 6px 4px 10px;
+}
+
+.row-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: $muted;
+}
+
+.choices {
+  display: flex;
+  gap: 3px;
+
+  button {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    border: 1px solid $toolbar-border;
+    border-radius: 6px;
+    justify-content: center;
+
+    &.active {
+      border-color: $pink-deep;
+      color: $pink-deep;
+      background: #fff0f8;
+    }
+
+    &.swatch {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 1px solid rgba($ink, 0.35);
+
+      &.active {
+        box-shadow:
+          0 0 0 2px #fff,
+          0 0 0 4px $pink-deep;
+      }
+    }
   }
 }
 
