@@ -8,7 +8,16 @@ import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
-import { dividerStageWidth, outlineStyle, removeElement, selectElement, setCircleImage, store, type CircleElement } from '@/lib/store'
+import {
+  closeUpBounds,
+  dividerStageWidth,
+  outlineStyle,
+  removeElement,
+  selectElement,
+  setCircleImage,
+  store,
+  type CircleElement,
+} from '@/lib/store'
 
 const MIN_D = 60
 const MAX_D = 700
@@ -29,6 +38,19 @@ const fileInput = useTemplateRef('fileInput')
 let dragged = false
 const selected = computed(() => store.selectedId === el.id)
 const cursor = ref<string>()
+
+// Kept inside the border: clip to the page's inner area, expressed in this
+// element's own coordinates (the polygon may extend past the element's box,
+// which is fine; only the part over the border gets cut).
+const clipPath = computed(() => {
+  const b = closeUpBounds.value
+  if (!b) return undefined
+  const l = b.left - el.x
+  const t = b.top - el.y
+  const r = b.right - el.x
+  const btm = b.bottom - el.y
+  return `polygon(${l}px ${t}px, ${r}px ${t}px, ${r}px ${btm}px, ${l}px ${btm}px)`
+})
 
 /** The resize cursor if the pointer is on the border band, else undefined. */
 function edgeCursor(e: PointerEvent): string | undefined {
@@ -153,6 +175,7 @@ async function useFile(file: File | undefined) {
       height: `${el.d}px`,
       zIndex: el.z,
       cursor,
+      clipPath,
     }"
     @pointerdown.stop="onPointerDown"
     @pointermove="onHover"
@@ -175,12 +198,13 @@ async function useFile(file: File | undefined) {
     />
     <div
       v-if="outlineStyle"
-      class="disc shadowed"
+      class="disc"
+      :class="{ shadowed: store.closeUps.shadow }"
       :style="{ inset: `${-(dividerStageWidth + outlineStyle.width)}px`, background: outlineStyle.color }"
     />
     <div
       class="disc"
-      :class="{ shadowed: !outlineStyle }"
+      :class="{ shadowed: store.closeUps.shadow && !outlineStyle }"
       :style="{ inset: `${-dividerStageWidth}px`, background: store.border.color }"
     />
     <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->

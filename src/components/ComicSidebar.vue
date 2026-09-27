@@ -5,18 +5,20 @@ export type SaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import ColorChoices from './ColorChoices.vue'
 import PixelSlider from './PixelSlider.vue'
 import {
-  BORDER_COLOR_PRESETS,
-  BORDER_OUTLINES,
+  COLOR_PRESETS,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
+  MAX_OUTLINE_WIDTH,
   MAX_PAGE_SIDE,
+  MIN_OUTLINE_WIDTH,
   MIN_PAGE_SIDE,
   PAGE_PRESETS,
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { setBorderWidth, setDividerWidth, setPageSize, store } from '@/lib/store'
+import { setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
 
 const props = defineProps<{
   saveStatus: SaveStatus
@@ -64,14 +66,13 @@ function onDimension(axis: 'width' | 'height', e: Event) {
 
 const borderWidth = computed({ get: () => store.border.width, set: setBorderWidth })
 const dividerWidth = computed({ get: () => store.border.dividerWidth, set: setDividerWidth })
-
-const isPresetColor = computed(() =>
-  BORDER_COLOR_PRESETS.some((p) => p.color === store.border.color.toLowerCase()),
-)
-
-function onCustomColor(e: Event) {
-  store.border.color = (e.target as HTMLInputElement).value
-}
+const outlineWidth = computed({ get: () => store.border.outlineWidth, set: setOutlineWidth })
+const lineColor = computed({
+  get: () => store.border.color,
+  set: (c: string | null) => {
+    if (c) store.border.color = c
+  },
+})
 </script>
 
 <template>
@@ -146,47 +147,42 @@ function onCustomColor(e: Event) {
           <PixelSlider v-model="dividerWidth" :max="MAX_DIVIDER_WIDTH" label="Divider thickness" />
 
           <span class="field-label">Color</span>
-          <div class="choices" role="radiogroup" aria-label="Line color">
-            <button
-              v-for="p in BORDER_COLOR_PRESETS"
-              :key="p.color"
-              role="radio"
-              :aria-checked="store.border.color.toLowerCase() === p.color"
-              :class="{ active: store.border.color.toLowerCase() === p.color }"
-              @click="store.border.color = p.color"
-            >
-              <span class="swatch" :style="{ background: p.color }" />{{ p.label }}
-            </button>
-            <label
-              class="choice custom-color"
-              :class="{ active: !isPresetColor }"
-              role="radio"
-              :aria-checked="!isPresetColor"
-              title="Pick a custom color"
-            >
-              <span class="swatch" :style="{ background: isPresetColor ? undefined : store.border.color }" />Custom
-              <input type="color" :value="store.border.color" @input="onCustomColor" />
-            </label>
-          </div>
+          <ColorChoices v-model="lineColor" :presets="COLOR_PRESETS" label="Line color" />
 
-          <span class="field-label" title="A 1px line along both sides of the lines">Outline</span>
-          <div class="choices" role="radiogroup" aria-label="Line outline">
-            <button
-              v-for="o in BORDER_OUTLINES"
-              :key="o.value"
-              role="radio"
-              :aria-checked="store.border.outline === o.value"
-              :class="{ active: store.border.outline === o.value }"
-              @click="store.border.outline = o.value"
-            >
-              <span v-if="o.color" class="swatch" :style="{ background: o.color }" />{{ o.label }}
-            </button>
-          </div>
+          <span class="field-label" title="A line along both sides of the border, dividers and close-up rings">
+            Outline
+          </span>
+          <PixelSlider
+            v-model="outlineWidth"
+            :min="MIN_OUTLINE_WIDTH"
+            :max="MAX_OUTLINE_WIDTH"
+            :disabled="!store.border.outlineColor"
+            label="Outline thickness"
+          />
+          <ColorChoices
+            v-model="store.border.outlineColor"
+            class="full-row"
+            :presets="COLOR_PRESETS"
+            allow-none
+            label="Outline color"
+          />
         </div>
         <p class="note">
-          Border runs around the page edge; dividers are the split bars and close-up rings. Color and the 1px
-          outline apply to all of them.
+          Border runs around the page edge; dividers are the split bars and close-up rings. Color and outline apply
+          to all of them.
         </p>
+      </section>
+
+      <section>
+        <h2>Close-ups</h2>
+        <label class="toggle">
+          <input v-model="store.closeUps.shadow" type="checkbox" />
+          <span>Drop shadow</span>
+        </label>
+        <label class="toggle">
+          <input v-model="store.closeUps.withinBorder" type="checkbox" />
+          <span>Keep inside the page border <small>(don't draw over it)</small></span>
+        </label>
       </section>
 
       <details class="tips" open>
@@ -283,8 +279,7 @@ h2 {
   color: $muted;
 }
 
-button,
-.choice {
+button {
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
@@ -402,39 +397,40 @@ input[type='number'] {
   display: flex;
   gap: 6px;
 
-  button,
-  .choice {
+  button {
     flex: 1 1 0;
     min-width: 0;
     justify-content: center;
-    gap: 6px;
     padding: 7px 4px;
     font-size: 0.78rem;
   }
 }
 
-.custom-color {
-  position: relative;
-
-  // the native picker covers the whole button so any click opens it
-  input {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-  }
+.full-row {
+  grid-column: 1 / -1;
 }
 
-.swatch {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  border: 1px solid rgba($ink, 0.35);
-  // an empty custom swatch shows a rainbow hint
-  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: $ink;
+  cursor: pointer;
+
+  input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: $pink-deep;
+    cursor: pointer;
+  }
+
+  small {
+    font-weight: 400;
+    color: $muted;
+  }
 }
 
 .note {

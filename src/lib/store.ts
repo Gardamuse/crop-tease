@@ -1,14 +1,15 @@
 import { computed, reactive } from 'vue'
 
 import {
-  BORDER_OUTLINES,
   DEFAULT_BORDER,
+  DEFAULT_CLOSE_UPS,
   DEFAULT_PAGE,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
+  MAX_OUTLINE_WIDTH,
   MAX_PAGE_SIDE,
+  MIN_OUTLINE_WIDTH,
   MIN_PAGE_SIDE,
-  OUTLINE_WIDTH,
   STAGE_SHORT,
 } from './constants'
 import type { ExportFormat } from './exportImage'
@@ -92,9 +93,10 @@ export const store = reactive({
   page: { ...DEFAULT_PAGE },
   /**
    * page border: width in output pixels (0 = none); color also used for bars
-   * and close-up rings; outline is a 1px line along all of those
+   * and close-up rings; the outline runs along all of those
    */
   border: { ...DEFAULT_BORDER },
+  closeUps: { ...DEFAULT_CLOSE_UPS },
   exportFormat: 'webp' as ExportFormat,
   /** Current render scale of the stage (screen px per stage unit). */
   displayScale: 1,
@@ -108,11 +110,12 @@ export const store = reactive({
   generation: 0,
 })
 
-/** Replaces the project with a blank one: default page, one bar, no elements. */
-export function resetProject(): void {
-  store.page = { ...DEFAULT_PAGE }
-  store.border = { ...DEFAULT_BORDER }
-  store.layout = starterLayout()
+/**
+ * Clears the page's content (photos, dividers, close-ups, text) for a new
+ * project, keeping the settings: page size, lines, close-up options and export format.
+ */
+export function clearContent(): void {
+  store.layout = newLeaf()
   store.elements = []
   store.selectedId = null
   store.selectedBarId = null
@@ -136,8 +139,19 @@ export const dividerStageWidth = computed(() => store.border.dividerWidth / stag
 
 /** The border outline's color and width in stage units, or null for none. */
 export const outlineStyle = computed(() => {
-  const color = BORDER_OUTLINES.find((o) => o.value === store.border.outline)?.color
-  return color ? { color, width: OUTLINE_WIDTH / stageSize.value.exportScale } : null
+  const color = store.border.outlineColor
+  return color ? { color, width: store.border.outlineWidth / stageSize.value.exportScale } : null
+})
+
+/**
+ * The area close-ups may draw in when kept inside the border: the page minus
+ * the border and its outline, in stage units. Null when they aren't clipped.
+ */
+export const closeUpBounds = computed(() => {
+  if (!store.closeUps.withinBorder || store.border.width <= 0) return null
+  const inset = borderStageWidth.value + (outlineStyle.value?.width ?? 0)
+  const { w, h } = stageSize.value
+  return { left: inset, top: inset, right: w - inset, bottom: h - inset }
 })
 
 export async function setPageSize(width: number, height: number): Promise<void> {
@@ -152,6 +166,10 @@ export async function setPageSize(width: number, height: number): Promise<void> 
 
 export function setBorderWidth(width: number): void {
   store.border.width = Math.round(clamp(width, 0, MAX_BORDER_WIDTH))
+}
+
+export function setOutlineWidth(width: number): void {
+  store.border.outlineWidth = Math.round(clamp(width, MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH))
 }
 
 export function setDividerWidth(width: number): void {

@@ -10,9 +10,9 @@ import { buildProjectZip, newProject, openProjectZip, restoreAutosave, startAuto
 import {
   addCircle,
   addText,
+  clearContent,
   firstPanelImage,
   loadStarterPage,
-  resetProject,
   store,
 } from '@/lib/store'
 import { offerFile, runWithProgress } from '@/lib/task'
@@ -34,9 +34,12 @@ function reportError(action: string, err: unknown) {
 }
 
 async function onNew() {
-  if (!confirm(REPLACE_WARNING)) return
+  const message =
+    'Start a new project? This removes all photos, dividers, close-ups and text. ' +
+    'Page size, line and close-up settings are kept.\n\nSave the current project as a .zip first if you want to keep it.'
+  if (!confirm(message)) return
   try {
-    await newProject(resetProject)
+    await newProject(clearContent)
   } catch (err) {
     reportError('Starting a new project', err)
   }

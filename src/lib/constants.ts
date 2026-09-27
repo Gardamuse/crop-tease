@@ -19,22 +19,28 @@ export const PAGE_PRESETS = [
 
 export const EXPORT_QUALITY = 0.92
 
-// The page border and divider widths are in output pixels, so they stay the
-// same when the page size changes. The divider width covers the split bars
-// and the close-up rings; the color is shared by all three.
-export const DEFAULT_BORDER = { width: 0, dividerWidth: 20, color: '#000000', outline: 'none' as BorderOutline }
+// The page border, divider and outline widths are in output pixels, so they
+// stay the same when the page size changes. The divider width covers the
+// split bars and the close-up rings; the color is shared by all three. The
+// outline (null color = none) runs along both sides of all of them.
+export const DEFAULT_BORDER = {
+  width: 0,
+  dividerWidth: 20,
+  color: '#000000',
+  outlineColor: null as string | null,
+  outlineWidth: 1,
+}
 export const MAX_BORDER_WIDTH = 200
 export const MAX_DIVIDER_WIDTH = 100
-/** A 1px line along both sides of every border, bar and close-up ring. */
-export type BorderOutline = 'none' | 'black' | 'white'
-export const BORDER_OUTLINES: { value: BorderOutline; label: string; color: string | null }[] = [
-  { value: 'none', label: 'None', color: null },
-  { value: 'black', label: 'Black', color: '#000000' },
-  { value: 'white', label: 'White', color: '#ffffff' },
-]
-export const OUTLINE_WIDTH = 1 // output pixels
+export const MIN_OUTLINE_WIDTH = 1
+export const MAX_OUTLINE_WIDTH = 10
 
-export const BORDER_COLOR_PRESETS = [
+export const DEFAULT_CLOSE_UPS = {
+  shadow: false,
+  /** clip close-ups at the inner edge of the page border instead of drawing over it */
+  withinBorder: true,
+}
+export const COLOR_PRESETS = [
   { label: 'Black', color: '#000000' },
   { label: 'White', color: '#ffffff' },
 ]

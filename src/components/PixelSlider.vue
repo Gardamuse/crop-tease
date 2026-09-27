@@ -1,10 +1,15 @@
 <script setup lang="ts">
 // A slider paired with a number box, both editing the same pixel value.
-const props = defineProps<{
-  modelValue: number
-  max: number
-  label: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: number
+    max: number
+    min?: number
+    label: string
+    disabled?: boolean
+  }>(),
+  { min: 0, disabled: false },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: number]
@@ -24,12 +29,21 @@ function onChange(e: Event) {
 </script>
 
 <template>
-  <div class="pixel-slider">
-    <input type="range" min="0" :max="max" :value="modelValue" :aria-label="label" @input="onInput" />
+  <div class="pixel-slider" :class="{ disabled }">
+    <input
+      type="range"
+      :min="min"
+      :max="max"
+      :value="modelValue"
+      :aria-label="label"
+      :disabled="disabled"
+      @input="onInput"
+    />
     <input
       type="number"
-      min="0"
+      :min="min"
       :max="max"
+      :disabled="disabled"
       :value="modelValue"
       :aria-label="`${label} in pixels`"
       @change="onChange"
@@ -45,6 +59,10 @@ function onChange(e: Event) {
   gap: 8px;
   font-size: 0.78rem;
   color: $muted;
+
+  &.disabled {
+    opacity: 0.45;
+  }
 
   input[type='range'] {
     flex: 1;

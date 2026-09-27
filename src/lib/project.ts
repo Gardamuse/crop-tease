@@ -3,7 +3,14 @@ import { get, set } from 'idb-keyval'
 import { toRaw, watch } from 'vue'
 import { z } from 'zod'
 
-import { MAX_BORDER_WIDTH, MAX_DIVIDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE } from './constants'
+import {
+  MAX_BORDER_WIDTH,
+  MAX_DIVIDER_WIDTH,
+  MAX_OUTLINE_WIDTH,
+  MAX_PAGE_SIDE,
+  MIN_OUTLINE_WIDTH,
+  MIN_PAGE_SIDE,
+} from './constants'
 import type { ImageFrame } from './imageFrame'
 import {
   addImage,
@@ -33,7 +40,7 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
-export const PROJECT_VERSION = 4
+export const PROJECT_VERSION = 5
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
@@ -74,6 +81,18 @@ const MIGRATIONS: Record<number, Migration> = {
         const frame = el.frame as { tx: number; ty: number } | null | undefined
         return el.kind === 'circle' && frame ? { ...el, frame: { ...frame, tx: frame.tx + 8, ty: frame.ty + 8 } } : el
       }),
+    }
+  },
+  // v5 gave the outline a free color and a width, and added close-up options.
+  // v4 close-ups always had a shadow and drew over the border, so keep that.
+  4: (doc) => {
+    const { outline, ...border } = doc.border as { outline: 'none' | 'black' | 'white' }
+    const outlineColor = { none: null, black: '#000000', white: '#ffffff' }[outline] ?? null
+    return {
+      ...doc,
+      version: 5,
+      border: { ...border, outlineColor, outlineWidth: 1 },
+      closeUps: { shadow: true, withinBorder: false },
     }
   },
 }
@@ -159,7 +178,12 @@ const ProjectSchema = z.object({
     width: z.number().min(0).max(MAX_BORDER_WIDTH),
     dividerWidth: z.number().min(0).max(MAX_DIVIDER_WIDTH),
     color: z.string().regex(/^#[0-9a-f]{6}$/i),
-    outline: z.enum(['none', 'black', 'white']),
+    outlineColor: z.string().regex(/^#[0-9a-f]{6}$/i).nullable(),
+    outlineWidth: z.number().min(MIN_OUTLINE_WIDTH).max(MAX_OUTLINE_WIDTH),
+  }),
+  closeUps: z.object({
+    shadow: z.boolean(),
+    withinBorder: z.boolean(),
   }),
   layout: RegionSchema,
   elements: z.array(ElementSchema),
@@ -246,6 +270,7 @@ export function serializeProject(): ProjectDoc {
     page: { ...store.page },
     exportFormat: store.exportFormat,
     border: { ...store.border },
+    closeUps: { ...store.closeUps },
     layout,
     elements,
     images,
@@ -269,6 +294,7 @@ function applyProject(doc: ProjectDoc): void {
   store.page = { ...doc.page }
   store.exportFormat = doc.exportFormat
   store.border = { ...doc.border }
+  store.closeUps = { ...doc.closeUps }
   store.layout = loadRegion(doc.layout)
   store.elements = doc.elements.map(
     (el): ComicElement => (el.kind === 'circle' ? { ...el, frame: loadFrame(el.frame) } : { ...el }),
@@ -319,7 +345,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.page, store.exportFormat, store.border, store.layout, store.elements],
+    () => [store.page, store.exportFormat, store.border, store.closeUps, store.layout, store.elements],
     () => {
       if (suspendAutosave) return
       onStatus('saving')
