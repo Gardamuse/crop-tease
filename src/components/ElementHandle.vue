@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NO_EXPORT_ATTR } from '@/lib/exportPng'
+import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 
 defineProps<{
   type: 'delete' | 'resize' | 'rotate'

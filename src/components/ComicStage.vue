@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, useTemplateRef, watch } from 'vue'
 
 import CloseUpCircle from './CloseUpCircle.vue'
 import ImagePanel from './ImagePanel.vue'
 import SeamLine from './SeamLine.vue'
 import TextBox from './TextBox.vue'
-import { STAGE_H, STAGE_W } from '@/lib/constants'
-import { exportStagePng } from '@/lib/exportPng'
-import { seamClipPaths } from '@/lib/seam'
-import { deselectAll, store } from '@/lib/store'
+import { exportStageImage } from '@/lib/exportImage'
+import { seamPanels } from '@/lib/seam'
+import { deselectAll, stageSize, store } from '@/lib/store'
 
 const CARD_PAD = 40 // .stage-card padding (20px each side)
 const OUTER_PAD = 40 // .stage-outer padding (20px each side)
@@ -17,9 +16,9 @@ const outerEl = useTemplateRef('outer')
 const stageEl = useTemplateRef('stage')
 const card = reactive({ w: 0, h: 0 })
 
-const clipPaths = computed(() => seamClipPaths(store.seam))
+const panelShapes = computed(() => seamPanels(store.seam, stageSize.value))
 
-// Scale the fixed-size stage to fill the space available to it. Every
+// Scale the stage to fill the space available to it. Every
 // pointer handler that turns a screen delta into stage coordinates divides
 // by store.displayScale.
 function fitStage() {
@@ -27,11 +26,13 @@ function fitStage() {
   if (!outer) return
   const availW = outer.clientWidth - OUTER_PAD - CARD_PAD
   const availH = outer.clientHeight - OUTER_PAD - CARD_PAD
-  const scale = Math.max(0.05, Math.min(availW / STAGE_W, availH / STAGE_H))
+  const { w, h } = stageSize.value
+  const scale = Math.max(0.05, Math.min(availW / w, availH / h))
   store.displayScale = scale
-  card.w = Math.ceil(STAGE_W * scale + CARD_PAD)
-  card.h = Math.ceil(STAGE_H * scale + CARD_PAD)
+  card.w = Math.ceil(w * scale + CARD_PAD)
+  card.h = Math.ceil(h * scale + CARD_PAD)
 }
+watch(stageSize, fitStage)
 
 let observer: ResizeObserver | undefined
 onMounted(() => {
@@ -45,13 +46,18 @@ function onStagePointerDown(e: PointerEvent) {
   if (e.target === stageEl.value) deselectAll()
 }
 
-async function exportPng() {
+async function exportImage() {
   deselectAll()
   await nextTick() // let selection chrome disappear before cloning the DOM
-  await exportStagePng(stageEl.value!)
+  await exportStageImage(stageEl.value!, {
+    width: store.page.width,
+    height: store.page.height,
+    scale: stageSize.value.exportScale,
+    format: store.exportFormat,
+  })
 }
 
-defineExpose({ exportPng })
+defineExpose({ exportImage })
 </script>
 
 <template>
@@ -60,11 +66,11 @@ defineExpose({ exportPng })
       <div
         ref="stage"
         class="stage"
-        :style="{ width: `${STAGE_W}px`, height: `${STAGE_H}px`, transform: `scale(${store.displayScale})` }"
+        :style="{ width: `${stageSize.w}px`, height: `${stageSize.h}px`, transform: `scale(${store.displayScale})` }"
         @pointerdown="onStagePointerDown"
       >
-        <ImagePanel side="left" :clip-path="clipPaths.left" />
-        <ImagePanel side="right" :clip-path="clipPaths.right" />
+        <ImagePanel side="left" :shape="panelShapes.left" />
+        <ImagePanel side="right" :shape="panelShapes.right" />
         <SeamLine />
         <template v-for="el in store.elements" :key="el.id">
           <CloseUpCircle v-if="el.kind === 'circle'" :element="el" />
@@ -95,7 +101,7 @@ defineExpose({ exportPng })
 .stage {
   position: relative;
   transform-origin: top left;
-  background: #d8cfe0;
+  background: #000; // shows wherever a photo doesn't cover its panel
   overflow: hidden;
   outline: 3px solid $ink;
   user-select: none;

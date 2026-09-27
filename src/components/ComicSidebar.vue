@@ -1,5 +1,31 @@
 <script setup lang="ts">
-import { EXPORT_H, EXPORT_W } from '@/lib/constants'
+import { computed } from 'vue'
+
+import { MAX_PAGE_SIDE, MIN_PAGE_SIDE, PAGE_PRESETS } from '@/lib/constants'
+import type { ExportFormat } from '@/lib/exportImage'
+import { setPageSize, store } from '@/lib/store'
+
+const FORMATS: ExportFormat[] = ['webp', 'jpg']
+
+const presetIndex = computed(() =>
+  PAGE_PRESETS.findIndex((p) => p.width === store.page.width && p.height === store.page.height),
+)
+
+function onPreset(e: Event) {
+  const preset = PAGE_PRESETS[Number((e.target as HTMLSelectElement).value)]
+  if (preset) setPageSize(preset.width, preset.height)
+}
+
+function onDimension(axis: 'width' | 'height', e: Event) {
+  const input = e.target as HTMLInputElement
+  const value = Number(input.value)
+  if (!Number.isFinite(value) || value <= 0) {
+    input.value = String(store.page[axis]) // reject junk, show the current size again
+    return
+  }
+  if (axis === 'width') setPageSize(value, store.page.height)
+  else setPageSize(store.page.width, value)
+}
 
 defineEmits<{
   addCircle: []
@@ -30,8 +56,53 @@ defineEmits<{
     <hr />
 
     <div class="tool-group">
+      <div class="tool-group-label">Page size (px)</div>
+      <select :value="presetIndex" @change="onPreset">
+        <option :value="-1" disabled>Custom</option>
+        <option v-for="(p, i) in PAGE_PRESETS" :key="p.label" :value="i">
+          {{ p.label }} ({{ p.width }}&times;{{ p.height }})
+        </option>
+      </select>
+      <div class="dimensions">
+        <input
+          type="number"
+          :min="MIN_PAGE_SIDE"
+          :max="MAX_PAGE_SIDE"
+          :value="store.page.width"
+          aria-label="Page width"
+          @change="onDimension('width', $event)"
+        />
+        <span>&times;</span>
+        <input
+          type="number"
+          :min="MIN_PAGE_SIDE"
+          :max="MAX_PAGE_SIDE"
+          :value="store.page.height"
+          aria-label="Page height"
+          @change="onDimension('height', $event)"
+        />
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="tool-group">
       <button @click="$emit('clear')">🗑 Clear page</button>
-      <button class="primary" @click="$emit('export')">⬇ Download PNG ({{ EXPORT_W }}&times;{{ EXPORT_H }})</button>
+      <div class="format-toggle" role="radiogroup" aria-label="Export format">
+        <button
+          v-for="f in FORMATS"
+          :key="f"
+          role="radio"
+          :aria-checked="store.exportFormat === f"
+          :class="{ active: store.exportFormat === f }"
+          @click="store.exportFormat = f"
+        >
+          .{{ f }}
+        </button>
+      </div>
+      <button class="primary" @click="$emit('export')">
+        ⬇ Download {{ store.exportFormat.toUpperCase() }} ({{ store.page.width }}&times;{{ store.page.height }})
+      </button>
     </div>
 
     <hr />
@@ -39,8 +110,9 @@ defineEmits<{
     <p class="hint">
       <b>Move</b> an element by dragging it.<br />
       <b>Rotate</b>/<b>resize</b> a selected caption or bubble with its handles.<br />
-      <b>Reposition a photo</b> (in a panel or close-up) with Alt+drag.<br />
+      <b>Reposition a photo</b> by dragging a panel, or Ctrl+dragging a close-up.<br />
       <b>Zoom a photo</b> by scrolling over it.<br />
+      <b>Set a photo</b> by clicking an empty panel, or dropping an image on a panel or close-up.<br />
       <b>Edit text</b> by double-clicking a caption or bubble.
     </p>
 
@@ -124,6 +196,49 @@ button {
 
     &:hover {
       background: $ink-soft;
+    }
+  }
+}
+
+.dimensions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: $muted;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+select,
+input[type='number'] {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid $toolbar-border;
+  background: #fff;
+  color: $ink;
+
+  &:focus {
+    outline: 2px solid $pink;
+    outline-offset: -1px;
+  }
+}
+
+.format-toggle {
+  display: flex;
+  gap: 6px;
+
+  button {
+    justify-content: center;
+
+    &.active {
+      background: #fff0f8;
+      border-color: $pink-deep;
+      color: $pink-deep;
     }
   }
 }

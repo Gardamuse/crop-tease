@@ -3,12 +3,12 @@ import { onMounted, useTemplateRef } from 'vue'
 
 import ComicSidebar from '@/components/ComicSidebar.vue'
 import ComicStage from '@/components/ComicStage.vue'
-import { addCircle, addText, clearElements, DEMO, loadDemo, store } from '@/lib/store'
+import { addCircle, addText, clearElements, loadStarterPage, store } from '@/lib/store'
 
 const stage = useTemplateRef('stage')
 
 function onAddCircle() {
-  addCircle(store.panels.left?.src ?? DEMO.faceLeft)
+  addCircle(store.panels.left?.src ?? null)
 }
 
 function onClear() {
@@ -17,14 +17,14 @@ function onClear() {
 
 async function onExport() {
   try {
-    await stage.value?.exportPng()
+    await stage.value?.exportImage()
   } catch (err) {
     console.error(err)
-    alert('Export failed to rasterize (this can happen with cross-origin images). Try using only dropped/local images.')
+    alert(`Export failed: ${err instanceof Error ? err.message : err}`)
   }
 }
 
-onMounted(loadDemo)
+onMounted(loadStarterPage)
 </script>
 
 <template>

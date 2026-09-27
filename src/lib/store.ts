@@ -1,12 +1,9 @@
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 
-import demoLeft from '@/assets/demo/left.jpg'
-import demoRight from '@/assets/demo/right.jpg'
-import demoFaceLeft from '@/assets/demo/face-left.jpg'
-import demoFaceRight from '@/assets/demo/face-right.jpg'
-
-import { STAGE_H, STAGE_W } from './constants'
+import { DEFAULT_PAGE, MAX_PAGE_SIDE, MIN_PAGE_SIDE, STAGE_SHORT } from './constants'
+import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
+import { clamp } from './math'
 import { perimPoint, type Seam } from './seam'
 
 export type PanelSide = 'left' | 'right'
@@ -22,6 +19,7 @@ export interface CircleElement extends ElementBase {
   kind: 'circle'
   d: number
   ring: 'ink' | 'pink'
+  /** null shows a flat placeholder color */
   frame: ImageFrame | null
 }
 
@@ -37,18 +35,14 @@ export interface TextElement extends ElementBase {
 
 export type ComicElement = CircleElement | TextElement
 
-export const DEMO = {
-  left: demoLeft,
-  right: demoRight,
-  faceLeft: demoFaceLeft,
-  faceRight: demoFaceRight,
-}
-
 let nextId = 1
 let zTop = 10
 
 export const store = reactive({
-  /** Current render scale of the stage (screen px per stage px). */
+  /** Output size in pixels. */
+  page: { ...DEFAULT_PAGE },
+  exportFormat: 'webp' as ExportFormat,
+  /** Current render scale of the stage (screen px per stage unit). */
   displayScale: 1,
   // default: a vertical split through the middle (top-mid to bottom-mid)
   seam: { a: 0.5, b: 2.5 } as Seam,
@@ -56,6 +50,22 @@ export const store = reactive({
   elements: [] as ComicElement[],
   selectedId: null as number | null,
 })
+
+/** The page in stage units (see STAGE_SHORT), and the factor that scales it to output pixels. */
+export const stageSize = computed(() => {
+  const exportScale = Math.min(store.page.width, store.page.height) / STAGE_SHORT
+  return { w: store.page.width / exportScale, h: store.page.height / exportScale, exportScale }
+})
+
+export async function setPageSize(width: number, height: number): Promise<void> {
+  store.page.width = Math.round(clamp(width, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
+  store.page.height = Math.round(clamp(height, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
+  // re-fit panel photos so they still cover the reshaped page
+  for (const side of ['left', 'right'] as const) {
+    const frame = store.panels[side]
+    if (frame) await setPanelImage(side, frame.src)
+  }
+}
 
 export function selectElement(id: number): void {
   store.selectedId = id
@@ -82,16 +92,16 @@ export function clearElements(): void {
 }
 
 export async function setPanelImage(side: PanelSide, src: string): Promise<void> {
-  store.panels[side] = await coverFrame(src, STAGE_W, STAGE_H)
+  store.panels[side] = await coverFrame(src, stageSize.value.w, stageSize.value.h)
 }
 
-export function addCircle(src: string, opts: Partial<CircleElement> = {}): CircleElement {
+export function addCircle(src: string | null, opts: Partial<CircleElement> = {}): CircleElement {
   const d = opts.d ?? 220
   store.elements.push({
     id: nextId++,
     kind: 'circle',
-    x: STAGE_W / 2 - d / 2,
-    y: STAGE_H / 2 - d / 2,
+    x: stageSize.value.w / 2 - d / 2,
+    y: stageSize.value.h / 2 - d / 2,
     z: 0,
     d,
     ring: 'ink',
@@ -101,7 +111,7 @@ export function addCircle(src: string, opts: Partial<CircleElement> = {}): Circl
   // re-read through the reactive array so later mutations are tracked
   const el = store.elements[store.elements.length - 1] as CircleElement
   selectElement(el.id)
-  setCircleImage(el, src)
+  if (src) setCircleImage(el, src)
   return el
 }
 
@@ -113,7 +123,7 @@ export function addText(kind: TextElement['kind'], text: string, opts: Partial<T
   store.elements.push({
     id: nextId++,
     kind,
-    x: STAGE_W / 2 - 130,
+    x: stageSize.value.w / 2 - 130,
     y: 60,
     z: 0,
     w: 260,
@@ -129,21 +139,9 @@ export function addText(kind: TextElement['kind'], text: string, opts: Partial<T
   return el
 }
 
-/** Seeds demo panels, close-ups and captions so the page opens showing what the tool can do. */
-export function loadDemo(): void {
-  setPanelImage('left', DEMO.left)
-  setPanelImage('right', DEMO.right)
-
-  const seamTopX = perimPoint(store.seam.a)[0]
-  const seamBottomX = perimPoint(store.seam.b)[0]
-  addCircle(DEMO.faceLeft, { d: 180, x: seamTopX - 260, y: STAGE_H * 0.34 - 90 })
-  addCircle(DEMO.faceRight, { d: 180, x: seamBottomX + 90, y: STAGE_H * 0.6 - 90, ring: 'pink' })
-  addText('bubble', 'Free IQ scan, they said.', { x: 40, y: STAGE_H - 170 })
-  addText('caption', 'She stepped out lighter, pinker, and considerably less bothered.', {
-    x: STAGE_W / 2 - 260,
-    y: STAGE_H - 100,
-    w: 520,
-    h: 80,
-  })
+/** The starting page: placeholder panels and a single close-up. */
+export function loadStarterPage(): void {
+  const seamTopX = perimPoint(store.seam.a, stageSize.value)[0]
+  addCircle(null, { d: 180, x: seamTopX - 260, y: stageSize.value.h * 0.34 - 90 })
   deselectAll()
 }

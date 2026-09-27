@@ -1,43 +1,40 @@
 <script setup lang="ts">
 import { computed, useTemplateRef } from 'vue'
 
-import { STAGE_H, STAGE_W } from '@/lib/constants'
-import { NO_EXPORT_ATTR } from '@/lib/exportPng'
+import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { closestPerimT, MIN_SEP, perimDist, perimPoint, wrapT } from '@/lib/seam'
 import { trackPointer } from '@/lib/pointer'
-import { store } from '@/lib/store'
+import { stageSize, store } from '@/lib/store'
 
 // Overshoot the drawn line a few px past each border point. The stage and
 // the panels' clip paths crop everything at the true edge anyway, so this
 // just guarantees the ink reaches flush to the border instead of leaving a
 // hairline gap from sub-pixel rounding (especially after the export scale-up).
 const OVERSHOOT = 8
-// perpendicular offset of the highlight line, so the seam reads as a ridge
-const RIDGE = 5
 
 const svgEl = useTemplateRef('svg')
 
 const ends = computed(() => {
-  const [ax, ay] = perimPoint(store.seam.a)
-  const [bx, by] = perimPoint(store.seam.b)
+  const [ax, ay] = perimPoint(store.seam.a, stageSize.value)
+  const [bx, by] = perimPoint(store.seam.b, stageSize.value)
   const len = Math.hypot(bx - ax, by - ay) || 1
   const ux = (bx - ax) / len
   const uy = (by - ay) / len
-  const ink = { x1: ax - ux * OVERSHOOT, y1: ay - uy * OVERSHOOT, x2: bx + ux * OVERSHOOT, y2: by + uy * OVERSHOOT }
-  const nx = -uy * RIDGE
-  const ny = ux * RIDGE
   return {
     a: { x: ax, y: ay },
     b: { x: bx, y: by },
-    ink,
-    highlight: { x1: ink.x1 + nx, y1: ink.y1 + ny, x2: ink.x2 + nx, y2: ink.y2 + ny },
+    ink: { x1: ax - ux * OVERSHOOT, y1: ay - uy * OVERSHOOT, x2: bx + ux * OVERSHOOT, y2: by + uy * OVERSHOOT },
     hit: { x1: ax, y1: ay, x2: bx, y2: by },
   }
 })
 
 /** Perimeter parameter closest to the pointer, in stage coordinates. */
 function pointerT(ev: PointerEvent, rect: DOMRect): number {
-  return closestPerimT((ev.clientX - rect.left) / store.displayScale, (ev.clientY - rect.top) / store.displayScale)
+  return closestPerimT(
+    (ev.clientX - rect.left) / store.displayScale,
+    (ev.clientY - rect.top) / store.displayScale,
+    stageSize.value,
+  )
 }
 
 function dragEnd(e: PointerEvent, key: 'a' | 'b') {
@@ -68,9 +65,14 @@ function dragLine(e: PointerEvent) {
 </script>
 
 <template>
-  <svg ref="svg" class="seam-svg" :viewBox="`0 0 ${STAGE_W} ${STAGE_H}`" :width="STAGE_W" :height="STAGE_H">
+  <svg
+    ref="svg"
+    class="seam-svg"
+    :viewBox="`0 0 ${stageSize.w} ${stageSize.h}`"
+    :width="stageSize.w"
+    :height="stageSize.h"
+  >
     <line v-bind="ends.ink" stroke="#241b30" stroke-width="9" />
-    <line v-bind="ends.highlight" stroke="#fffaf3" stroke-width="3" stroke-opacity="0.75" />
     <line
       class="seam-hit"
       v-bind="{ ...ends.hit, [NO_EXPORT_ATTR]: '' }"

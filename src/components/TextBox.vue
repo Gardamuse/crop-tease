@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
 import { TEXT_PALETTE } from '@/lib/constants'
-import { NO_EXPORT_ATTR } from '@/lib/exportPng'
+import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { screenCenter, trackPointer } from '@/lib/pointer'
 import { removeElement, selectElement, store, type TextElement } from '@/lib/store'
 

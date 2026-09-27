@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 
-import { STAGE_H, STAGE_W } from '@/lib/constants'
+import { PLACEHOLDER_COLORS } from '@/lib/constants'
+import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, readFileAsDataURL, zoomFrame } from '@/lib/imageFrame'
-import { deselectAll, setPanelImage, store, type PanelSide } from '@/lib/store'
+import type { PanelShape } from '@/lib/seam'
+import { deselectAll, setPanelImage, stageSize, store, type PanelSide } from '@/lib/store'
 
 const props = defineProps<{
   side: PanelSide
-  clipPath: string
+  shape: PanelShape
 }>()
 
 const fileInput = useTemplateRef('fileInput')
@@ -18,7 +20,12 @@ let lastX = 0
 let lastY = 0
 
 async function useFile(file: File | undefined) {
-  if (file) await setPanelImage(props.side, await readFileAsDataURL(file))
+  if (!file) return
+  try {
+    await setPanelImage(props.side, await readFileAsDataURL(file))
+  } catch {
+    alert(`Couldn't load "${file.name}" as an image.`)
+  }
 }
 
 function onPointerDown(e: PointerEvent) {
@@ -40,7 +47,7 @@ function onPointerMove(e: PointerEvent) {
 }
 
 function onWheel(e: WheelEvent) {
-  if (frame.value) zoomFrame(frame.value, e.deltaY, STAGE_W / 2, STAGE_H / 2)
+  if (frame.value) zoomFrame(frame.value, e.deltaY, stageSize.value.w / 2, stageSize.value.h / 2)
 }
 
 function onClick() {
@@ -63,7 +70,7 @@ function onDrop(e: DragEvent) {
   <div
     class="panel"
     :class="{ dragover: dragOver }"
-    :style="{ clipPath }"
+    :style="{ clipPath: shape.clipPath }"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="panning = false"
@@ -74,11 +81,17 @@ function onDrop(e: DragEvent) {
     @dragleave="dragOver = false"
     @drop.prevent="onDrop"
   >
-    <div v-if="!frame" class="drop-hint">
-      Drop or click to set<br />the {{ side.toUpperCase() }} image
+    <div v-if="!frame" class="placeholder" :style="{ background: PLACEHOLDER_COLORS[side] }">
+      <span
+        class="hint"
+        :style="{ left: `${shape.center[0]}px`, top: `${shape.center[1]}px` }"
+        v-bind="{ [NO_EXPORT_ATTR]: '' }"
+      >
+        Drop or click to set<br />the {{ side.toUpperCase() }} image
+      </span>
     </div>
     <img v-else class="panel-img" :src="frame.src" :style="{ transform: frameTransform(frame) }" draggable="false" />
-    <input ref="fileInput" type="file" accept="image/*" data-no-export @change="onFileChosen" />
+    <input ref="fileInput" type="file" accept="image/*" v-bind="{ [NO_EXPORT_ATTR]: '' }" @change="onFileChosen" />
   </div>
 </template>
 
@@ -103,23 +116,24 @@ function onDrop(e: DragEvent) {
   }
 }
 
-.drop-hint {
+.placeholder {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 0.95rem;
-  color: #6b5f78;
-  background: repeating-linear-gradient(45deg, #e9e0ef, #e9e0ef 10px, #f2ecf6 10px, #f2ecf6 20px);
-  padding: 30px;
   pointer-events: none;
 
   .dragover & {
     outline: 3px dashed $pink;
     outline-offset: -10px;
   }
+}
+
+.hint {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  color: rgba($ink, 0.6);
 }
 
 input[type='file'] {

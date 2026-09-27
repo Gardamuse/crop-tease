@@ -2,6 +2,7 @@
 import { computed, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
+import { PLACEHOLDER_COLORS } from '@/lib/constants'
 import { firstDroppedFile, frameTransform, readFileAsDataURL, zoomFrame } from '@/lib/imageFrame'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
@@ -17,10 +18,10 @@ const { element: el } = defineProps<{
 const rootEl = useTemplateRef('root')
 const selected = computed(() => store.selectedId === el.id)
 
-// plain drag moves the circle; Alt+drag pans the photo inside it
+// plain drag moves the circle; Ctrl+drag pans the photo inside it
 function onPointerDown(e: PointerEvent) {
   selectElement(el.id)
-  const panPhoto = e.altKey
+  const panPhoto = e.ctrlKey
   trackPointer(e, (dx, dy) => {
     const s = store.displayScale
     if (panPhoto) {
@@ -56,7 +57,12 @@ function onWheel(e: WheelEvent) {
 
 async function onDrop(e: DragEvent) {
   const file = firstDroppedFile(e)
-  if (file) await setCircleImage(el, await readFileAsDataURL(file))
+  if (!file) return
+  try {
+    await setCircleImage(el, await readFileAsDataURL(file))
+  } catch {
+    alert(`Couldn't load "${file.name}" as an image.`)
+  }
 }
 </script>
 
@@ -73,7 +79,7 @@ async function onDrop(e: DragEvent) {
   >
     <!-- the outer element carries the ring and handles (never clipped); this
          inner layer clips just the photo, so handles can stick out past the ring -->
-    <div class="clip">
+    <div class="clip" :style="{ background: PLACEHOLDER_COLORS.closeUp }">
       <img v-if="el.frame" :src="el.frame.src" :style="{ transform: frameTransform(el.frame) }" draggable="false" />
     </div>
     <template v-if="selected">
