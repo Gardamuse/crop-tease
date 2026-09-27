@@ -24,6 +24,25 @@ npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build
 ```
 
+### Desktop builds (offline)
+
+The app can also be packaged with Electron, so it runs without a network.
+Builds land in `release/`, named with the version from `package.json`
+(e.g. `crop-tease-1.0.0-beta.1-linux-x86_64.AppImage`).
+
+```sh
+npm run electron     # build and run it in Electron
+npm run dist:linux   # Linux AppImage
+npm run dist:win     # Windows installer (-setup.exe) and portable .exe
+npm run dist:all     # both
+```
+
+Windows builds can be made on Linux with Wine installed (it's used to set the
+exe's icon and version info). Bump the version with
+`npm version <version> --no-git-tag-version`; it also shows in the app's
+corner. `electron/main.js` serves `dist/` from an `app://` origin, so storage,
+fonts and the save dialog work as on the web.
+
 ## Layout
 
 - `src/lib/`: framework-free logic

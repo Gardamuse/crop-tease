@@ -31,6 +31,8 @@ import {
 } from '@/lib/store'
 import { offerFile, runWithProgress, type Report } from '@/lib/task'
 
+const APP_VERSION = __APP_VERSION__
+
 const stage = useTemplateRef('stage')
 const projectInput = useTemplateRef('projectInput')
 const saveStatus = ref<SaveStatus>('loading')
@@ -229,6 +231,7 @@ onMounted(async () => {
     <div class="workspace">
       <PageBar />
       <ComicStage ref="stage" />
+      <span class="version-tag">v{{ APP_VERSION }}</span>
     </div>
     <TaskDialog />
     <ContextMenu />
@@ -245,11 +248,24 @@ onMounted(async () => {
 }
 
 .workspace {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
   background:
     radial-gradient(rgba(#fff, 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
     $dark-void;
+}
+
+.version-tag {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: $dark-dim;
+  opacity: 0.7;
+  pointer-events: none;
 }
 </style>
