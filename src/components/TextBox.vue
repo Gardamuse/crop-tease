@@ -183,8 +183,13 @@ async function startEdit() {
 
 function stopEdit() {
   editing.value = false
-  el.text = faceEl.value!.innerText
-  faceEl.value!.textContent = shownText.value
+  const face = faceEl.value!
+  el.text = face.innerText
+  face.textContent = shownText.value
+  // while typing, the box may scroll to keep the caret in view; put it back
+  // so the text always renders (and exports) from its normal position
+  face.scrollTop = 0
+  face.scrollLeft = 0
 }
 
 function onContextMenu(e: MouseEvent) {

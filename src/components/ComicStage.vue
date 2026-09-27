@@ -194,7 +194,10 @@ defineExpose({ renderImage })
   position: relative;
   transform-origin: top left;
   background: #000; // shows wherever a photo doesn't cover its panel
-  overflow: hidden;
+  // clip rather than hidden: a hidden box can still be scrolled by the
+  // browser (e.g. to reveal the caret in text near the page edge), which
+  // would shift everything on the page
+  overflow: clip;
   user-select: none;
   touch-action: none;
 
