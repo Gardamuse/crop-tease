@@ -114,6 +114,7 @@ const TextSchema = z.object({
   text: z.string(),
   fontSize: z.number().positive(),
   color: z.string(),
+  outline: z.boolean().default(true), // added later; older projects had outlines on
 })
 
 const ElementSchema = z.discriminatedUnion('kind', [

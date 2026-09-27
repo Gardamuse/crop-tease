@@ -64,6 +64,8 @@ export interface TextElement extends ElementBase {
   text: string
   fontSize: number
   color: string
+  /** unframed text only: a thin black or white outline around the letters */
+  outline: boolean
 }
 
 export type ComicElement = CircleElement | TextElement
@@ -361,6 +363,22 @@ export function findElement(id: number): ComicElement | undefined {
   return store.elements.find((e) => e.id === id)
 }
 
+/** How far (stage units) a duplicated close-up or text box is moved from the original. */
+const DUPLICATE_OFFSET = 24
+
+/** Copies a close-up or text box on the current page, a little down and to the right, and selects the copy. */
+export function duplicateElement(id: number): void {
+  const source = store.elements.find((e) => e.id === id)
+  if (!source) return
+  // a plain deep copy (elements hold only JSON-safe data; photos stay shared by id)
+  const copy = JSON.parse(JSON.stringify(toRaw(source))) as ComicElement
+  copy.id = nextId++
+  copy.x += DUPLICATE_OFFSET
+  copy.y += DUPLICATE_OFFSET
+  store.elements.push(copy)
+  selectElement(copy.id)
+}
+
 export function removeElement(id: number): void {
   if (store.pageNumber?.id === id) store.pageNumber = null
   else store.elements = store.elements.filter((e) => e.id !== id)
@@ -525,6 +543,7 @@ export function addText(opts: Partial<TextElement> = {}): TextElement {
     text: 'Text…',
     fontSize: 20,
     color: '#241b30',
+    outline: true,
     ...opts,
   })
   const el = store.elements[store.elements.length - 1] as TextElement
@@ -566,6 +585,7 @@ export function addPageNumber(): void {
     text: '{n}',
     fontSize: 20,
     color: '#ffffff',
+    outline: true,
   }
   selectElement(store.pageNumber.id)
 }

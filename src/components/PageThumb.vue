@@ -131,7 +131,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :y="pageNumber.el.y + pageNumber.el.h / 2"
         :font-size="pageNumber.el.fontSize"
         :fill="pageNumber.el.color"
-        :stroke="pageNumber.el.style === 'none' ? pageNumber.outline.color : undefined"
+        :stroke="pageNumber.el.style === 'none' && pageNumber.el.outline ? pageNumber.outline.color : undefined"
         :stroke-width="pageNumber.outline.width * 2"
       >
         {{ pageNumber.text }}

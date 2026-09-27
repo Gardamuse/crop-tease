@@ -11,6 +11,7 @@ import { screenCenter, trackPointer } from '@/lib/pointer'
 import {
   closeUpBounds,
   dividerStageWidth,
+  duplicateElement,
   outlineStyle,
   removeElement,
   selectElement,
@@ -139,6 +140,7 @@ function onContextMenu(e: MouseEvent) {
   selectElement(el.id)
   openContextMenu(e, [
     { label: el.frame ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
+    { label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) },
     { label: 'Delete close-up', icon: '🗑', danger: true, action: () => removeElement(el.id) },
   ])
 }

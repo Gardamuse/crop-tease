@@ -16,6 +16,7 @@ import { screenCenter, trackPointer } from '@/lib/pointer'
 import { clamp } from '@/lib/math'
 import {
   pageNumberText,
+  duplicateElement,
   removeElement,
   selectElement,
   stageSize,
@@ -56,7 +57,7 @@ const cursor = ref<string>()
 // behind the fill, so only its outer half shows: doubling the width gives
 // an outline of the intended thickness.
 const faceStyle = computed(() => {
-  const outline = el.style === 'none' ? textOutline(el.color) : null
+  const outline = el.style === 'none' && el.outline ? textOutline(el.color) : null
   return {
     fontSize: `${el.fontSize}px`,
     color: el.color,
@@ -242,6 +243,20 @@ function onContextMenu(e: MouseEvent) {
         pick: () => (el.color = c),
       })),
     },
+    {
+      kind: 'choices',
+      label: 'Outline',
+      visible: () => el.style === 'none',
+      options: [
+        {
+          label: 'On',
+          title: 'A black or white outline, whichever contrasts with the text',
+          active: () => el.outline,
+          pick: () => (el.outline = true),
+        },
+        { label: 'Off', active: () => !el.outline, pick: () => (el.outline = false) },
+      ],
+    },
     { kind: 'separator' },
     {
       label: isPageNumber.value ? 'Edit text ({n} = page number)' : 'Edit text',
@@ -249,6 +264,7 @@ function onContextMenu(e: MouseEvent) {
       action: startEdit,
     },
   ]
+  if (!isPageNumber.value) entries.push({ label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) })
   if (Math.abs(el.rot) > 0.01) entries.push({ label: 'Reset rotation', icon: '⟲', action: () => (el.rot = 0) })
   entries.push({
     label: isPageNumber.value ? 'Remove page numbers' : 'Delete text',
