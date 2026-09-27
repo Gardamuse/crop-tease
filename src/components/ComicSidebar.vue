@@ -85,8 +85,8 @@ const lineColor = computed({
         <h2>Project</h2>
         <div class="button-row">
           <button title="Start a new, empty project" @click="$emit('new')">✦ New</button>
-          <button title="Open a project saved as .zip" @click="$emit('open')">📂 Open…</button>
-          <button title="Download the project and its images as a .zip" @click="$emit('saveProject')">
+          <button title="Open a saved .comic project" @click="$emit('open')">📂 Open…</button>
+          <button title="Save the project and its images as a .comic file" @click="$emit('saveProject')">
             💾 Save
           </button>
         </div>

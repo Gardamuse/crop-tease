@@ -3,7 +3,7 @@ import { del, keys, set } from 'idb-keyval'
 // Every photo in the project lives here once, keyed by a hash of its bytes,
 // so the same file dropped twice is stored once. Frames refer to images by
 // id; the blob itself is mirrored into IndexedDB for the autosave and packed
-// into the zip on save.
+// into the saved .comic file.
 
 export interface StoredImage {
   id: string

@@ -29,7 +29,7 @@ import { store, syncCounters, type ComicElement } from './store'
 //
 // A project is saved as a JSON document plus its images. The same document
 // is used for the browser autosave (IndexedDB) and as project.json inside a
-// saved zip, next to images/<id>.<ext>.
+// saved .comic file (a zip archive), next to images/<id>.<ext>.
 //
 // VERSIONING: every document carries `version`. When the format changes:
 //   1. bump PROJECT_VERSION,
@@ -40,6 +40,13 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
+
+/**
+ * Saved project files use their own extension. Inside they're ordinary zip
+ * archives (rename to .zip to look inside).
+ */
+export const PROJECT_EXTENSION = 'comic'
+export const PROJECT_MIME = 'application/x-comic-maker'
 export const PROJECT_VERSION = 1
 
 /** Upgrades a document from version N (the key) to N+1. */
@@ -337,7 +344,7 @@ export async function newProject(reset: () => void): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Zip files
+// Project files (.comic, a zip archive inside)
 // ---------------------------------------------------------------------------
 
 const PROJECT_JSON = 'project.json'
@@ -346,7 +353,7 @@ function imagePath(id: string, type: string): string {
   return `images/${id}.${extensionFor(type)}`
 }
 
-/** Packs the project into a zip: project.json plus images/<id>.<ext>. */
+/** Packs the project into a .comic file: a zip of project.json plus images/<id>.<ext>. */
 export async function buildProjectZip(onProgress?: (fraction: number) => void): Promise<Blob> {
   const doc = serializeProject()
   const files: Zippable = {
@@ -363,16 +370,16 @@ export async function buildProjectZip(onProgress?: (fraction: number) => void): 
   return new Blob([zipped as BlobPart], { type: 'application/zip' })
 }
 
-/** Opens a saved zip, upgrading it if it's from an older version, and makes it the current project. */
+/** Opens a saved .comic file, upgrading it if it's from an older version, and makes it the current project. */
 export async function openProjectZip(file: Blob): Promise<void> {
   let entries: Record<string, Uint8Array>
   try {
     entries = unzipSync(new Uint8Array(await file.arrayBuffer()))
   } catch {
-    throw new ProjectFileError("This file isn't a zip archive.")
+    throw new ProjectFileError(`This isn't a Comic Maker project file (.${PROJECT_EXTENSION}).`)
   }
   const json = entries[PROJECT_JSON]
-  if (!json) throw new ProjectFileError(`This zip has no ${PROJECT_JSON}, so it isn't a Comic Maker project.`)
+  if (!json) throw new ProjectFileError(`This file has no ${PROJECT_JSON}, so it isn't a Comic Maker project.`)
   let raw: unknown
   try {
     raw = JSON.parse(strFromU8(json))

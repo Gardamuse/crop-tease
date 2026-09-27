@@ -7,7 +7,7 @@ bubbles, then export a WebP or JPG at
 any page size (1600x2000 by default).
 Everything runs in the browser; nothing is uploaded. The current project
 (images included) is autosaved to IndexedDB and reopened on the next visit,
-and can be saved to or opened from a `.zip`.
+and can be saved to or opened from a `.comic` project file.
 
 ## Scripts
 
@@ -25,7 +25,7 @@ npm run preview    # serve the production build
     its ends anchored to the border or an earlier bar) and the polygon geometry
     that turns it into panel clip paths
   - `imageFrame.ts`: cover-fit, pan and zoom for an image inside a box
-  - `project.ts`: the versioned save format, autosave, and zip save/open
+  - `project.ts`: the versioned save format, autosave, and `.comic` save/open
   - `images.ts`: the project's images, keyed by content hash and mirrored to IndexedDB
   - `task.ts` / `saveFile.ts`: progress dialog and the "Save as" picker (with download fallback)
   - `store.ts`: reactive app state (seam, panel images, elements, selection) and actions
@@ -43,7 +43,8 @@ Editor-only chrome (handles, toolbars, bar hit areas) is marked with
 
 ## Project files
 
-A saved project is a zip containing `project.json` and `images/<id>.<ext>`.
+A saved project is a `.comic` file: a zip archive (rename it to `.zip` to look
+inside) containing `project.json` and `images/<id>.<ext>`.
 The same JSON document is used for the browser autosave. It carries
 `"format": "comic-maker"` and a `"version"` number.
 

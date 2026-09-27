@@ -6,7 +6,15 @@ import ComicStage from '@/components/ComicStage.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import TaskDialog from '@/components/TaskDialog.vue'
 import { EXPORT_MIME } from '@/lib/exportImage'
-import { buildProjectZip, newProject, openProjectZip, restoreAutosave, startAutosave } from '@/lib/project'
+import {
+  buildProjectZip,
+  newProject,
+  openProjectZip,
+  PROJECT_EXTENSION,
+  PROJECT_MIME,
+  restoreAutosave,
+  startAutosave,
+} from '@/lib/project'
 import {
   addCircle,
   addText,
@@ -22,7 +30,7 @@ const projectInput = useTemplateRef('projectInput')
 const saveStatus = ref<SaveStatus>('loading')
 
 const REPLACE_WARNING =
-  'This replaces the current project. Save it as a .zip first if you want to keep it.\n\nContinue?'
+  `This replaces the current project. Save it first if you want to keep it.\n\nContinue?`
 
 function onAddCircle() {
   addCircle(firstPanelImage())
@@ -36,7 +44,7 @@ function reportError(action: string, err: unknown) {
 async function onNew() {
   const message =
     'Start a new project? This removes all photos, dividers, close-ups and text. ' +
-    'Page size, line and close-up settings are kept.\n\nSave the current project as a .zip first if you want to keep it.'
+    'Page size, line and close-up settings are kept.\n\nSave the current project first if you want to keep it.'
   if (!confirm(message)) return
   try {
     await newProject(clearContent)
@@ -75,10 +83,10 @@ async function onSaveProject() {
       const zip = await buildProjectZip((f) => report(f * 0.9, 'Packing images'))
       report(1, 'Choosing where to save')
       await offerFile(zip, {
-        name: `comic-project-${dateStamp()}.zip`,
+        name: `comic-project-${dateStamp()}.${PROJECT_EXTENSION}`,
         description: 'Comic Maker project',
-        mime: 'application/zip',
-        extension: 'zip',
+        mime: PROJECT_MIME,
+        extension: PROJECT_EXTENSION,
       })
     })
   } catch (err) {
@@ -126,7 +134,7 @@ onMounted(async () => {
     <ComicStage ref="stage" />
     <TaskDialog />
     <ContextMenu />
-    <input ref="projectInput" type="file" accept=".zip,application/zip" hidden @change="onProjectChosen" />
+    <input ref="projectInput" type="file" :accept="`.${PROJECT_EXTENSION}`" hidden @change="onProjectChosen" />
   </div>
 </template>
 
