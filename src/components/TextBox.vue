@@ -28,6 +28,7 @@ onMounted(() => {
 
 // single click selects/moves the frame; double-click edits the text inside it
 function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return
   selectElement(el.id)
   if (editing.value) return // let text selection / caret placement happen instead
   trackPointer(e, (dx, dy) => {

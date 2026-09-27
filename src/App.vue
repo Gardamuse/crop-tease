@@ -3,6 +3,7 @@ import { onMounted, ref, useTemplateRef } from 'vue'
 
 import ComicSidebar, { type SaveStatus } from '@/components/ComicSidebar.vue'
 import ComicStage from '@/components/ComicStage.vue'
+import ContextMenu from '@/components/ContextMenu.vue'
 import TaskDialog from '@/components/TaskDialog.vue'
 import { EXPORT_MIME } from '@/lib/exportImage'
 import { buildProjectZip, newProject, openProjectZip, restoreAutosave, startAutosave } from '@/lib/project'
@@ -122,6 +123,7 @@ onMounted(async () => {
     />
     <ComicStage ref="stage" />
     <TaskDialog />
+    <ContextMenu />
     <input ref="projectInput" type="file" accept=".zip,application/zip" hidden @change="onProjectChosen" />
   </div>
 </template>

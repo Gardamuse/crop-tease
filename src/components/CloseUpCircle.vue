@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 
-import ElementHandle from './ElementHandle.vue'
 import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
+import { openContextMenu } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
@@ -50,6 +50,7 @@ function onHover(e: PointerEvent) {
 // Dragging the border resizes; elsewhere a plain drag moves the circle and
 // Ctrl+drag pans the photo inside it.
 function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return // right-click opens the menu instead
   selectElement(el.id)
   if (!e.ctrlKey && edgeCursor(e)) {
     dragged = true // a border press never counts as a click on the photo
@@ -112,6 +113,14 @@ function onClick() {
   if (!el.frame && !dragged) fileInput.value?.click()
 }
 
+function onContextMenu(e: MouseEvent) {
+  selectElement(el.id)
+  openContextMenu(e, [
+    { label: el.frame ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
+    { label: 'Delete close-up', icon: '🗑', danger: true, action: () => removeElement(el.id) },
+  ])
+}
+
 function onFileChosen() {
   const input = fileInput.value!
   useFile(input.files?.[0])
@@ -149,6 +158,7 @@ async function useFile(file: File | undefined) {
     @pointermove="onHover"
     @pointerleave="cursor = undefined"
     @click="onClick"
+    @contextmenu="onContextMenu"
     @wheel.prevent.stop="onWheel"
     @dragover.prevent
     @drop.prevent.stop="onDrop"
@@ -156,8 +166,7 @@ async function useFile(file: File | undefined) {
     <!-- Layers are stacked solid discs (outline, ring, photo) rather than
          border + outline, so each anti-aliased edge blends with the disc
          underneath instead of letting the page show through as a hairline
-         gap. The outer element stays unclipped so handles can stick out past
-         the ring. -->
+         gap. -->
     <!-- invisible grab zone reaching a little past the ring, so the border is easy to catch -->
     <div
       class="edge-hit"
@@ -186,9 +195,6 @@ async function useFile(file: File | undefined) {
       :style="{ borderWidth: `${outlineStyle.width}px`, borderColor: outlineStyle.color }"
     />
     <input ref="fileInput" type="file" accept="image/*" v-bind="{ [NO_EXPORT_ATTR]: '' }" @change="onFileChosen" />
-    <template v-if="selected">
-      <ElementHandle type="delete" @grab="removeElement(el.id)" />
-    </template>
   </div>
 </template>
 

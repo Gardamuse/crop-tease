@@ -6,7 +6,8 @@ import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import type { PanelGeom } from '@/lib/layout'
-import { deselectAll, setPanelImage, store } from '@/lib/store'
+import { openContextMenu } from '@/lib/contextMenu'
+import { clearPanelImage, deselectAll, setPanelImage, store } from '@/lib/store'
 
 const props = defineProps<{
   panel: PanelGeom
@@ -33,6 +34,7 @@ async function useFile(file: File | undefined) {
 
 function onPointerDown(e: PointerEvent) {
   deselectAll()
+  if (e.button !== 0) return // right-click opens the menu instead
   if (!frame.value) return
   panning = true
   lastX = e.clientX
@@ -58,6 +60,17 @@ function onClick() {
   if (!frame.value) fileInput.value?.click()
 }
 
+function onContextMenu(e: MouseEvent) {
+  deselectAll()
+  const leafId = props.panel.leaf.id
+  openContextMenu(e, [
+    { label: frame.value ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
+    ...(frame.value
+      ? [{ label: 'Remove image', icon: '🗑', danger: true, action: () => clearPanelImage(leafId) }]
+      : []),
+  ])
+}
+
 function onFileChosen() {
   const input = fileInput.value!
   useFile(input.files?.[0])
@@ -81,6 +94,7 @@ function onDrop(e: DragEvent) {
     @pointercancel="panning = false"
     @wheel.prevent="onWheel"
     @click="onClick"
+    @contextmenu="onContextMenu"
     @dragover.prevent="dragOver = true"
     @dragleave="dragOver = false"
     @drop.prevent="onDrop"

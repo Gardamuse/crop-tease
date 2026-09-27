@@ -2,6 +2,7 @@
 import { computed, ref, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
+import { openContextMenu } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import type { BarGeom, Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
@@ -45,12 +46,18 @@ const bars = computed(() =>
 
 const selectedBar = computed(() => bars.value.find((b) => b.id === store.selectedBarId))
 
+function onBarContextMenu(e: MouseEvent, id: number) {
+  selectBar(id)
+  openContextMenu(e, [{ label: 'Delete divider', icon: '🗑', danger: true, action: () => removeBar(id) }])
+}
+
 /** Pointer position in stage coordinates. */
 function stagePoint(ev: PointerEvent, rect: DOMRect): Point {
   return [(ev.clientX - rect.left) / store.displayScale, (ev.clientY - rect.top) / store.displayScale]
 }
 
 function dragEnd(e: PointerEvent, geom: BarGeom, end: 'a' | 'b') {
+  if (e.button !== 0) return
   selectBar(geom.bar.id)
   const rect = svgEl.value!.getBoundingClientRect()
   trackPointer(e, (_dx, _dy, ev) => moveBarEnd(geom.bar.id, end, stagePoint(ev, rect)))
@@ -59,6 +66,7 @@ function dragEnd(e: PointerEvent, geom: BarGeom, end: 'a' | 'b') {
 // Dragging the bar itself slides it without changing its angle; the grab
 // point stays under the pointer and both ends re-hook wherever they land.
 function dragBar(e: PointerEvent, geom: BarGeom) {
+  if (e.button !== 0) return // right-click opens the menu instead
   selectBar(geom.bar.id)
   const rect = svgEl.value!.getBoundingClientRect()
   const start = stagePoint(e, rect)
@@ -104,6 +112,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
         @pointerenter="hoverId = b.id"
         @pointerleave="hoverId = null"
         @pointerdown.prevent.stop="dragBar($event, b.geom)"
+        @contextmenu="onBarContextMenu($event, b.id)"
       />
       <line
         v-if="preview"
@@ -124,6 +133,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
       title="Drag to slide this end along the border or another bar"
       v-bind="{ [NO_EXPORT_ATTR]: '' }"
       @pointerdown.prevent.stop="dragEnd($event, b.geom, end)"
+      @contextmenu="onBarContextMenu($event, b.id)"
     />
   </template>
   <div

@@ -204,6 +204,11 @@ export async function setPanelImage(leafId: number, image: StoredImage): Promise
   panel.leaf.frame = frame
 }
 
+export function clearPanelImage(leafId: number): void {
+  const leaf = leaves(store.layout).find((l) => l.id === leafId)
+  if (leaf) leaf.frame = null
+}
+
 /** The chord a split at `point` would use: across the panel's longer side. */
 export function splitChordAt(point: Point) {
   const panel = layout.value.panels.find((p) => pointInPoly(p.poly, point))

@@ -193,8 +193,9 @@ function onCustomColor(e: Event) {
         <summary>How to</summary>
         <ul>
           <li><b>Move a bar:</b> drag it. <b>Tilt it:</b> drag an end along the border or another bar.</li>
-          <li><b>Remove a bar:</b> click it, then its ×.</li>
+          <li><b>Remove a bar:</b> right-click it, or click it and then its ×.</li>
           <li><b>Set a photo:</b> click an empty panel or close-up, or drop an image on it.</li>
+          <li><b>Change or remove a photo, delete a close-up:</b> right-click it.</li>
           <li><b>Reposition a photo:</b> drag a panel, or Ctrl+drag a close-up.</li>
           <li><b>Zoom a photo:</b> scroll over it.</li>
           <li><b>Move an element:</b> drag it. <b>Resize a close-up:</b> drag its border.</li>

@@ -70,7 +70,7 @@ function onStagePointerDown(e: PointerEvent) {
 // While splitting, the stage swallows clicks (in the capture phase, before
 // any panel, bar or element sees them) and shows where the cut would go.
 function onSplitPointerDown(e: PointerEvent) {
-  if (!store.splitMode) return
+  if (!store.splitMode || e.button !== 0) return
   e.stopPropagation()
   e.preventDefault()
   if (splitPanelAt(stagePoint(e))) store.splitMode = false
