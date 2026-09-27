@@ -5,10 +5,11 @@ description: Create comic page layouts as Crop Tease project files (.ct) that th
 
 # Crop Tease project files
 
-<!-- To install: save this file as SKILL.md in a folder named crop-tease, e.g.
-~/.claude/skills/crop-tease/SKILL.md for Claude Code, or zip that folder and
-upload it under Settings > Capabilities > Skills on claude.ai. Or just attach
-this file to a chat. -->
+<!-- A skill for AI agents and assistants. To install it in a tool that
+supports skills (the SKILL.md format), save this file as SKILL.md in a
+folder named crop-tease inside that tool's skills folder, or upload the
+folder wherever the tool manages skills. With any other assistant, attach
+this file to the chat or add it to the project's instructions. -->
 
 Crop Tease is a browser app that turns photos into comic pages. Each page is
 split into panels by straight divider bars; a photo fills each panel (panned

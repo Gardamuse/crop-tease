@@ -140,7 +140,7 @@ async function onRemoveFont(name: string) {
 
 // The How-to card, opened from the ? button.
 const helpOpen = ref(false)
-// the app and its save format described for Claude (public/crop-tease-skill.md)
+// the app and its save format described for AI agents (public/crop-tease-skill.md)
 const SKILL_URL = `${import.meta.env.BASE_URL}crop-tease-skill.md`
 const helpEl = useTemplateRef('help')
 const helpButton = useTemplateRef('helpButton')
@@ -445,8 +445,8 @@ onBeforeUnmount(() => {
           </li>
         </ul>
         <p class="help-more">
-          <a :href="SKILL_URL" download="crop-tease-skill.md">Download the Claude skill</a>: a full description of the
-          app and its .ct files, so Claude can lay out comics for you to open and refine here.
+          <a :href="SKILL_URL" download="crop-tease-skill.md">Download the AI agent skill</a>: a full description of
+          the app and its .ct files, so an AI assistant can lay out comics for you to open and refine here.
         </p>
       </div>
     </Transition>

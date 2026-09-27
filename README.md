@@ -25,10 +25,12 @@ npm run preview    # serve the production build
 npm run deploy     # build and upload to the server (see below)
 ```
 
-`npm run deploy` and `npm run deploy:beta` copy the build to the web server
-over SSH. The server is read from `DEPLOY_HOST=user@host`, set in the
-environment or in `scripts/deploy.env` (git-ignored; copy
-`scripts/deploy.env.example`).
+`npm run deploy` and `npm run deploy:beta` build the app and copy it to a
+web server over SSH (`scripts/deploy.sh prod|beta`). Where it goes is set in
+`scripts/deploy.env` (git-ignored; copy `scripts/deploy.env.example`) or the
+environment: `DEPLOY_HOST`, plus `PROD_BASE_URL` / `PROD_DIR` and
+`BETA_BASE_URL` / `BETA_DIR` (the URL the app is served from and its folder
+on the server).
 
 ### Desktop builds (offline)
 
@@ -87,7 +89,7 @@ To change the format:
 2. add a `MIGRATIONS[previousVersion]` function that upgrades an old document
    to the new shape,
 3. update `ProjectSchema`, `serializeProject` and `applyProject`,
-4. update `public/crop-tease-skill.md`, the Claude skill describing the app
+4. update `public/crop-tease-skill.md`, the AI agent skill describing the app
    and this format (downloadable from the How-to card).
 
 Documents are upgraded one version at a time on load, so older saves (and old

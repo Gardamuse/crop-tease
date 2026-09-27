@@ -1,6 +1,6 @@
 {
   "name": "crop-tease",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0",
   "private": true,
   "author": "Gardamuse",
   "license": "GPL-3.0-or-later",
@@ -11,8 +11,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "deploy": "./scripts/deploy.sh",
-    "deploy:beta": "./scripts/beta-deploy.sh",
+    "deploy": "./scripts/deploy.sh prod",
+    "deploy:beta": "./scripts/deploy.sh beta",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "electron": "npm run build && electron .",
