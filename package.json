@@ -10,6 +10,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "deploy": "./scripts/deploy.sh",
+    "deploy:beta": "./scripts/beta-deploy.sh",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",

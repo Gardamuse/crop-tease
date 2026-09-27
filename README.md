@@ -61,7 +61,9 @@ To change the format:
 1. bump `PROJECT_VERSION` in `src/lib/project.ts`,
 2. add a `MIGRATIONS[previousVersion]` function that upgrades an old document
    to the new shape,
-3. update `ProjectSchema`, `serializeProject` and `applyProject`.
+3. update `ProjectSchema`, `serializeProject` and `applyProject`,
+4. update `public/crop-tease-skill.md`, the Claude skill describing the app
+   and this format (downloadable from the How-to card).
 
 Documents are upgraded one version at a time on load, so older saves (and old
 autosaves) keep opening. Files from a newer version are refused with a
