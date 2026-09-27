@@ -23,6 +23,10 @@ dir_var="${prefix}_DIR"
 base_url="${!base_var}"
 dir="${!dir_var}"
 
-npm run build -- --base="$base_url"
+# not "npm run build -- --base=...": run-p hands the option to "npm run
+# build-only" without a "--", so npm takes it as its own setting and the
+# app would be built for the site root
+npm run type-check
+npm run build-only -- --base="$base_url"
 ssh "$DEPLOY_HOST" "mkdir -p '$dir'"
 tar cf - -C dist . | pv | ssh "$DEPLOY_HOST" "tar xf - -C '$dir'"
