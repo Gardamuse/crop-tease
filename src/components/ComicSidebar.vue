@@ -18,7 +18,7 @@ import {
   PAGE_PRESETS,
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { fileBaseName, selectElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
+import { fileBaseName, removeElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
 
 const props = defineProps<{
   saveStatus: SaveStatus
@@ -123,8 +123,8 @@ const lineColor = computed({
           <button
             v-else
             class="active"
-            title="Page numbers are on every page; right-click them to edit or remove"
-            @click="selectElement(store.pageNumber.id)"
+            title="Remove the page numbers (click again to add them back at the bottom)"
+            @click="removeElement(store.pageNumber.id)"
           >
             <span class="icon">#</span>Page no.
           </button>
@@ -161,16 +161,16 @@ const lineColor = computed({
       <section>
         <h2>Lines</h2>
         <div class="fields">
-          <span class="field-label">Border</span>
+          <span class="field-label" title="Runs around the page edge">Border</span>
           <PixelSlider v-model="borderWidth" :max="MAX_BORDER_WIDTH" label="Border width" />
 
-          <span class="field-label" title="Split bars and close-up rings">Dividers</span>
+          <span class="field-label" title="The split bars and close-up rings">Dividers</span>
           <PixelSlider v-model="dividerWidth" :max="MAX_DIVIDER_WIDTH" label="Divider thickness" />
 
-          <span class="field-label">Color</span>
+          <span class="field-label" title="Applies to the border and dividers">Color</span>
           <ColorChoices v-model="lineColor" :presets="COLOR_PRESETS" label="Line color" />
 
-          <span class="field-label" title="A line along both sides of the border, dividers and close-up rings">
+          <span class="field-label" title="A line along both sides of the border and dividers">
             Outline
           </span>
           <PixelSlider
@@ -188,10 +188,6 @@ const lineColor = computed({
             label="Outline color"
           />
         </div>
-        <p class="note">
-          Border runs around the page edge; dividers are the split bars and close-up rings. Color and outline apply
-          to all of them.
-        </p>
       </section>
 
       <section>
