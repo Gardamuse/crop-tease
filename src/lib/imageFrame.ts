@@ -1,7 +1,10 @@
+import type { StoredImage } from './images'
 import { clamp } from './math'
 
 /** An image placed inside a fixed-size box, with its own pan and zoom. */
 export interface ImageFrame {
+  imageId: string
+  /** the image's object URL; not saved, rebuilt from imageId on load */
   src: string
   natW: number
   natH: number
@@ -23,14 +26,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Loads `src` and fits it to cover a boxW x boxH box, centered. */
-export async function coverFrame(src: string, boxW: number, boxH: number): Promise<ImageFrame> {
-  const img = await loadImage(src)
+/** Fits an image to cover a boxW x boxH box, centered. */
+export async function coverFrame(image: StoredImage, boxW: number, boxH: number): Promise<ImageFrame> {
+  const img = await loadImage(image.url)
   const natW = img.naturalWidth
   const natH = img.naturalHeight
   const base = Math.max(boxW / natW, boxH / natH)
   return {
-    src,
+    imageId: image.id,
+    src: image.url,
     natW,
     natH,
     baseScale: base,
@@ -51,15 +55,6 @@ export function zoomFrame(f: ImageFrame, deltaY: number, cx: number, cy: number)
 
 export function frameTransform(f: ImageFrame): string {
   return `translate(${f.tx}px, ${f.ty}px) scale(${f.scale})`
-}
-
-export function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
 }
 
 export function firstDroppedFile(e: DragEvent): File | undefined {

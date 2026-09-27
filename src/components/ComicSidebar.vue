@@ -1,3 +1,7 @@
+<script lang="ts">
+export type SaveStatus = 'loading' | 'saving' | 'saved' | 'error'
+</script>
+
 <script setup lang="ts">
 import { computed } from 'vue'
 
@@ -6,6 +10,14 @@ import type { ExportFormat } from '@/lib/exportImage'
 import { setPageSize, store } from '@/lib/store'
 
 const FORMATS: ExportFormat[] = ['webp', 'jpg']
+
+const STATUS_TEXT: Record<SaveStatus, string> = {
+  loading: 'Loading your last project…',
+  saving: 'Saving in this browser…',
+  saved: 'Saved in this browser',
+  error: "Couldn't save in this browser; use Save to keep a copy",
+}
+const statusText = computed(() => STATUS_TEXT[props.saveStatus])
 
 const presetIndex = computed(() =>
   PAGE_PRESETS.findIndex((p) => p.width === store.page.width && p.height === store.page.height),
@@ -27,7 +39,14 @@ function onDimension(axis: 'width' | 'height', e: Event) {
   else setPageSize(store.page.width, value)
 }
 
+const props = defineProps<{
+  saveStatus: SaveStatus
+}>()
+
 defineEmits<{
+  new: []
+  open: []
+  saveProject: []
   addCircle: []
   addCaption: []
   addBubble: []
@@ -45,6 +64,20 @@ defineEmits<{
         export.
       </p>
     </div>
+
+    <div class="tool-group">
+      <div class="tool-group-label">Project</div>
+      <div class="button-row">
+        <button title="Start a new, empty project" @click="$emit('new')">✦ New</button>
+        <button title="Open a project saved as .zip" @click="$emit('open')">📂 Open…</button>
+      </div>
+      <button title="Download the project and its images as a .zip" @click="$emit('saveProject')">
+        💾 Save project (.zip)
+      </button>
+      <p class="save-status" :class="saveStatus">{{ statusText }}</p>
+    </div>
+
+    <hr />
 
     <div class="tool-group">
       <div class="tool-group-label">Add</div>
@@ -121,7 +154,7 @@ defineEmits<{
       <b>Edit text</b> by double-clicking a caption or bubble.
     </p>
 
-    <p class="footnote">Proof of concept &middot; everything lives in your browser &middot; nothing is uploaded anywhere.</p>
+    <p class="footnote">Everything stays in your browser &middot; nothing is uploaded anywhere.</p>
   </aside>
 </template>
 
@@ -236,6 +269,22 @@ input[type='number'] {
   &:focus {
     outline: 2px solid $pink;
     outline-offset: -1px;
+  }
+}
+
+.button-row {
+  display: flex;
+  gap: 6px;
+}
+
+.save-status {
+  margin: 0;
+  font-size: 0.72rem;
+  color: $muted;
+
+  &.error {
+    color: $pink-deep;
+    font-weight: 600;
   }
 }
 

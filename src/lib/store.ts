@@ -3,6 +3,7 @@ import { computed, reactive } from 'vue'
 import { DEFAULT_PAGE, MAX_PAGE_SIDE, MIN_PAGE_SIDE, STAGE_SHORT } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
+import { getImage, type StoredImage } from './images'
 import {
   anchorAt,
   barSegments,
@@ -52,6 +53,17 @@ export type ComicElement = CircleElement | TextElement
 let nextId = 1
 let zTop = 10
 
+/** Moves the id and z-order counters past everything in the current project. */
+export function syncCounters(): void {
+  const ids = [
+    ...leaves(store.layout).map((l) => l.id),
+    ...layout.value.bars.map((g) => g.bar.id),
+    ...store.elements.map((e) => e.id),
+  ]
+  nextId = Math.max(0, ...ids) + 1
+  zTop = Math.max(10, ...store.elements.map((e) => e.z))
+}
+
 function newLeaf(frame: ImageFrame | null = null): Leaf {
   return { kind: 'leaf', id: nextId++, frame }
 }
@@ -78,7 +90,20 @@ export const store = reactive({
   selectedBarId: null as number | null,
   /** true while waiting for a click on the panel to split */
   splitMode: false,
+  /** bumped whenever a different project is loaded, to remount the stage's components */
+  generation: 0,
 })
+
+/** Replaces the project with a blank one: default page, one bar, no elements. */
+export function resetProject(): void {
+  store.page = { ...DEFAULT_PAGE }
+  store.layout = starterLayout()
+  store.elements = []
+  store.selectedId = null
+  store.selectedBarId = null
+  store.splitMode = false
+  store.generation++
+}
 
 /** The page in stage units (see STAGE_SHORT), and the factor that scales it to output pixels. */
 export const stageSize = computed(() => {
@@ -93,7 +118,8 @@ export async function setPageSize(width: number, height: number): Promise<void> 
   store.page.height = Math.round(clamp(height, MIN_PAGE_SIDE, MAX_PAGE_SIDE))
   // re-fit panel photos so they still cover their reshaped panels
   for (const leaf of leaves(store.layout)) {
-    if (leaf.frame) await setPanelImage(leaf.id, leaf.frame.src)
+    const image = leaf.frame && getImage(leaf.frame.imageId)
+    if (image) await setPanelImage(leaf.id, image)
   }
 }
 
@@ -132,16 +158,17 @@ export function clearElements(): void {
 // Panels and split bars
 // ---------------------------------------------------------------------------
 
-export function firstPanelImage(): string | null {
-  return leaves(store.layout).find((l) => l.frame)?.frame?.src ?? null
+export function firstPanelImage(): StoredImage | null {
+  const frame = leaves(store.layout).find((l) => l.frame)?.frame
+  return (frame && getImage(frame.imageId)) ?? null
 }
 
 /** Loads a photo into a panel, fitted to cover the panel's bounding box. */
-export async function setPanelImage(leafId: number, src: string): Promise<void> {
+export async function setPanelImage(leafId: number, image: StoredImage): Promise<void> {
   const panel = layout.value.panels.find((p) => p.leaf.id === leafId)
   if (!panel) return
   const { x, y, w, h } = panel.bbox
-  const frame = await coverFrame(src, w, h)
+  const frame = await coverFrame(image, w, h)
   frame.tx += x
   frame.ty += y
   panel.leaf.frame = frame
@@ -219,7 +246,7 @@ export function translateBar(barId: number, through: Point, dir: Point): void {
   geom.bar.b = anchorAt(chord.b.host, chord.b.point, segs, stageSize.value)
 }
 
-export function addCircle(src: string | null, opts: Partial<CircleElement> = {}): CircleElement {
+export function addCircle(image: StoredImage | null, opts: Partial<CircleElement> = {}): CircleElement {
   const d = opts.d ?? 220
   store.elements.push({
     id: nextId++,
@@ -235,12 +262,12 @@ export function addCircle(src: string | null, opts: Partial<CircleElement> = {})
   // re-read through the reactive array so later mutations are tracked
   const el = store.elements[store.elements.length - 1] as CircleElement
   selectElement(el.id)
-  if (src) setCircleImage(el, src)
+  if (image) setCircleImage(el, image)
   return el
 }
 
-export async function setCircleImage(el: CircleElement, src: string): Promise<void> {
-  el.frame = await coverFrame(src, el.d, el.d)
+export async function setCircleImage(el: CircleElement, image: StoredImage): Promise<void> {
+  el.frame = await coverFrame(image, el.d, el.d)
 }
 
 export function addText(kind: TextElement['kind'], text: string, opts: Partial<TextElement> = {}): TextElement {

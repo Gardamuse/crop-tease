@@ -3,7 +3,8 @@ import { computed, ref, useTemplateRef } from 'vue'
 
 import { PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
-import { firstDroppedFile, frameTransform, readFileAsDataURL, zoomFrame } from '@/lib/imageFrame'
+import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
+import { addImageFile } from '@/lib/images'
 import type { PanelGeom } from '@/lib/layout'
 import { deselectAll, setPanelImage, store } from '@/lib/store'
 
@@ -24,7 +25,7 @@ let lastY = 0
 async function useFile(file: File | undefined) {
   if (!file) return
   try {
-    await setPanelImage(props.panel.leaf.id, await readFileAsDataURL(file))
+    await setPanelImage(props.panel.leaf.id, await addImageFile(file))
   } catch {
     alert(`Couldn't load "${file.name}" as an image.`)
   }

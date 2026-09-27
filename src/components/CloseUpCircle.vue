@@ -4,7 +4,8 @@ import { computed, useTemplateRef } from 'vue'
 import ElementHandle from './ElementHandle.vue'
 import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
-import { firstDroppedFile, frameTransform, readFileAsDataURL, zoomFrame } from '@/lib/imageFrame'
+import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
+import { addImageFile } from '@/lib/images'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
 import { removeElement, selectElement, setCircleImage, store, type CircleElement } from '@/lib/store'
@@ -82,7 +83,7 @@ function onDrop(e: DragEvent) {
 async function useFile(file: File | undefined) {
   if (!file) return
   try {
-    await setCircleImage(el, await readFileAsDataURL(file))
+    await setCircleImage(el, await addImageFile(file))
   } catch {
     alert(`Couldn't load "${file.name}" as an image.`)
   }

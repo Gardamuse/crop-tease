@@ -7,6 +7,10 @@ const MIME: Record<ExportFormat, string> = {
   jpg: 'image/jpeg',
 }
 
+export const EXPORT_MIME = MIME
+
+export type ExportProgress = (fraction: number, label: string) => void
+
 export interface ExportOptions {
   /** output size in pixels */
   width: number
@@ -43,21 +47,32 @@ async function toDataUrl(src: string): Promise<string> {
 
 // An SVG rendered as an <img> can't load external resources, so every
 // image in the clone has to be inlined as a data URL first.
-async function inlineImages(root: Element): Promise<void> {
+async function inlineImages(root: Element, onProgress: (fraction: number) => void): Promise<void> {
+  const imgs = Array.from(root.querySelectorAll('img')).filter((i) => !i.getAttribute('src')?.startsWith('data:'))
+  const cache = new Map<string, Promise<string>>()
+  let done = 0
   await Promise.all(
-    Array.from(root.querySelectorAll('img')).map(async (img) => {
-      const src = img.getAttribute('src')
-      if (src && !src.startsWith('data:')) img.setAttribute('src', await toDataUrl(img.src))
+    imgs.map(async (img) => {
+      if (!cache.has(img.src)) cache.set(img.src, toDataUrl(img.src))
+      img.setAttribute('src', await cache.get(img.src)!)
+      onProgress(++done / imgs.length)
     }),
   )
 }
 
+/** Lets the browser paint (e.g. the progress bar) before the next heavy step. */
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+}
+
 // Loaded as a data: URL rather than a blob: URL, since Chromium taints the
 // canvas when a foreignObject SVG comes from a blob.
-function rasterize(svg: string, { width, height, format }: ExportOptions): Promise<Blob> {
+function rasterize(svg: string, { width, height, format }: ExportOptions, onProgress: ExportProgress): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.onload = () => {
+    img.onload = async () => {
+      onProgress(0.75, 'Drawing')
+      await nextFrame()
       const canvas = document.createElement('canvas')
       canvas.width = width
       canvas.height = height
@@ -65,6 +80,8 @@ function rasterize(svg: string, { width, height, format }: ExportOptions): Promi
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, width, height)
       ctx.drawImage(img, 0, 0)
+      onProgress(0.85, `Encoding ${format.toUpperCase()}`)
+      await nextFrame()
       try {
         canvas.toBlob(
           (b) => {
@@ -86,16 +103,24 @@ function rasterize(svg: string, { width, height, format }: ExportOptions): Promi
 }
 
 /**
- * Renders the stage to an image at export resolution and downloads it. The
- * clone is scaled up before rasterizing, so text and vector shapes are drawn
- * fresh at the higher size rather than stretched afterwards.
+ * Renders the stage to an image at export resolution. The clone is scaled
+ * up before rasterizing, so text and vector shapes are drawn fresh at the
+ * higher size rather than stretched afterwards.
  */
-export async function exportStageImage(stage: HTMLElement, opts: ExportOptions): Promise<void> {
+export async function renderStageImage(
+  stage: HTMLElement,
+  opts: ExportOptions,
+  onProgress: ExportProgress = () => {},
+): Promise<Blob> {
+  onProgress(0, 'Preparing images')
+  await nextFrame()
   const clone = stage.cloneNode(true) as HTMLElement
   clone.querySelectorAll(`[${NO_EXPORT_ATTR}]`).forEach((n) => n.remove())
   clone.style.transform = `scale(${opts.scale})`
   clone.style.transformOrigin = 'top left'
-  await inlineImages(clone)
+  await inlineImages(clone, (f) => onProgress(f * 0.5, 'Preparing images'))
+  onProgress(0.55, 'Rendering page')
+  await nextFrame()
 
   const xml = new XMLSerializer().serializeToString(clone)
   const svg = `
@@ -108,10 +133,7 @@ export async function exportStageImage(stage: HTMLElement, opts: ExportOptions):
       </foreignObject>
     </svg>`
 
-  const image = await rasterize(svg, opts)
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(image)
-  a.download = `comic-page-${opts.width}x${opts.height}.${opts.format}`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  const image = await rasterize(svg, opts, onProgress)
+  onProgress(1, 'Done')
+  return image
 }

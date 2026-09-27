@@ -5,7 +5,7 @@ import CloseUpCircle from './CloseUpCircle.vue'
 import ImagePanel from './ImagePanel.vue'
 import SplitBars from './SplitBars.vue'
 import TextBox from './TextBox.vue'
-import { exportStageImage } from '@/lib/exportImage'
+import { renderStageImage, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
 import { deselectAll, layout, splitChordAt, splitPanelAt, stageSize, store } from '@/lib/store'
 
@@ -81,18 +81,23 @@ function onSplitPointerMove(e: PointerEvent) {
   splitPreview.value = found ? [found.chord.a.point, found.chord.b.point] : null
 }
 
-async function exportImage() {
+async function renderImage(onProgress?: ExportProgress): Promise<Blob> {
   deselectAll()
+  store.splitMode = false
   await nextTick() // let selection chrome disappear before cloning the DOM
-  await exportStageImage(stageEl.value!, {
-    width: store.page.width,
-    height: store.page.height,
-    scale: stageSize.value.exportScale,
-    format: store.exportFormat,
-  })
+  return renderStageImage(
+    stageEl.value!,
+    {
+      width: store.page.width,
+      height: store.page.height,
+      scale: stageSize.value.exportScale,
+      format: store.exportFormat,
+    },
+    onProgress,
+  )
 }
 
-defineExpose({ exportImage })
+defineExpose({ renderImage })
 </script>
 
 <template>
@@ -108,9 +113,9 @@ defineExpose({ exportImage })
         @pointermove="onSplitPointerMove"
         @pointerleave="splitPreview = null"
       >
-        <ImagePanel v-for="(p, i) in layout.panels" :key="p.leaf.id" :panel="p" :index="i" />
+        <ImagePanel v-for="(p, i) in layout.panels" :key="`${store.generation}-${p.leaf.id}`" :panel="p" :index="i" />
         <SplitBars :preview="splitPreview" />
-        <template v-for="el in store.elements" :key="el.id">
+        <template v-for="el in store.elements" :key="`${store.generation}-${el.id}`">
           <CloseUpCircle v-if="el.kind === 'circle'" :element="el" />
           <TextBox v-else :element="el" />
         </template>
