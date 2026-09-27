@@ -40,79 +40,12 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
-export const PROJECT_VERSION = 7
+export const PROJECT_VERSION = 1
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
 const MIGRATIONS: Record<number, Migration> = {
-  // v2 added the page border. v1 drew bars and close-up rings in the dark
-  // ink color, so keep that look; per-close-up ring colors were dropped in
-  // favor of the shared border color.
-  1: (doc) => ({
-    ...doc,
-    version: 2,
-    border: { width: 0, color: '#241b30' },
-    elements: Array.isArray(doc.elements)
-      ? doc.elements.map((el: Record<string, unknown>) => {
-          const { ring: _ring, ...rest } = el
-          return rest
-        })
-      : doc.elements,
-  }),
-  // v3 added the border outline
-  2: (doc) => ({
-    ...doc,
-    version: 3,
-    border: { ...(doc.border as object), outline: 'none' },
-  }),
-  // v4 made the divider thickness adjustable and removed the white band inside
-  // close-up rings. The numbers are v3's fixed layout, deliberately not
-  // today's constants: bars were 9 stage units wide (the page's shorter side
-  // being 700 units), and close-up photos sat 8 units in from the circle's
-  // edge; the photo now fills the circle, so shift frames to stay put.
-  3: (doc) => {
-    const page = doc.page as { width: number; height: number }
-    const unitsToPx = Math.min(page.width, page.height) / 700
-    return {
-      ...doc,
-      version: 4,
-      border: { ...(doc.border as object), dividerWidth: Math.round(9 * unitsToPx) },
-      elements: (doc.elements as Record<string, unknown>[]).map((el) => {
-        const frame = el.frame as { tx: number; ty: number } | null | undefined
-        return el.kind === 'circle' && frame ? { ...el, frame: { ...frame, tx: frame.tx + 8, ty: frame.ty + 8 } } : el
-      }),
-    }
-  },
-  // v5 gave the outline a free color and a width, and added close-up options.
-  // v4 close-ups always had a shadow and drew over the border, so keep that.
-  4: (doc) => {
-    const { outline, ...border } = doc.border as { outline: 'none' | 'black' | 'white' }
-    const outlineColor = { none: null, black: '#000000', white: '#ffffff' }[outline] ?? null
-    return {
-      ...doc,
-      version: 5,
-      border: { ...border, outlineColor, outlineWidth: 1 },
-      closeUps: { shadow: true, withinBorder: false },
-    }
-  },
-  // v6 merged captions and speech bubbles into one text element with a style
-  5: (doc) => ({
-    ...doc,
-    version: 6,
-    elements: (doc.elements as Record<string, unknown>[]).map((el) =>
-      el.kind === 'caption' || el.kind === 'bubble'
-        ? { ...el, kind: 'text', style: el.kind === 'bubble' ? 'speech' : 'square' }
-        : el,
-    ),
-  }),
-  // v7 made the speech bubble tail movable; it used to sit at the bottom left
-  6: (doc) => ({
-    ...doc,
-    version: 7,
-    elements: (doc.elements as Record<string, unknown>[]).map((el) =>
-      el.kind === 'text' ? { ...el, tail: 'bottom-left' } : el,
-    ),
-  }),
+  // e.g. 1: (doc) => ({ ...doc, version: 2, newField: 'default' }),
 }
 
 const FrameSchema = z.object({
