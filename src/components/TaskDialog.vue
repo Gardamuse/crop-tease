@@ -32,63 +32,69 @@ import { cancelPendingSave, confirmPendingSave, task } from '@/lib/task'
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba($ink, 0.35);
+  background: rgba($bg-void, 0.7);
+  backdrop-filter: blur(2px);
 }
 
 .dialog {
-  width: min(360px, calc(100vw - 32px));
+  position: relative;
+  width: min(380px, calc(100vw - 32px));
   padding: 20px 22px;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 16px 40px rgba($ink, 0.3);
+  border-radius: $radius;
+  background: $bg-panel;
+  border: 1px solid $line;
+  box-shadow: 0 16px 40px rgba(#000, 0.5);
+  font-family: $font-mono;
+  color: $text-main;
+  animation: dialog-in 0.28s ease-out;
+  @include corner-brackets;
 
   h2 {
-    margin: 0 0 14px;
-    font-size: 1rem;
+    @include bar-heading;
+    margin: 0 0 16px;
+    font-size: 1.05rem;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
   }
 }
 
 .bar {
-  height: 10px;
-  border-radius: 999px;
-  background: $toolbar-bg;
-  border: 1px solid $toolbar-border;
+  height: 4px;
+  border-radius: 2px;
+  background: $line;
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
-  background: $pink;
+  background: $accent;
+  box-shadow: 0 0 10px $accent-dim;
   transition: width 0.15s ease-out;
 }
 
 .label {
+  @include micro-label;
   margin: 10px 0 0;
-  font-size: 0.8rem;
-  color: $muted;
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 18px;
 
   button {
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
+    @include ghost-button;
+    font-size: 0.82rem;
     padding: 8px 14px;
-    border-radius: 8px;
-    border: 1px solid $toolbar-border;
-    background: #fff;
-    color: $ink;
-    cursor: pointer;
 
     &.primary {
-      background: $ink;
-      border-color: $ink;
-      color: #fff;
+      @include accent-button;
     }
   }
 }

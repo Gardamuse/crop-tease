@@ -1,22 +1,137 @@
 // Injected into every component's <style lang="scss"> via vite.config.ts,
 // so keep this to variables and mixins only (nothing that emits CSS).
-$ground: #efe3ec;
-$panel: #ffffff;
-$ink: #241b30;
-$ink-soft: #3a2b52;
-$pink: #ff6fb0;
-$pink-deep: #de3c8d;
-$teal: #78d2d2;
-$muted: #8a7d94;
-$paper: #fffaf3;
-$toolbar-bg: #fbf3f8;
-$toolbar-border: #e3c9dc;
-$workspace: #3b3a40; // the area around the page
-$workspace-bar: #312f35; // the page bar under it
 
-$ui-font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+// ---- comic content (drawn on the page and exported; not the app's chrome) ----
+$ink: #241b30;
+$paper: #fffaf3;
+$pink: #ff6fb0;
+$teal: #78d2d2;
+$ui-font: 'Segoe UI', system-ui, -apple-system, sans-serif; // page numbers, handles
 $caption-font: Georgia, 'Times New Roman', serif;
+
+// ---- app chrome, in the Neo Pink Mini style ----
+$bg-void: #1c2028; // behind everything; the workspace around the page
+$bg-panel: #22262f;
+$bg-panel-alt: #282d38;
+$line: rgba(#fff, 0.12);
+$text-main: #eef1f5;
+$text-dim: #9aa0aa;
+$accent: $pink;
+$accent-soft: rgba($accent, 0.18);
+$accent-dim: rgba($accent, 0.45);
+$line-accent: rgba($accent, 0.5);
+$danger: #ff6b6b;
+$radius: 4px;
+
+$font-mono: 'Courier Prime Code', 'Manrope', 'Segoe UI', sans-serif;
+$font-heading: 'Saiba 45', 'Cormorant Garamond', Georgia, serif;
 
 @mixin handle-shadow {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+// Small accent brackets on a panel's top-left and bottom-right corners.
+// The element needs position: relative (or absolute/fixed).
+@mixin corner-brackets($size: 10px) {
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: $size;
+    height: $size;
+    border: 1px solid $line-accent;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  &::before {
+    top: -1px;
+    left: -1px;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  &::after {
+    bottom: -1px;
+    right: -1px;
+    border-left: none;
+    border-top: none;
+  }
+}
+
+// Small uppercase, widely tracked label ("STAT CHANGES").
+@mixin micro-label {
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: $text-dim;
+}
+
+// Display heading with the accent bar on its left.
+@mixin bar-heading {
+  font-family: $font-heading;
+  font-weight: normal;
+  letter-spacing: 0.5px;
+  color: $text-main;
+  border-left: 2px solid $accent;
+  padding-left: 0.6rem;
+}
+
+// Filled accent button that lifts and glows on hover.
+@mixin accent-button {
+  font-family: $font-mono;
+  font-weight: 600;
+  color: $bg-void;
+  background: $accent;
+  border: none;
+  border-radius: $radius;
+  cursor: pointer;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 0 14px $accent-soft;
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+// Quiet outlined button that picks up the accent on hover.
+@mixin ghost-button {
+  font-family: $font-mono;
+  color: $text-main;
+  background: $bg-panel-alt;
+  border: 1px solid $line;
+  border-radius: $radius;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: $line-accent;
+  }
+}
+
+@mixin field {
+  font-family: $font-mono;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  border-radius: $radius;
+  border: 1px solid $line;
+  background: $bg-void;
+  color: $text-main;
+  color-scheme: dark;
+
+  &:focus {
+    outline: none;
+    border-color: $accent;
+    box-shadow: 0 0 0 1px $accent-soft;
+  }
 }

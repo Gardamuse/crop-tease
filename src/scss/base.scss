@@ -1,3 +1,27 @@
+@font-face {
+  font-family: 'Saiba 45';
+  src:
+    url('/fonts/saiba-45/SAIBA-45.otf') format('opentype'),
+    url('/fonts/saiba-45/SAIBA-45.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Courier Prime Code';
+  src: url('/fonts/courier-prime-code/CourierPrimeCode-Regular.ttf') format('truetype');
+  font-display: swap;
+  // the font has extra space below its baseline; lift the baseline a little
+  descent-override: 15%;
+}
+
+@font-face {
+  font-family: 'Courier Prime Code';
+  src: url('/fonts/courier-prime-code/CourierPrimeCode-Italic.ttf') format('truetype');
+  font-style: italic;
+  font-display: swap;
+  descent-override: 15%;
+}
+
 *,
 *::before,
 *::after {
@@ -11,8 +35,9 @@ body {
 
 body {
   margin: 0;
-  background: $ground;
-  color: $ink;
-  font-family: $ui-font;
+  background: $bg-void;
+  color: $text-main;
+  font-family: $font-mono;
   overflow: hidden; // the app is sized to fit the viewport; no page scroll
+  color-scheme: dark;
 }

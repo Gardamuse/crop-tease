@@ -15,10 +15,10 @@ function confirmRemove(index: number) {
 function onTabMenu(e: MouseEvent, index: number) {
   openContextMenu(e, [
     { label: 'Duplicate page', icon: '⧉', action: () => duplicatePage(index) },
-    { label: 'Move left', icon: '←', visible: () => index > 0, action: () => movePage(index, index - 1) },
+    { label: 'Move up', icon: '↑', visible: () => index > 0, action: () => movePage(index, index - 1) },
     {
-      label: 'Move right',
-      icon: '→',
+      label: 'Move down',
+      icon: '↓',
       visible: () => index < store.pages.length - 1,
       action: () => movePage(index, index + 1),
     },
@@ -41,8 +41,8 @@ function onTabMenu(e: MouseEvent, index: number) {
   ])
 }
 
-// Drag a page onto another to move it there: dropping on a tab's left half
-// puts it before that page, on the right half after it.
+// Drag a page onto another to move it there: dropping on a page's top half
+// puts it before that page, on the bottom half after it.
 const PAGE_DRAG_TYPE = 'application/x-comic-page'
 const dragFrom = ref<number | null>(null)
 const dropMark = ref<{ index: number; after: boolean } | null>(null)
@@ -59,7 +59,7 @@ function onDragOver(e: DragEvent, index: number) {
   e.preventDefault()
   e.dataTransfer!.dropEffect = 'move'
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  dropMark.value = { index, after: e.clientX > rect.left + rect.width / 2 }
+  dropMark.value = { index, after: e.clientY > rect.top + rect.height / 2 }
 }
 
 function onDrop(e: DragEvent) {
@@ -79,7 +79,7 @@ function onDragEnd() {
   dropMark.value = null
 }
 
-// keep the current page's tab in view (e.g. after adding one at the end)
+// keep the current page in view (e.g. after adding one at the end)
 watch(
   () => [store.pageIndex, store.pages.length],
   async () => {
@@ -90,68 +90,70 @@ watch(
 </script>
 
 <template>
-  <nav class="page-bar" aria-label="Pages">
+  <nav class="page-rail" aria-label="Pages">
     <div ref="bar" class="tabs">
-      <button
+      <div
         v-for="(page, i) in store.pages"
         :key="page.id"
-        class="page-tab"
+        class="page-slot"
         :class="{
-          active: i === store.pageIndex,
-          dragging: i === dragFrom,
           'drop-before': dropMark?.index === i && !dropMark.after,
           'drop-after': dropMark?.index === i && dropMark.after,
         }"
-        :aria-current="i === store.pageIndex ? 'page' : undefined"
-        :title="`Page ${i + 1} (drag to reorder, right-click for more)`"
-        draggable="true"
-        @click="switchPage(i)"
-        @contextmenu="onTabMenu($event, i)"
-        @dragstart="onDragStart($event, i)"
         @dragover="onDragOver($event, i)"
         @drop="onDrop"
-        @dragend="onDragEnd"
       >
-        <PageThumb :page="page" :index="i" />
+        <button
+          class="page-tab"
+          :class="{ active: i === store.pageIndex, dragging: i === dragFrom }"
+          :aria-current="i === store.pageIndex ? 'page' : undefined"
+          :title="`Page ${i + 1} (drag to reorder, right-click for more)`"
+          draggable="true"
+          @click="switchPage(i)"
+          @contextmenu="onTabMenu($event, i)"
+          @dragstart="onDragStart($event, i)"
+          @dragend="onDragEnd"
+        >
+          <PageThumb :page="page" :index="i" />
+        </button>
         <span class="num">{{ i + 1 }}</span>
-      </button>
-      <button class="add" title="Add a page after this one" aria-label="Add page" @click="addPage()">＋<span>Page</span></button>
+        <button
+          class="more"
+          :title="`Page ${i + 1} options`"
+          :aria-label="`Page ${i + 1} options`"
+          @click.stop="onTabMenu($event, i)"
+        >
+          &middot;&middot;&middot;
+        </button>
+      </div>
+      <button class="add" title="Add a page after this one" aria-label="Add page" @click="addPage()">＋</button>
     </div>
-    <button class="tool" :title="`Duplicate page ${store.pageIndex + 1}`" @click="duplicatePage(store.pageIndex)">
-      ⧉
-    </button>
-    <button
-      class="tool delete"
-      :disabled="store.pages.length <= 1"
-      :title="store.pages.length <= 1 ? 'A comic needs at least one page' : `Delete page ${store.pageIndex + 1}`"
-      @click="confirmRemove(store.pageIndex)"
-    >
-      🗑
-    </button>
   </nav>
 </template>
 
 <style scoped lang="scss">
-$thumb-h: 64px;
+$rail-w: 84px;
 
-.page-bar {
+.page-rail {
   flex: none;
+  width: $rail-w;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px 12px;
-  background: $workspace-bar;
-  border-top: 1px solid rgba(#fff, 0.08);
+  flex-direction: column;
+  background: rgba($bg-panel, 0.6);
+  border-right: 1px solid $line;
 }
 
 .tabs {
   flex: 1;
-  min-width: 0;
+  min-height: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 4px 2px;
+  gap: 16px;
+  overflow-y: auto;
+  padding: 18px 0 20px;
+  scrollbar-width: thin;
+  scrollbar-color: $line transparent;
 }
 
 button {
@@ -159,115 +161,149 @@ button {
   cursor: pointer;
   border: none;
   background: none;
-  color: #fff;
+  color: $text-main;
 }
 
-.page-tab {
+.page-slot {
   flex: none;
   position: relative;
-  height: $thumb-h;
-  padding: 0;
-  border-radius: 4px;
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-  opacity: 0.75;
-  transition: opacity 0.1s;
-
-  &:hover {
-    opacity: 1;
-  }
-
-  &.active {
-    opacity: 1;
-    outline-color: $pink;
-  }
-
-  &:focus-visible {
-    outline-color: #fff;
-  }
-
-  &.dragging {
-    opacity: 0.35;
-  }
+  width: 52px;
 
   // insertion marker while dragging a page
   &.drop-before::before,
   &.drop-after::before {
     content: '';
     position: absolute;
-    top: -2px;
-    bottom: -2px;
-    width: 3px;
-    border-radius: 2px;
-    background: $pink;
+    left: -4px;
+    right: -4px;
+    height: 2px;
+    background: $accent;
+    box-shadow: 0 0 8px $accent-dim;
   }
 
   &.drop-before::before {
-    left: -7px;
+    top: -9px;
   }
 
   &.drop-after::before {
-    right: -7px;
+    bottom: -9px;
   }
 
-  .num {
-    position: absolute;
-    right: 3px;
-    bottom: 3px;
-    min-width: 16px;
-    padding: 0 4px;
-    border-radius: 8px;
-    background: rgba($ink, 0.85);
-    font-size: 0.66rem;
-    font-weight: 700;
-    line-height: 16px;
+  // the options button shows on hover
+  &:hover .more,
+  &:focus-within .more {
+    opacity: 1;
+  }
+}
+
+.page-tab {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  outline: 1px solid $line;
+  outline-offset: 3px;
+  opacity: 0.55;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    outline-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  :deep(.thumb) {
+    width: 100%;
+    height: auto;
+  }
+
+  &:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+    outline-color: $line-accent;
+  }
+
+  &.active {
+    opacity: 1;
+    outline-color: $accent;
+    box-shadow: 0 0 14px $accent-soft;
+  }
+
+  &:focus-visible {
+    outline-color: $text-main;
+  }
+
+  &.dragging {
+    opacity: 0.25;
+  }
+}
+
+.num {
+  position: absolute;
+  left: -10px;
+  top: -9px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: $bg-panel-alt;
+  border: 1px solid $line;
+  color: $text-dim;
+  font-family: $font-mono;
+  font-size: 0.66rem;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+
+  .active + & {
+    background: $accent;
+    border-color: $accent;
+    color: $bg-void;
+  }
+}
+
+.more {
+  position: absolute;
+  right: -9px;
+  bottom: -9px;
+  width: 22px;
+  height: 17px;
+  padding: 0;
+  border-radius: 2px;
+  background: $bg-panel-alt;
+  border: 1px solid $line;
+  font-size: 0.7rem;
+  line-height: 1;
+  letter-spacing: -1px;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    border-color 0.2s,
+    color 0.2s;
+
+  &:hover {
+    border-color: $accent;
+    color: $accent;
   }
 }
 
 .add {
+  position: relative;
   flex: none;
-  height: $thumb-h;
-  padding: 0 14px;
-  border: 1.5px dashed rgba(#fff, 0.35);
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  font-size: 1.1rem;
-  color: rgba(#fff, 0.8);
-
-  span {
-    font-size: 0.66rem;
-    font-weight: 600;
-  }
+  width: 52px;
+  height: 36px;
+  border: 1px dashed $line;
+  border-radius: 2px;
+  font-size: 1.05rem;
+  color: $text-dim;
+  transition:
+    border-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
 
   &:hover {
-    border-color: $pink;
-    color: #fff;
-  }
-}
-
-.tool {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: rgba(#fff, 0.08);
-
-  &:hover:not(:disabled) {
-    background: rgba(#fff, 0.18);
-  }
-
-  &.delete:hover:not(:disabled) {
-    background: rgba($pink-deep, 0.6);
-  }
-
-  &:disabled {
-    opacity: 0.35;
-    cursor: default;
+    border-color: $line-accent;
+    border-style: solid;
+    color: $accent;
+    box-shadow: 0 0 14px $accent-soft;
   }
 }
 </style>

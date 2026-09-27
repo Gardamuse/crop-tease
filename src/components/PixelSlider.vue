@@ -78,33 +78,85 @@ function onChange(e: Event) {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.78rem;
-  color: $muted;
+  font-size: 0.72rem;
+  color: $text-dim;
 
   &.disabled {
     opacity: 0.45;
   }
 
-  input[type='range'] {
-    flex: 1;
-    min-width: 0;
-    accent-color: $pink-deep;
+  input[type='number'] {
+    @include field;
+    width: 54px;
+    padding: 5px 6px;
+  }
+}
+
+// a thin line with a glowing accent knob
+input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  margin: 0;
+  background: none;
+  appearance: none;
+  cursor: pointer;
+
+  &::-webkit-slider-runnable-track {
+    height: 2px;
+    border-radius: 1px;
+    background: $line;
   }
 
-  input[type='number'] {
-    width: 62px;
-    font: inherit;
-    font-size: 0.85rem;
-    padding: 6px 6px;
-    border-radius: 8px;
-    border: 1px solid $toolbar-border;
-    background: #fff;
-    color: $ink;
+  &::-moz-range-track {
+    height: 2px;
+    border-radius: 1px;
+    background: $line;
+  }
 
-    &:focus {
-      outline: 2px solid $pink;
-      outline-offset: -1px;
-    }
+  &::-moz-range-progress {
+    height: 2px;
+    background: $accent-dim;
+  }
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -5px;
+    border: none;
+    border-radius: 50%;
+    background: $accent;
+    box-shadow: 0 0 0 3px $accent-soft;
+    transition: box-shadow 0.2s ease;
+  }
+
+  &::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    background: $accent;
+    box-shadow: 0 0 0 3px $accent-soft;
+    transition: box-shadow 0.2s ease;
+  }
+
+  &:hover::-webkit-slider-thumb,
+  &:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 5px $accent-soft, 0 0 10px $accent-dim;
+  }
+
+  &:hover::-moz-range-thumb,
+  &:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 5px $accent-soft, 0 0 10px $accent-dim;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:disabled {
+    cursor: default;
   }
 }
 </style>

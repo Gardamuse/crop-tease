@@ -22,27 +22,37 @@ const isCustom = computed(() => current.value !== null && !props.presets.some((p
   <div class="choices" role="radiogroup" :aria-label="label">
     <button
       v-if="allowNone"
+      class="dot none"
       role="radio"
+      title="None"
+      aria-label="None"
       :aria-checked="current === null"
       :class="{ active: current === null }"
       @click="emit('update:modelValue', null)"
-    >
-      None
-    </button>
+    />
     <button
       v-for="p in presets"
       :key="p.color"
+      class="dot"
       role="radio"
+      :title="p.label"
+      :aria-label="p.label"
       :aria-checked="current === p.color"
       :class="{ active: current === p.color }"
+      :style="{ background: p.color }"
       @click="emit('update:modelValue', p.color)"
+    />
+    <label
+      class="dot custom"
+      :class="{ active: isCustom }"
+      role="radio"
+      :aria-checked="isCustom"
+      title="Pick a custom color"
     >
-      <span class="swatch" :style="{ background: p.color }" />{{ p.label }}
-    </button>
-    <label class="choice custom" :class="{ active: isCustom }" role="radio" :aria-checked="isCustom" title="Pick a custom color">
-      <span class="swatch" :style="{ background: isCustom ? modelValue! : undefined }" />Custom
+      <span class="swatch" :style="{ background: isCustom ? modelValue! : undefined }" />
       <input
         type="color"
+        aria-label="Custom color"
         :value="modelValue ?? '#000000'"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       />
@@ -51,46 +61,62 @@ const isCustom = computed(() => current.value !== null && !props.presets.some((p
 </template>
 
 <style scoped lang="scss">
+$dot: 24px;
+
 .choices {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
 }
 
-button,
-.choice {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 4px;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  white-space: nowrap;
-  border-radius: 8px;
-  border: 1px solid $toolbar-border;
-  background: #fff;
-  color: $ink;
+.dot {
+  flex: none;
+  position: relative;
+  width: $dot;
+  height: $dot;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(#fff, 0.3);
+  background: $bg-void;
   cursor: pointer;
+  transition: transform 0.1s;
 
   &:hover {
-    background: #fff0f8;
-    border-color: $pink;
+    transform: scale(1.12);
   }
 
+  // a ring of page color, then pink, around the chosen one
   &.active {
-    background: #fff0f8;
-    border-color: $pink-deep;
-    color: $pink-deep;
+    box-shadow:
+      0 0 0 2px $bg-panel,
+      0 0 0 3px $accent,
+      0 0 10px $accent-dim;
   }
+}
+
+// "no color": an empty dot struck through
+.none::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  bottom: 1px;
+  width: 1.5px;
+  background: $accent;
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .custom {
-  position: relative;
+  overflow: hidden;
 
-  // the native picker covers the whole button so any click opens it
+  .swatch {
+    position: absolute;
+    inset: 0;
+    // an unset custom swatch shows a rainbow hint
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  }
+
+  // the native picker covers the whole dot so any click opens it
   input {
     position: absolute;
     inset: 0;
@@ -99,15 +125,5 @@ button,
     opacity: 0;
     cursor: pointer;
   }
-}
-
-.swatch {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  border: 1px solid rgba($ink, 0.35);
-  // an unset custom swatch shows a rainbow hint
-  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
 }
 </style>

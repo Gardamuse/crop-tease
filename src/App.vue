@@ -227,8 +227,8 @@ onMounted(async () => {
       @export="onExport"
     />
     <div class="workspace">
-      <ComicStage ref="stage" />
       <PageBar />
+      <ComicStage ref="stage" />
     </div>
     <TaskDialog />
     <ContextMenu />
@@ -248,7 +248,8 @@ onMounted(async () => {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  background: $workspace;
+  background:
+    radial-gradient(rgba(#fff, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    $bg-void;
 }
 </style>

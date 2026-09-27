@@ -129,43 +129,58 @@ onBeforeUnmount(() => {
   z-index: 900;
   min-width: 250px;
   padding: 5px;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid $toolbar-border;
-  box-shadow: 0 10px 28px rgba($ink, 0.25);
+  border-radius: $radius;
+  background: $bg-panel-alt;
+  border: 1px solid $line;
+  box-shadow: 0 12px 32px rgba(#000, 0.45);
   display: flex;
   flex-direction: column;
+  font-family: $font-mono;
+  color: $text-main;
+  animation: menu-in 0.14s ease-out;
+  @include corner-brackets(8px);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
 }
 
 button {
   font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   background: none;
-  color: $ink;
+  color: $text-main;
   text-align: left;
   cursor: pointer;
 
   &:hover,
   &:focus-visible {
-    background: #fff0f8;
+    background: $accent-soft;
     outline: none;
   }
 
   &.danger {
-    color: $pink-deep;
+    color: $danger;
+
+    &:hover,
+    &:focus-visible {
+      background: rgba($danger, 0.14);
+    }
   }
 }
 
 hr {
   border: none;
-  border-top: 1px solid $toolbar-border;
+  border-top: 1px solid $line;
   margin: 4px 2px;
 }
 
@@ -190,9 +205,7 @@ hr {
 }
 
 .row-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: $muted;
+  @include micro-label;
 }
 
 .choices {
@@ -205,27 +218,28 @@ hr {
 
   button {
     padding: 4px 8px;
-    font-size: 0.78rem;
-    border: 1px solid $toolbar-border;
-    border-radius: 6px;
+    font-size: 0.76rem;
+    border: 1px solid $line;
     justify-content: center;
 
     &.active {
-      border-color: $pink-deep;
-      color: $pink-deep;
-      background: #fff0f8;
+      border-color: $accent;
+      color: $accent;
+      background: $accent-soft;
     }
 
     &.swatch {
       width: 22px;
       height: 22px;
       padding: 0;
-      border: 1px solid rgba($ink, 0.35);
+      border: 1px solid rgba(#fff, 0.3);
+      border-radius: 50%;
 
       &.active {
         box-shadow:
-          0 0 0 2px #fff,
-          0 0 0 4px $pink-deep;
+          0 0 0 2px $bg-panel-alt,
+          0 0 0 3px $accent,
+          0 0 10px $accent-dim;
       }
     }
   }

@@ -194,6 +194,7 @@ defineExpose({ renderImage })
 .stage-outer {
   position: relative;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
   align-items: center;
@@ -206,13 +207,14 @@ defineExpose({ renderImage })
 // around the page can be mistaken for a border that will be exported
 .stage-card {
   flex: none;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 14px 40px rgba(#000, 0.5);
 }
 
 .stage {
   position: relative;
   transform-origin: top left;
   background: #000; // shows wherever a photo doesn't cover its panel
+  font-family: $ui-font; // page content keeps its own font, not the app's
   // clip rather than hidden: a hidden box can still be scrolled by the
   // browser (e.g. to reveal the caret in text near the page edge), which
   // would shift everything on the page
@@ -244,20 +246,23 @@ defineExpose({ renderImage })
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: $ink;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(36, 27, 48, 0.25);
+  padding: 7px 14px;
+  border-radius: $radius;
+  background: $bg-panel-alt;
+  border: 1px solid $line-accent;
+  color: $text-main;
+  font-family: $font-mono;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  box-shadow: 0 0 14px $accent-soft;
   pointer-events: none;
 
   kbd {
     font: inherit;
     padding: 0 5px;
     border-radius: 4px;
-    background: $ink-soft;
+    border: 1px solid $line;
+    color: $accent;
   }
 }
 </style>

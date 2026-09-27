@@ -3,10 +3,11 @@ export type SaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 
 import ColorChoices from './ColorChoices.vue'
 import PixelSlider from './PixelSlider.vue'
+import UiIcon from './UiIcon.vue'
 import {
   COLOR_PRESETS,
   MAX_BORDER_WIDTH,
@@ -18,7 +19,7 @@ import {
   PAGE_PRESETS,
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { fileBaseName, removeElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
+import { removeElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
 
 const props = defineProps<{
   saveStatus: SaveStatus
@@ -41,7 +42,7 @@ const FORMATS: ExportFormat[] = ['webp', 'jpg']
 const STATUS_TEXT: Record<SaveStatus, string> = {
   loading: 'Loading your last project…',
   saving: 'Saving in this browser…',
-  saved: 'Saved in this browser',
+  saved: 'Saved in this browser; nothing leaves your computer',
   error: "Couldn't save in this browser; use Save to keep a copy",
 }
 const statusText = computed(() => STATUS_TEXT[props.saveStatus])
@@ -75,92 +76,179 @@ const lineColor = computed({
     if (c) store.border.color = c
   },
 })
+
+// One-line summaries shown on the settings sections while they're folded.
+const pageSummary = computed(() => {
+  const { width, height } = store.pageSize
+  return `${PAGE_PRESETS[presetIndex.value]?.label.split(' ')[0] ?? 'Custom'} · ${width}×${height}`
+})
+const linesSummary = computed(() => `${store.border.width} / ${store.border.dividerWidth} px`)
+const closeUpsSummary = computed(() => {
+  const parts = [store.closeUps.shadow && 'shadow', store.closeUps.withinBorder && 'inside border'].filter(Boolean)
+  return parts.length ? parts.join(', ') : 'plain'
+})
+
+// Which settings sections are unfolded, remembered in this browser.
+const FOLD_KEY = 'crop-tease.open-sections'
+const openSections = reactive<Record<string, boolean>>({ page: false, lines: true, closeUps: false })
+try {
+  Object.assign(openSections, JSON.parse(localStorage.getItem(FOLD_KEY) ?? '{}'))
+} catch {
+  // storage unavailable or junk: keep the defaults
+}
+watch(openSections, () => {
+  try {
+    localStorage.setItem(FOLD_KEY, JSON.stringify(openSections))
+  } catch {
+    // not remembered; harmless
+  }
+})
+
+function onToggle(key: string, e: Event) {
+  openSections[key] = (e.target as HTMLDetailsElement).open
+}
+
+// The How-to card, opened from the ? button.
+const helpOpen = ref(false)
+const helpEl = useTemplateRef('help')
+const helpButton = useTemplateRef('helpButton')
+
+function onWindowPointerDown(e: PointerEvent) {
+  const target = e.target as Node
+  if (helpOpen.value && !helpEl.value?.contains(target) && !helpButton.value?.contains(target)) helpOpen.value = false
+}
+
+function onWindowKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') helpOpen.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('pointerdown', onWindowPointerDown)
+  window.addEventListener('keydown', onWindowKeyDown)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', onWindowPointerDown)
+  window.removeEventListener('keydown', onWindowKeyDown)
+})
 </script>
 
 <template>
   <aside class="sidebar">
     <header class="sidebar-header">
-      <h1>Crop Tease</h1>
-      <p class="tagline">Crop and zoom your photos into comic pages.</p>
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="2" y="2" width="28" height="28" rx="4" fill="#fbf3f8" />
+        <path d="M6 2 H13 L19 30 H6 A4 4 0 0 1 2 26 V6 A4 4 0 0 1 6 2 Z" fill="#7b2649" />
+        <rect x="2" y="2" width="28" height="28" rx="4" fill="none" stroke="#241b30" stroke-width="3" />
+        <path d="M13 3 L19 29" stroke="#241b30" stroke-width="3" />
+        <circle cx="23" cy="11" r="5" fill="#ff6fb0" stroke="#241b30" stroke-width="2" />
+      </svg>
+      <h1 title="Crop and zoom your photos into comic pages">Crop Tease</h1>
+      <button
+        ref="helpButton"
+        class="icon-button"
+        :class="{ active: helpOpen }"
+        title="How to"
+        aria-label="How to"
+        :aria-expanded="helpOpen"
+        @click="helpOpen = !helpOpen"
+      >
+        <UiIcon name="help" />
+      </button>
     </header>
 
+    <div class="project-row">
+      <label class="name-field" :title="statusText">
+        <span class="status-dot" :class="saveStatus" />
+        <input v-model="store.name" type="text" placeholder="comic" spellcheck="false" aria-label="Project name" />
+      </label>
+      <button class="icon-button" title="New project" aria-label="New project" @click="$emit('new')">
+        <UiIcon name="new" />
+      </button>
+      <button class="icon-button" title="Open a saved .ct project" aria-label="Open project" @click="$emit('open')">
+        <UiIcon name="open" />
+      </button>
+      <button
+        class="icon-button"
+        title="Save the project and its images as a .ct file"
+        aria-label="Save project"
+        @click="$emit('saveProject')"
+      >
+        <UiIcon name="save" />
+      </button>
+    </div>
+    <p v-if="saveStatus === 'error'" class="save-error">{{ statusText }}</p>
+
     <div class="sidebar-body">
-      <section>
-        <h2>Project</h2>
-        <label class="name-field">
-          <span>Name</span>
-          <input v-model="store.name" type="text" placeholder="comic" spellcheck="false" aria-label="Project name" />
-        </label>
-        <div class="button-row">
-          <button title="Start a new, empty project" @click="$emit('new')">✦ New</button>
-          <button title="Open a saved .ct project" @click="$emit('open')">📂 Open…</button>
-          <button title="Save the project and its images as a .ct file" @click="$emit('saveProject')">
-            💾 Save
-          </button>
-        </div>
-        <p class="save-status" :class="saveStatus">{{ statusText }}</p>
-      </section>
+      <div class="add-grid">
+        <button
+          :class="{ active: store.splitMode }"
+          title="Split a panel: click this, then the panel"
+          @click="store.splitMode = !store.splitMode"
+        >
+          <UiIcon name="split" />Split
+        </button>
+        <button title="Add a round close-up" @click="$emit('addCircle')"><UiIcon name="closeUp" />Close-up</button>
+        <button title="Add a text box" @click="$emit('addText')"><UiIcon name="text" />Text</button>
+        <button
+          v-if="!store.pageNumber"
+          title="Add a page number shown on every page"
+          @click="$emit('addPageNumber')"
+        >
+          <UiIcon name="hash" />Page no.
+        </button>
+        <button
+          v-else
+          class="active"
+          title="Remove the page numbers (click again to add them back at the bottom)"
+          @click="removeElement(store.pageNumber.id)"
+        >
+          <UiIcon name="hash" />Page no.
+        </button>
+      </div>
 
-      <section>
-        <h2>Add</h2>
-        <div class="add-grid">
-          <button
-            :class="{ active: store.splitMode }"
-            title="Then click the panel to split"
-            @click="store.splitMode = !store.splitMode"
-          >
-            <span class="icon">➗</span>Split
-          </button>
-          <button @click="$emit('addCircle')"><span class="icon">◯</span>Close-up</button>
-          <button @click="$emit('addText')"><span class="icon">💬</span>Text</button>
-          <button
-            v-if="!store.pageNumber"
-            title="Add a page number shown on every page"
-            @click="$emit('addPageNumber')"
-          >
-            <span class="icon">#</span>Page no.
-          </button>
-          <button
-            v-else
-            class="active"
-            title="Remove the page numbers (click again to add them back at the bottom)"
-            @click="removeElement(store.pageNumber.id)"
-          >
-            <span class="icon">#</span>Page no.
-          </button>
-        </div>
-      </section>
-
-      <section>
-        <h2>Page size</h2>
-        <div class="page-size">
+      <details class="fold" :open="openSections.page" @toggle="onToggle('page', $event)">
+        <summary>
+          <UiIcon name="chevron" class="chevron" />
+          <span class="fold-title">Page</span>
+          <span class="fold-summary">{{ pageSummary }}</span>
+        </summary>
+        <div class="fold-body page-size">
           <select :value="presetIndex" aria-label="Page size preset" @change="onPreset">
             <option :value="-1" disabled>Custom</option>
             <option v-for="(p, i) in PAGE_PRESETS" :key="p.label" :value="i">{{ p.label }}</option>
           </select>
-          <input
-            type="number"
-            :min="MIN_PAGE_SIDE"
-            :max="MAX_PAGE_SIDE"
-            :value="store.pageSize.width"
-            aria-label="Page width in pixels"
-            @change="onDimension('width', $event)"
-          />
-          <span>&times;</span>
-          <input
-            type="number"
-            :min="MIN_PAGE_SIDE"
-            :max="MAX_PAGE_SIDE"
-            :value="store.pageSize.height"
-            aria-label="Page height in pixels"
-            @change="onDimension('height', $event)"
-          />
+          <div class="dimensions">
+            <input
+              type="number"
+              :min="MIN_PAGE_SIDE"
+              :max="MAX_PAGE_SIDE"
+              :value="store.pageSize.width"
+              aria-label="Page width in pixels"
+              @change="onDimension('width', $event)"
+            />
+            <span>&times;</span>
+            <input
+              type="number"
+              :min="MIN_PAGE_SIDE"
+              :max="MAX_PAGE_SIDE"
+              :value="store.pageSize.height"
+              aria-label="Page height in pixels"
+              @change="onDimension('height', $event)"
+            />
+            <span>px</span>
+          </div>
         </div>
-      </section>
+      </details>
 
-      <section>
-        <h2>Lines</h2>
-        <div class="fields">
+      <details class="fold" :open="openSections.lines" @toggle="onToggle('lines', $event)">
+        <summary>
+          <UiIcon name="chevron" class="chevron" />
+          <span class="fold-title">Lines</span>
+          <span class="fold-summary">
+            <span class="mini-swatch" :style="{ background: store.border.color }" />{{ linesSummary }}
+          </span>
+        </summary>
+        <div class="fold-body fields">
           <span class="field-label" title="Runs around the page edge">Border</span>
           <PixelSlider v-model="borderWidth" :max="MAX_BORDER_WIDTH" label="Border width" />
 
@@ -170,44 +258,86 @@ const lineColor = computed({
           <span class="field-label" title="Applies to the border and dividers">Color</span>
           <ColorChoices v-model="lineColor" :presets="COLOR_PRESETS" label="Line color" />
 
-          <span class="field-label" title="A line along both sides of the border and dividers">
-            Outline
-          </span>
-          <PixelSlider
-            v-model="outlineWidth"
-            :min="MIN_OUTLINE_WIDTH"
-            :max="MAX_OUTLINE_WIDTH"
-            :disabled="!store.border.outlineColor"
-            label="Outline thickness"
-          />
-          <ColorChoices
-            v-model="store.border.outlineColor"
-            class="full-row"
-            :presets="COLOR_PRESETS"
-            allow-none
-            label="Outline color"
-          />
+          <span class="field-label" title="A line along both sides of the border and dividers">Outline</span>
+          <ColorChoices v-model="store.border.outlineColor" :presets="COLOR_PRESETS" allow-none label="Outline color" />
+
+          <template v-if="store.border.outlineColor">
+            <span />
+            <PixelSlider
+              v-model="outlineWidth"
+              :min="MIN_OUTLINE_WIDTH"
+              :max="MAX_OUTLINE_WIDTH"
+              label="Outline thickness"
+            />
+          </template>
         </div>
-      </section>
+      </details>
 
-      <section>
-        <h2>Close-ups</h2>
-        <label class="toggle">
-          <input v-model="store.closeUps.shadow" type="checkbox" />
-          <span>Drop shadow</span>
-        </label>
-        <label class="toggle">
-          <input v-model="store.closeUps.withinBorder" type="checkbox" />
-          <span>Keep inside the page border <small>(don't draw over it)</small></span>
-        </label>
-      </section>
+      <details class="fold" :open="openSections.closeUps" @toggle="onToggle('closeUps', $event)">
+        <summary>
+          <UiIcon name="chevron" class="chevron" />
+          <span class="fold-title">Close-ups</span>
+          <span class="fold-summary">{{ closeUpsSummary }}</span>
+        </summary>
+        <div class="fold-body">
+          <label class="toggle">
+            <input v-model="store.closeUps.shadow" type="checkbox" />
+            <span>Drop shadow</span>
+          </label>
+          <label class="toggle" title="Close-ups don't draw over the page border">
+            <input v-model="store.closeUps.withinBorder" type="checkbox" />
+            <span>Keep inside the page border</span>
+          </label>
+        </div>
+      </details>
+    </div>
 
-      <details class="tips">
-        <summary>How to</summary>
+    <footer class="sidebar-footer">
+      <div class="export-main">
+        <div class="segmented" role="radiogroup" aria-label="Image format">
+          <button
+            v-for="f in FORMATS"
+            :key="f"
+            role="radio"
+            :aria-checked="store.exportFormat === f"
+            :class="{ active: store.exportFormat === f }"
+            @click="store.exportFormat = f"
+          >
+            {{ f }}
+          </button>
+        </div>
+        <button
+          class="primary"
+          :title="`Save the current page as a ${store.exportFormat.toUpperCase()} image`"
+          @click="$emit('export')"
+        >
+          <UiIcon name="export" />Export {{ store.pages.length > 1 ? `page ${store.pageIndex + 1}` : 'image' }}
+        </button>
+      </div>
+      <div class="export-more">
+        <button
+          v-if="store.pages.length > 1"
+          :title="`All ${store.pages.length} pages as ${store.exportFormat.toUpperCase()} images in one zip`"
+          @click="$emit('exportAll')"
+        >
+          All pages .zip
+        </button>
+        <button title="All pages in one PDF, a page each" @click="$emit('exportPdf')">
+          PDF{{ store.pages.length > 1 ? ` · ${store.pages.length} pages` : '' }}
+        </button>
+      </div>
+    </footer>
+
+    <Transition name="pop">
+      <div v-if="helpOpen" ref="help" class="help-card" role="dialog" aria-label="How to">
+        <header>
+          <h2>How to</h2>
+          <button class="icon-button" aria-label="Close" @click="helpOpen = false"><UiIcon name="close" /></button>
+        </header>
         <ul>
           <li>
-            <b>Pages:</b> the strip under the page switches, adds (＋), duplicates (⧉) and deletes them; drag a
-            page there to reorder, right-click one for more.
+            <b>Pages:</b> the strip beside the page switches them and adds more (＋). Drag a page to reorder it; its
+            <b>···</b> button or a right-click duplicates, moves or deletes it.
           </li>
           <li><b>Page numbers:</b> one text shown on every page; <code>{n}</code> is the page number.</li>
           <li><b>Split a panel:</b> click it; hold and drag to choose which side gets the new panel.</li>
@@ -221,214 +351,299 @@ const lineColor = computed({
           <li><b>Edit text:</b> double-click it. <b>Rotate it:</b> Ctrl+drag.</li>
           <li><b>Text style, size and color:</b> right-click it.</li>
         </ul>
-      </details>
-    </div>
-
-    <footer class="sidebar-footer">
-      <div class="export-row">
-        <div class="choices format" role="radiogroup" aria-label="Export format">
-          <button
-            v-for="f in FORMATS"
-            :key="f"
-            role="radio"
-            :aria-checked="store.exportFormat === f"
-            :class="{ active: store.exportFormat === f }"
-            @click="store.exportFormat = f"
-          >
-            .{{ f }}
-          </button>
-        </div>
-        <button class="primary" @click="$emit('export')">
-          ⬇ Export {{ store.pages.length > 1 ? `page ${store.pageIndex + 1}` : store.exportFormat.toUpperCase() }}
-        </button>
-        <button
-          v-if="store.pages.length > 1"
-          :title="`All pages as ${store.exportFormat.toUpperCase()} images in one zip`"
-          @click="$emit('exportAll')"
-        >
-          ⬇ All pages (.zip)
-        </button>
-        <button
-          :class="{ wide: store.pages.length === 1 }"
-          title="All pages in one PDF, a page each"
-          @click="$emit('exportPdf')"
-        >
-          ⬇ PDF{{ store.pages.length > 1 ? ` (${store.pages.length} pages)` : '' }}
-        </button>
       </div>
-      <p class="footnote">
-        {{ store.pageSize.width }}&times;{{ store.pageSize.height }} px &middot; saved as
-        <b>{{ fileBaseName() }}</b>… &middot; everything stays in your browser
-      </p>
-    </footer>
+    </Transition>
   </aside>
 </template>
 
 <style scoped lang="scss">
-$side-pad: 20px;
+$side-pad: 18px;
 
 .sidebar {
-  flex: 0 0 360px;
-  width: 360px;
+  position: relative;
+  z-index: 20; // the help card floats over the workspace
+  flex: 0 0 304px;
+  width: 304px;
   display: flex;
   flex-direction: column;
-  background: $toolbar-bg;
-  border-right: 1px solid $toolbar-border;
+  background: $bg-panel;
+  border-right: 1px solid $line;
+  color: $text-main;
 }
+
+// ---- header and project ----
 
 .sidebar-header {
-  padding: 18px $side-pad 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px $side-pad 14px;
+
+  .logo {
+    width: 26px;
+    height: 26px;
+    flex: none;
+  }
 
   h1 {
+    flex: 1;
     margin: 0;
-    font-size: 1.2rem;
-    letter-spacing: 0.3px;
-  }
+    font-family: $font-heading;
+    font-size: 1.3rem;
+    font-weight: normal;
+    letter-spacing: 1px;
+    color: $text-main;
+    cursor: default;
 
-  .tagline {
-    margin: 2px 0 0;
-    font-size: 0.8rem;
-    color: $muted;
+    &::after {
+      content: '_';
+      color: $accent;
+      text-shadow: 0 0 6px $accent-soft;
+    }
   }
 }
+
+.project-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 $side-pad 16px;
+  border-bottom: 1px solid $line;
+}
+
+.name-field {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  margin-right: 6px;
+
+  input {
+    @include field;
+    width: 100%;
+    padding-left: 22px;
+  }
+}
+
+// autosave state: a small dot inside the name box, explained on hover
+.status-dot {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: $accent;
+  box-shadow: 0 0 6px $accent-dim;
+
+  &.loading,
+  &.saving {
+    animation: blink 0.8s ease-in-out infinite alternate;
+  }
+
+  &.error {
+    background: $danger;
+    box-shadow: 0 0 6px rgba($danger, 0.5);
+  }
+}
+
+@keyframes blink {
+  to {
+    opacity: 0.25;
+  }
+}
+
+.save-error {
+  margin: 8px $side-pad 0;
+  font-size: 0.72rem;
+  color: $danger;
+}
+
+// ---- shared controls ----
+
+button {
+  @include ghost-button;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+
+  &.primary {
+    @include accent-button;
+  }
+}
+
+.icon-button {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+  color: $text-dim;
+  font-size: 1rem;
+
+  &:hover:not(:disabled),
+  &.active {
+    border-color: transparent;
+    color: $accent;
+    filter: drop-shadow(0 0 6px $accent-soft);
+  }
+}
+
+select,
+input[type='number'] {
+  @include field;
+}
+
+// ---- body ----
 
 // the middle scrolls on short windows; header and export footer stay put
 .sidebar-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 $side-pad 16px;
+  padding: 18px $side-pad;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-
-.sidebar-footer {
-  padding: 14px $side-pad 16px;
-  border-top: 1px solid $toolbar-border;
-  background: $toolbar-bg;
-  box-shadow: 0 -6px 14px rgba($ink, 0.05);
-}
-
-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-h2 {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: $muted;
-}
-
-button {
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 9px 12px;
-  border-radius: 8px;
-  border: 1px solid $toolbar-border;
-  background: #fff;
-  color: $ink;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-
-  &:hover {
-    background: #fff0f8;
-    border-color: $pink;
-  }
-
-  &.active {
-    background: #fff0f8;
-    border-color: $pink-deep;
-    color: $pink-deep;
-  }
-
-  &.primary {
-    background: $ink;
-    color: #fff;
-    border-color: $ink;
-    justify-content: center;
-
-    &:hover {
-      background: $ink-soft;
-    }
-  }
-}
-
-select,
-input[type='number'] {
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 7px 8px;
-  border-radius: 8px;
-  border: 1px solid $toolbar-border;
-  background: #fff;
-  color: $ink;
-
-  &:focus {
-    outline: 2px solid $pink;
-    outline-offset: -1px;
-  }
-}
-
-.button-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-
-  button {
-    justify-content: center;
-    padding: 9px 6px;
-  }
-}
-
-.save-status {
-  margin: 0;
-  font-size: 0.72rem;
-  color: $muted;
-
-  &.error {
-    color: $pink-deep;
-    font-weight: 600;
-  }
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: $line transparent;
 }
 
 .add-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 14px;
 
-  // tiles: icon above label
+  // cards: icon above label
   button {
+    position: relative;
+    @include corner-brackets(7px);
     flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    padding: 10px 4px 8px;
-    font-size: 0.8rem;
-  }
+    gap: 6px;
+    padding: 11px 2px 9px;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
 
-  .icon {
-    font-size: 1.15rem;
-    line-height: 1;
+    .ui-icon {
+      font-size: 1.3rem;
+      color: $text-dim;
+      transition: color 0.2s ease;
+    }
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+
+      .ui-icon {
+        color: $accent;
+      }
+    }
+
+    &.active {
+      border-color: $accent;
+      background: $accent-soft;
+
+      .ui-icon {
+        color: $accent;
+      }
+    }
   }
 }
 
-.page-size {
+// folding settings sections: title and a summary of the values when closed
+.fold {
+  border-top: 1px solid $line;
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 0;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:hover .chevron {
+      color: $accent;
+    }
+  }
+
+  .chevron {
+    order: 3;
+    font-size: 0.8rem;
+    color: $text-dim;
+    transition:
+      transform 0.15s,
+      color 0.2s;
+  }
+
+  &[open] .chevron {
+    transform: rotate(90deg);
+  }
+
+  .fold-title {
+    @include bar-heading;
+    font-size: 0.95rem;
+    line-height: 1.1;
+  }
+
+  .fold-summary {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: $text-dim;
+  }
+
+  &[open] .fold-summary {
+    visibility: hidden; // the controls show the same values
+  }
+}
+
+.fold-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 18px;
+  animation: fold-in 0.2s ease-out;
+}
+
+@keyframes fold-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.mini-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid $line;
+}
+
+.page-size select {
+  width: 100%;
+}
+
+.dimensions {
   display: grid;
-  grid-template-columns: 1fr 72px auto 72px;
+  grid-template-columns: 1fr auto 1fr auto;
   align-items: center;
   gap: 6px;
-  color: $muted;
+  font-size: 0.78rem;
+  color: $text-dim;
 
-  select,
   input {
     min-width: 0;
   }
@@ -437,135 +652,171 @@ input[type='number'] {
 // label | control rows
 .fields {
   display: grid;
-  grid-template-columns: 62px 1fr;
+  grid-template-columns: 64px 1fr;
   align-items: center;
-  gap: 10px 8px;
+  gap: 12px 8px;
+}
+
+.fields > * {
+  min-width: 0;
 }
 
 .field-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: $ink;
-}
-
-.choices {
-  display: flex;
-  gap: 6px;
-
-  button {
-    flex: 1 1 0;
-    min-width: 0;
-    justify-content: center;
-    padding: 7px 4px;
-    font-size: 0.78rem;
-  }
-}
-
-.full-row {
-  grid-column: 1 / -1;
+  @include micro-label;
+  cursor: help;
 }
 
 .toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: $ink;
+  gap: 9px;
+  font-size: 0.8rem;
   cursor: pointer;
 
   input {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     margin: 0;
-    accent-color: $pink-deep;
+    accent-color: $accent;
     cursor: pointer;
   }
-
-  small {
-    font-weight: 400;
-    color: $muted;
-  }
 }
 
-.note {
-  margin: 0;
-  font-size: 0.72rem;
-  color: $muted;
-  line-height: 1.4;
-}
+// ---- export footer ----
 
-.tips {
-  font-size: 0.76rem;
-  color: $muted;
-  line-height: 1.45;
-
-  summary {
-    cursor: pointer;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-  }
-
-  ul {
-    margin: 8px 0 0;
-    padding-left: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  b {
-    color: $ink;
-  }
-}
-
-.export-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.export-row > button {
-  justify-content: center;
-}
-
-.export-row .wide {
-  grid-column: 1 / -1;
-}
-
-.name-field {
+.sidebar-footer {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px $side-pad 16px;
+  border-top: 1px solid $line;
+}
+
+.export-main {
+  display: flex;
   gap: 8px;
 
-  span {
-    font-size: 0.78rem;
-    font-weight: 600;
-  }
-
-  input {
+  .primary {
     flex: 1;
     min-width: 0;
-    font: inherit;
-    font-size: 0.85rem;
-    padding: 7px 8px;
-    border-radius: 8px;
-    border: 1px solid $toolbar-border;
-    background: #fff;
-    color: $ink;
+    padding: 9px 12px;
+  }
+}
 
-    &:focus {
-      outline: 2px solid $pink;
-      outline-offset: -1px;
+.segmented {
+  flex: none;
+  display: flex;
+  padding: 2px;
+  border-radius: $radius;
+  background: $bg-void;
+  border: 1px solid $line;
+
+  button {
+    padding: 5px 8px;
+    border: none;
+    border-radius: 2px;
+    background: none;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: $text-dim;
+
+    &:hover:not(:disabled) {
+      color: $text-main;
+    }
+
+    &.active {
+      background: $accent-soft;
+      color: $accent;
     }
   }
 }
 
-.footnote {
-  margin: 8px 0 0;
-  font-size: 0.68rem;
-  color: $muted;
+.export-more {
+  display: flex;
+  gap: 8px;
+
+  button {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 0.74rem;
+    background: none;
+    color: $text-dim;
+
+    &:hover:not(:disabled) {
+      color: $text-main;
+    }
+  }
+}
+
+// ---- how-to card ----
+
+.help-card {
+  position: absolute;
+  top: 14px;
+  left: calc(100% + 14px);
+  width: 360px;
+  max-height: calc(100% - 28px);
+  overflow-y: auto;
+  padding: 14px 18px 16px;
+  border-radius: $radius;
+  background: $bg-panel-alt;
+  border: 1px solid $line;
+  box-shadow: 0 12px 32px rgba(#000, 0.45);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: $text-dim;
+  scrollbar-width: thin;
+  scrollbar-color: $line transparent;
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  h2 {
+    @include bar-heading;
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  li::marker {
+    color: $accent;
+  }
+
+  b {
+    font-weight: normal;
+    color: $text-main;
+  }
+
+  code {
+    padding: 0 4px;
+    border-radius: 2px;
+    background: $accent-soft;
+    color: $accent;
+  }
+}
+
+.pop-enter-active,
+.pop-leave-active {
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out;
+}
+
+.pop-enter-from,
+.pop-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
 }
 </style>
