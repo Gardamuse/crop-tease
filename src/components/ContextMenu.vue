@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
+import PixelSlider from './PixelSlider.vue'
 import { closeContextMenu, contextMenu, type MenuItem } from '@/lib/contextMenu'
 
 const EDGE_GAP = 6 // keep the menu this far inside the window
@@ -77,6 +78,17 @@ onBeforeUnmount(() => {
   >
     <template v-for="(item, i) in contextMenu.items" :key="i">
       <hr v-if="item.kind === 'separator'" />
+      <div v-else-if="item.kind === 'slider'" class="slider-row">
+        <span class="row-label">{{ item.label }}</span>
+        <PixelSlider
+          class="slider"
+          :model-value="item.value()"
+          :min="item.min"
+          :max="item.max"
+          :label="item.label"
+          @update:model-value="item.set"
+        />
+      </div>
       <div v-else-if="item.kind === 'choices'" class="choices-row" role="group" :aria-label="item.label">
         <span class="row-label">{{ item.label }}</span>
         <div class="choices">
@@ -106,7 +118,7 @@ onBeforeUnmount(() => {
 .context-menu {
   position: fixed;
   z-index: 900;
-  min-width: 190px;
+  min-width: 250px;
   padding: 5px;
   border-radius: 10px;
   background: #fff;
@@ -146,6 +158,18 @@ hr {
   border: none;
   border-top: 1px solid $toolbar-border;
   margin: 4px 2px;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 4px 10px;
+
+  .slider {
+    flex: 1;
+    min-width: 150px;
+  }
 }
 
 .choices-row {

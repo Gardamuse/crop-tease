@@ -28,7 +28,7 @@ export const DEFAULT_BORDER = {
   dividerWidth: 20,
   color: '#000000',
   outlineColor: null as string | null,
-  outlineWidth: 1,
+  outlineWidth: 2,
 }
 export const MAX_BORDER_WIDTH = 200
 export const MAX_DIVIDER_WIDTH = 100

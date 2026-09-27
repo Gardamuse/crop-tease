@@ -8,7 +8,8 @@ import SplitBars from './SplitBars.vue'
 import TextBox from './TextBox.vue'
 import { renderStageImage, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
-import { borderStageWidth, deselectAll, layout, splitChordAt, splitPanelAt, stageSize, store } from '@/lib/store'
+import { trackPointer } from '@/lib/pointer'
+import { borderStageWidth, deselectAll, layout, planSplit, splitPanelAt, stageSize, store } from '@/lib/store'
 
 const OUTER_PAD = 48 // .stage-outer padding (24px each side)
 
@@ -16,7 +17,14 @@ const outerEl = useTemplateRef('outer')
 const stageEl = useTemplateRef('stage')
 const card = reactive({ w: 0, h: 0 })
 
-const splitPreview = ref<[Point, Point] | null>(null)
+/** The cut a split would make, and the area that would become the new empty panel. */
+export interface SplitPreview {
+  line: [Point, Point]
+  fresh: Point[]
+}
+const splitPreview = ref<SplitPreview | null>(null)
+// true while the mouse is held down to choose a side
+let choosingSide = false
 
 
 // Scale the stage to fill the space available to it. Every
@@ -67,19 +75,42 @@ function onStagePointerDown(e: PointerEvent) {
   if (e.target === stageEl.value) deselectAll()
 }
 
-// While splitting, the stage swallows clicks (in the capture phase, before
-// any panel, bar or element sees them) and shows where the cut would go.
+function showPlan(plan: ReturnType<typeof planSplit>) {
+  splitPreview.value = plan && { line: [plan.chord.a.point, plan.chord.b.point], fresh: plan.freshPoly }
+}
+
+// While splitting, the stage swallows presses (in the capture phase, before
+// any panel, bar or element sees them) and previews the cut. Pressing fixes
+// where the cut goes; dragging to either side of it, then releasing, picks
+// which side becomes the new empty panel.
 function onSplitPointerDown(e: PointerEvent) {
   if (!store.splitMode || e.button !== 0) return
   e.stopPropagation()
   e.preventDefault()
-  if (splitPanelAt(stagePoint(e))) store.splitMode = false
+  const at = stagePoint(e)
+  const plan = planSplit(at)
+  if (!plan) return
+  choosingSide = true
+  showPlan(plan)
+  let side = plan.freshSide
+  trackPointer(
+    e,
+    (_dx, _dy, ev) => {
+      const next = planSplit(at, stagePoint(ev))
+      if (!next) return
+      side = next.freshSide
+      showPlan(next)
+    },
+    (_ev, cancelled) => {
+      choosingSide = false
+      if (!cancelled && splitPanelAt(at, side)) store.splitMode = false
+    },
+  )
 }
 
 function onSplitPointerMove(e: PointerEvent) {
-  if (!store.splitMode) return
-  const found = splitChordAt(stagePoint(e))
-  splitPreview.value = found ? [found.chord.a.point, found.chord.b.point] : null
+  if (!store.splitMode || choosingSide) return
+  showPlan(planSplit(stagePoint(e)))
 }
 
 async function renderImage(onProgress?: ExportProgress): Promise<Blob> {
@@ -112,7 +143,7 @@ defineExpose({ renderImage })
         @pointerdown="onStagePointerDown"
         @pointerdown.capture="onSplitPointerDown"
         @pointermove="onSplitPointerMove"
-        @pointerleave="splitPreview = null"
+        @pointerleave="!choosingSide && (splitPreview = null)"
       >
         <ImagePanel v-for="(p, i) in layout.panels" :key="`${store.generation}-${p.leaf.id}`" :panel="p" :index="i" />
         <SplitBars :preview="splitPreview" />
@@ -129,7 +160,7 @@ defineExpose({ renderImage })
       </div>
     </div>
     <div v-if="store.splitMode" class="split-banner">
-      Click the panel to split &middot; <kbd>Esc</kbd> to cancel
+      Click a panel to split it &middot; drag to pick the new side &middot; <kbd>Esc</kbd> cancels
     </div>
   </main>
 </template>

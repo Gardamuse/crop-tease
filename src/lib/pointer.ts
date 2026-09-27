@@ -1,6 +1,7 @@
 /**
  * Follows a pointer drag with window-level listeners until release.
- * `onMove` receives the screen-pixel delta since the previous event.
+ * `onMove` receives the screen-pixel delta since the previous event;
+ * `onEnd` runs once on release (cancelled if the browser aborted the drag).
  *
  * Deliberately does not use setPointerCapture: capturing the pointer would
  * swallow the native click/dblclick the browser synthesizes on the real
@@ -9,6 +10,7 @@
 export function trackPointer(
   start: PointerEvent,
   onMove: (dx: number, dy: number, ev: PointerEvent) => void,
+  onEnd?: (ev: PointerEvent, cancelled: boolean) => void,
 ): void {
   let lastX = start.clientX
   let lastY = start.clientY
@@ -19,10 +21,11 @@ export function trackPointer(
     lastY = ev.clientY
     onMove(dx, dy, ev)
   }
-  const up = () => {
+  const up = (ev: PointerEvent) => {
     window.removeEventListener('pointermove', move)
     window.removeEventListener('pointerup', up)
     window.removeEventListener('pointercancel', up)
+    onEnd?.(ev, ev.type === 'pointercancel')
   }
   window.addEventListener('pointermove', move)
   window.addEventListener('pointerup', up)

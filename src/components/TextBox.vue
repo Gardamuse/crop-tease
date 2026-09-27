@@ -5,12 +5,14 @@ import { TEXT_PALETTE, TEXT_STYLES } from '@/lib/constants'
 import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { screenCenter, trackPointer } from '@/lib/pointer'
-import { removeElement, selectElement, store, type TextElement } from '@/lib/store'
+import { clamp } from '@/lib/math'
+import { removeElement, selectElement, stageSize, store, type TextElement } from '@/lib/store'
 
 const MIN_W = 60
 const MIN_H = 30
-const MIN_FONT = 10
-const MAX_FONT = 120
+// text size limits, in output pixels (the size is stored in stage units)
+const MIN_FONT_PX = 10
+const MAX_FONT_PX = 300
 // how far (screen px) inside and outside the box edge a press grabs the edge
 const EDGE_SLOP = 7
 // resize cursors by direction, starting east, going clockwise (y down)
@@ -150,12 +152,13 @@ function onContextMenu(e: MouseEvent) {
       })),
     },
     {
-      kind: 'choices',
+      // shown in output pixels, like the border and divider widths
+      kind: 'slider',
       label: 'Size',
-      options: [
-        { label: 'A−', title: 'Smaller text', pick: () => (el.fontSize = Math.max(MIN_FONT, el.fontSize - 2)) },
-        { label: 'A+', title: 'Bigger text', pick: () => (el.fontSize = Math.min(MAX_FONT, el.fontSize + 2)) },
-      ],
+      min: MIN_FONT_PX,
+      max: MAX_FONT_PX,
+      value: () => Math.round(el.fontSize * stageSize.value.exportScale),
+      set: (px) => (el.fontSize = clamp(px, MIN_FONT_PX, MAX_FONT_PX) / stageSize.value.exportScale),
     },
     {
       kind: 'choices',

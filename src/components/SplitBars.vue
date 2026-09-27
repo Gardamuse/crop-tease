@@ -4,14 +4,16 @@ import { computed, ref, useTemplateRef } from 'vue'
 import ElementHandle from './ElementHandle.vue'
 import { openContextMenu } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
-import type { BarGeom, Point } from '@/lib/layout'
+import { centroid, type BarGeom, type Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
 import { dividerStageWidth, layout, moveBarEnd, removeBar, selectBar, stageSize, store, translateBar } from '@/lib/store'
 
-defineProps<{
-  /** dashed guide for where a split would go, while picking a panel to split */
-  preview: [Point, Point] | null
+const props = defineProps<{
+  /** where a split would go while picking a panel to split, and the side that would become the new panel */
+  preview: { line: [Point, Point]; fresh: Point[] } | null
 }>()
+
+const freshLabelAt = computed(() => (props.preview ? centroid(props.preview.fresh) : null))
 
 // Each bar is drawn well past its ends and clipped to the region it cuts.
 // At the border the stage crops it flush; where it meets another bar, the
@@ -114,14 +116,21 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
         @pointerdown.prevent.stop="dragBar($event, b.geom)"
         @contextmenu="onBarContextMenu($event, b.id)"
       />
-      <line
-        v-if="preview"
-        class="preview"
-        :x1="preview[0][0]"
-        :y1="preview[0][1]"
-        :x2="preview[1][0]"
-        :y2="preview[1][1]"
-      />
+      <template v-if="preview">
+        <pattern id="split-new-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="12" height="12" fill="rgba(255,255,255,0.45)" />
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(36,27,48,0.25)" stroke-width="5" />
+        </pattern>
+        <polygon class="preview-fresh" :points="preview.fresh.map((p) => p.join(',')).join(' ')" />
+        <text v-if="freshLabelAt" class="preview-label" :x="freshLabelAt[0]" :y="freshLabelAt[1]">new panel</text>
+        <line
+          class="preview"
+          :x1="preview.line[0][0]"
+          :y1="preview.line[0][1]"
+          :x2="preview.line[1][0]"
+          :y2="preview.line[1][1]"
+        />
+      </template>
     </g>
   </svg>
   <template v-for="b in bars" :key="b.id">
@@ -164,6 +173,20 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
   &.active {
     stroke-opacity: 0.25;
   }
+}
+
+.preview-fresh {
+  fill: url(#split-new-hatch);
+}
+
+.preview-label {
+  font: 700 18px $ui-font;
+  fill: $ink;
+  stroke: #fff;
+  stroke-width: 4px;
+  paint-order: stroke;
+  text-anchor: middle;
+  dominant-baseline: middle;
 }
 
 .preview {

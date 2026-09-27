@@ -19,6 +19,7 @@ import { getImage, type StoredImage } from './images'
 import {
   anchorAt,
   barSegments,
+  clipPoly,
   closestOnBoundary,
   computeLayout,
   countBars,
@@ -239,11 +240,39 @@ export function splitChordAt(point: Point) {
   return chord && { panel, chord, vertical }
 }
 
-/** Splits the panel under `point` in two with a new bar through it. */
-export function splitPanelAt(point: Point): boolean {
+/** Which side of a new bar gets the new, empty panel (see Split for front/back). */
+export type SplitSide = 'front' | 'back'
+
+// how far (stage units) the pointer must be from the cut to pick a side
+const SIDE_DEADZONE = 6
+
+/**
+ * A split at `point`, with the side that gets the new empty panel: by
+ * default the right (vertical cut) or bottom (horizontal cut) side, or
+ * whichever side `toward` is on when it's clear of the cut.
+ */
+export function planSplit(point: Point, toward?: Point) {
   const found = splitChordAt(point)
-  if (!found) return false
+  if (!found) return null
   const { panel, chord, vertical } = found
+  const a = chord.a.point
+  const b = chord.b.point
+  let freshSide: SplitSide = vertical ? 'back' : 'front'
+  if (toward) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+    const side = ((b[0] - a[0]) * (toward[1] - a[1]) - (b[1] - a[1]) * (toward[0] - a[0])) / len
+    if (Math.abs(side) > SIDE_DEADZONE) freshSide = side > 0 ? 'front' : 'back'
+  }
+  const freshPoly = (freshSide === 'front' ? clipPoly(panel.poly, a, b, 0) : clipPoly(panel.poly, b, a, 0)).pts
+  return { ...found, freshSide, freshPoly }
+}
+
+/** Splits the panel under `point` in two with a new bar through it; `freshSide` gets the new empty panel. */
+export function splitPanelAt(point: Point, freshSide?: SplitSide): boolean {
+  const plan = planSplit(point)
+  if (!plan) return false
+  const { panel, chord } = plan
+  const freshOn = freshSide ?? plan.freshSide
   const segs = barSegments(layout.value)
   const size = stageSize.value
   const bar = {
@@ -251,14 +280,14 @@ export function splitPanelAt(point: Point): boolean {
     a: anchorAt(chord.a.host, chord.a.point, segs, size),
     b: anchorAt(chord.b.host, chord.b.point, segs, size),
   }
-  // the existing photo stays in the left (vertical bar) or top (horizontal bar) half
+  // the existing photo stays on the other side
   const kept = panel.leaf
   const fresh = newLeaf()
   store.layout = replaceNode(store.layout, kept, {
     kind: 'split',
     bar,
-    front: vertical ? kept : fresh,
-    back: vertical ? fresh : kept,
+    front: freshOn === 'front' ? fresh : kept,
+    back: freshOn === 'front' ? kept : fresh,
   })
   selectBar(bar.id)
   return true

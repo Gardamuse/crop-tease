@@ -186,6 +186,7 @@ const lineColor = computed({
       <details class="tips" open>
         <summary>How to</summary>
         <ul>
+          <li><b>Split a panel:</b> click it; hold and drag to choose which side gets the new panel.</li>
           <li><b>Move a bar:</b> drag it. <b>Tilt it:</b> drag an end along the border or another bar.</li>
           <li><b>Remove a bar:</b> right-click it, or click it and then its ×.</li>
           <li><b>Set a photo:</b> click an empty panel or close-up, or drop an image on it.</li>

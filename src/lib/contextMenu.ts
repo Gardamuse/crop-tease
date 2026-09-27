@@ -28,11 +28,21 @@ export interface MenuChoices {
   }[]
 }
 
+/** A labeled slider + number box (in px) that stays open while used. */
+export interface MenuSlider {
+  kind: 'slider'
+  label: string
+  min: number
+  max: number
+  value: () => number
+  set: (value: number) => void
+}
+
 export interface MenuSeparator {
   kind: 'separator'
 }
 
-export type MenuEntry = MenuItem | MenuChoices | MenuSeparator
+export type MenuEntry = MenuItem | MenuChoices | MenuSlider | MenuSeparator
 
 /** The single right-click menu shared by the whole app. */
 export const contextMenu = reactive({
