@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 
 import CloseUpCircle from './CloseUpCircle.vue'
+import BorderOutlines from './BorderOutlines.vue'
 import ImagePanel from './ImagePanel.vue'
 import SplitBars from './SplitBars.vue'
 import TextBox from './TextBox.vue'
 import { renderStageImage, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
-import { deselectAll, layout, splitChordAt, splitPanelAt, stageSize, store } from '@/lib/store'
+import { borderStageWidth, deselectAll, layout, splitChordAt, splitPanelAt, stageSize, store } from '@/lib/store'
 
 const OUTER_PAD = 48 // .stage-outer padding (24px each side)
 
@@ -17,8 +18,6 @@ const card = reactive({ w: 0, h: 0 })
 
 const splitPreview = ref<[Point, Point] | null>(null)
 
-/** The border's width in stage units (it's set in output pixels). */
-const borderWidth = computed(() => store.border.width / stageSize.value.exportScale)
 
 // Scale the stage to fill the space available to it. Every
 // pointer handler that turns a screen delta into stage coordinates divides
@@ -120,8 +119,9 @@ defineExpose({ renderImage })
         <div
           v-if="store.border.width > 0"
           class="page-border"
-          :style="{ borderWidth: `${borderWidth}px`, borderColor: store.border.color }"
+          :style="{ borderWidth: `${borderStageWidth}px`, borderColor: store.border.color }"
         />
+        <BorderOutlines />
         <template v-for="el in store.elements" :key="`${store.generation}-${el.id}`">
           <CloseUpCircle v-if="el.kind === 'circle'" :element="el" />
           <TextBox v-else :element="el" />

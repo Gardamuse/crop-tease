@@ -33,7 +33,7 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
-export const PROJECT_VERSION = 2
+export const PROJECT_VERSION = 3
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
@@ -51,6 +51,12 @@ const MIGRATIONS: Record<number, Migration> = {
           return rest
         })
       : doc.elements,
+  }),
+  // v3 added the border outline
+  2: (doc) => ({
+    ...doc,
+    version: 3,
+    border: { ...(doc.border as object), outline: 'none' },
   }),
 }
 
@@ -134,6 +140,7 @@ const ProjectSchema = z.object({
   border: z.object({
     width: z.number().min(0).max(MAX_BORDER_WIDTH),
     color: z.string().regex(/^#[0-9a-f]{6}$/i),
+    outline: z.enum(['none', 'black', 'white']),
   }),
   layout: RegionSchema,
   elements: z.array(ElementSchema),

@@ -51,10 +51,10 @@ export interface Split {
 
 export type Region = Leaf | Split
 
-/** A convex polygon; hosts[i] is what the edge from pts[i] to pts[i+1] lies on. */
-export interface Poly {
+/** A convex polygon; hosts[i] tags the edge from pts[i] to pts[i+1] (by default, what it lies on). */
+export interface Poly<T = HostId> {
   pts: Point[]
-  hosts: HostId[]
+  hosts: T[]
 }
 
 export interface BarGeom {
@@ -151,11 +151,10 @@ function dist(p: Point, q: Point): number {
   return Math.hypot(q[0] - p[0], q[1] - p[1])
 }
 
-function edge(poly: Poly, i: number): [Point, Point] {
+function edge<T>(poly: Poly<T>, i: number): [Point, Point] {
   return [poly.pts[i]!, poly.pts[(i + 1) % poly.pts.length]!]
 }
 
-const EMPTY: Poly = { pts: [], hosts: [] }
 
 export function rectPoly({ w, h }: Size): Poly {
   return {
@@ -170,12 +169,12 @@ export function rectPoly({ w, h }: Size): Poly {
 }
 
 /** The part of a convex polygon on the front side of the line p->q; the cut edge is tagged `cut`. */
-export function clipPoly(poly: Poly, p: Point, q: Point, cut: HostId): Poly {
+export function clipPoly<T>(poly: Poly<T>, p: Point, q: Point, cut: T): Poly<T> {
   const n = poly.pts.length
-  if (n < 3 || dist(p, q) < EPS) return EMPTY
+  if (n < 3 || dist(p, q) < EPS) return { pts: [], hosts: [] }
   const s = poly.pts.map((x) => side(p, q, x))
   const pts: Point[] = []
-  const hosts: HostId[] = []
+  const hosts: T[] = []
   for (let i = 0; i < n; i++) {
     const [cur, nxt] = edge(poly, i)
     const sc = s[i]!
@@ -202,7 +201,28 @@ export function clipPoly(poly: Poly, p: Point, q: Point, cut: HostId): Poly {
       hosts.splice(prev, 1)
     }
   }
-  return pts.length >= 3 ? { pts, hosts } : EMPTY
+  return pts.length >= 3 ? { pts, hosts } : { pts: [], hosts: [] }
+}
+
+/**
+ * Shrinks a convex polygon by moving each edge inward by inset(host of that
+ * edge). Returns the shrunken polygon with each edge tagged true if it came
+ * from a moved edge, false if it's an original edge that stayed put.
+ */
+export function insetPoly(poly: Poly, inset: (host: HostId) => number): Poly<boolean> {
+  let out: Poly<boolean> = { pts: poly.pts, hosts: poly.hosts.map(() => false) }
+  poly.pts.forEach((_, i) => {
+    const d = inset(poly.hosts[i]!)
+    if (d <= 0) return
+    const [p, q] = edge(poly, i)
+    const len = dist(p, q)
+    if (len < EPS) return
+    // inward normal: the interior is on the front (positive) side of each edge
+    const nx = (-(q[1] - p[1]) / len) * d
+    const ny = ((q[0] - p[0]) / len) * d
+    out = clipPoly(out, [p[0] + nx, p[1] + ny], [q[0] + nx, q[1] + ny], true)
+  })
+  return out
 }
 
 /** Closest point on the polygon's boundary, and which edge it's on. */

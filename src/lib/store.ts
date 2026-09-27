@@ -1,6 +1,15 @@
 import { computed, reactive } from 'vue'
 
-import { DEFAULT_BORDER, DEFAULT_PAGE, MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE, STAGE_SHORT } from './constants'
+import {
+  BORDER_OUTLINES,
+  DEFAULT_BORDER,
+  DEFAULT_PAGE,
+  MAX_BORDER_WIDTH,
+  MAX_PAGE_SIDE,
+  MIN_PAGE_SIDE,
+  OUTLINE_WIDTH,
+  STAGE_SHORT,
+} from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
 import { getImage, type StoredImage } from './images'
@@ -80,7 +89,10 @@ function starterLayout(): Region {
 export const store = reactive({
   /** Output size in pixels. */
   page: { ...DEFAULT_PAGE },
-  /** page border: width in output pixels (0 = none); color also used for bars and close-up rings */
+  /**
+   * page border: width in output pixels (0 = none); color also used for bars
+   * and close-up rings; outline is a 1px line along all of those
+   */
   border: { ...DEFAULT_BORDER },
   exportFormat: 'webp' as ExportFormat,
   /** Current render scale of the stage (screen px per stage unit). */
@@ -114,6 +126,15 @@ export const stageSize = computed(() => {
 })
 
 export const layout = computed(() => computeLayout(store.layout, stageSize.value))
+
+/** The page border's width in stage units (it's set in output pixels). */
+export const borderStageWidth = computed(() => store.border.width / stageSize.value.exportScale)
+
+/** The border outline's color and width in stage units, or null for none. */
+export const outlineStyle = computed(() => {
+  const color = BORDER_OUTLINES.find((o) => o.value === store.border.outline)?.color
+  return color ? { color, width: OUTLINE_WIDTH / stageSize.value.exportScale } : null
+})
 
 export async function setPageSize(width: number, height: number): Promise<void> {
   store.page.width = Math.round(clamp(width, MIN_PAGE_SIDE, MAX_PAGE_SIDE))

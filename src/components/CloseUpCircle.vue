@@ -8,7 +8,7 @@ import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
-import { removeElement, selectElement, setCircleImage, store, type CircleElement } from '@/lib/store'
+import { outlineStyle, removeElement, selectElement, setCircleImage, store, type CircleElement } from '@/lib/store'
 
 const MIN_D = 60
 const MAX_D = 700
@@ -113,8 +113,16 @@ async function useFile(file: File | undefined) {
          edge then blends with the disc underneath, instead of letting the page
          show through as a hairline gap where two separate edges meet. The
          outer element stays unclipped so handles can stick out past the ring. -->
-    <div class="ring" :style="{ background: store.border.color }" />
-    <div class="mat" />
+    <template v-if="outlineStyle">
+      <div class="outline-outer" :style="{ background: outlineStyle.color, '--ow': `${outlineStyle.width}px` }" />
+      <div class="ring" :style="{ background: store.border.color }" />
+      <div class="outline-inner" :style="{ background: outlineStyle.color }" />
+      <div class="mat" :style="{ inset: `${outlineStyle.width}px` }" />
+    </template>
+    <template v-else>
+      <div class="ring shadowed" :style="{ background: store.border.color }" />
+      <div class="mat" />
+    </template>
     <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->
     <div class="clip" :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }">
       <img v-if="el.frame" :src="el.frame.src" :style="{ transform: frameTransform(el.frame) }" draggable="false" />
@@ -141,16 +149,32 @@ $mat-width: 8px; // white band between the ring and the photo
   }
 }
 
+.outline-outer,
 .ring,
+.outline-inner,
 .mat,
 .clip {
   position: absolute;
   border-radius: 50%;
 }
 
+// the shadow goes on whichever disc is outermost
+.outline-outer,
+.shadowed {
+  box-shadow: 0 6px 16px rgba(20, 14, 30, 0.35);
+}
+
+// outline discs sit one line-width outside and inside the ring
+.outline-outer {
+  inset: calc(-#{$ring-width} - var(--ow));
+}
+
 .ring {
   inset: -$ring-width;
-  box-shadow: 0 6px 16px rgba(20, 14, 30, 0.35);
+}
+
+.outline-inner {
+  inset: 0;
 }
 
 .mat {

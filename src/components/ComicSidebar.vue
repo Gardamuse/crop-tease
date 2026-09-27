@@ -5,7 +5,7 @@ export type SaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { BORDER_COLOR_PRESETS, MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE, PAGE_PRESETS } from '@/lib/constants'
+import { BORDER_COLOR_PRESETS, BORDER_OUTLINES, MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE, PAGE_PRESETS } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
 import { setBorderWidth, setPageSize, store } from '@/lib/store'
 
@@ -179,9 +179,24 @@ defineEmits<{
           <input type="color" :value="store.border.color" @input="onBorderColor" />
         </label>
       </div>
+      <div class="outline-row">
+        <span>Outline</span>
+        <div class="color-options" role="radiogroup" aria-label="Border outline">
+          <button
+            v-for="o in BORDER_OUTLINES"
+            :key="o.value"
+            role="radio"
+            :aria-checked="store.border.outline === o.value"
+            :class="{ active: store.border.outline === o.value }"
+            @click="store.border.outline = o.value"
+          >
+            <span v-if="o.color" class="swatch" :style="{ background: o.color }" />{{ o.label }}
+          </button>
+        </div>
+      </div>
       <p class="option-note">
-        {{ store.border.width ? 'Border' : 'No border' }}; the color also applies to the split bars and close-up
-        rings.
+        The color also applies to the split bars and close-up rings. The outline is a 1px line along both sides of
+        them{{ store.border.width ? ' and inside the border' : '' }}.
       </p>
     </div>
 
@@ -360,9 +375,11 @@ input[type='number'] {
 
   button,
   .custom-color {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
-    padding: 7px 6px;
+    gap: 5px;
+    padding: 7px 4px;
     font-size: 0.78rem;
   }
 
@@ -407,6 +424,17 @@ input[type='number'] {
     border: 1px solid rgba($ink, 0.35);
     // an empty custom swatch shows a rainbow hint
     background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  }
+}
+
+.outline-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  > span {
+    font-size: 0.75rem;
+    color: $muted;
   }
 }
 

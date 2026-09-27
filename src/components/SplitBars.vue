@@ -2,6 +2,7 @@
 import { computed, ref, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
+import { BAR_WIDTH } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import type { BarGeom, Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
@@ -90,7 +91,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
       v-bind="b.line"
       :clip-path="`url(#${b.clipId})`"
       :stroke="store.border.color"
-      stroke-width="9"
+      :stroke-width="BAR_WIDTH"
     />
     <g v-bind="{ [NO_EXPORT_ATTR]: '' }">
       <line
