@@ -267,6 +267,35 @@ export const outlineStyle = computed(() => {
   return color ? { color, width: store.border.outlineWidth / stageSize.value.exportScale } : null
 })
 
+/** Width of the outline around unframed text, in output pixels. */
+const TEXT_OUTLINE_WIDTH = 2
+
+/** WCAG relative luminance of a #rgb or #rrggbb color (0 black .. 1 white); unparsable colors count as black. */
+function luminance(color: string): number {
+  let hex = color.trim().replace(/^#/, '')
+  if (hex.length === 3) hex = [...hex].map((c) => c + c).join('')
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return 0
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
+}
+
+/**
+ * The outline around unframed text, in stage units: black around light
+ * text and white around dark text, whichever contrasts more.
+ */
+export function textOutline(textColor: string): { color: string; width: number } {
+  const l = luminance(textColor)
+  const onBlack = (l + 0.05) / 0.05
+  const onWhite = 1.05 / (l + 0.05)
+  return {
+    color: onBlack >= onWhite ? '#000000' : '#ffffff',
+    width: TEXT_OUTLINE_WIDTH / stageSize.value.exportScale,
+  }
+}
+
 /**
  * The area close-ups may draw in when kept inside the border: the page minus
  * the border and its outline, in stage units. Null when they aren't clipped.

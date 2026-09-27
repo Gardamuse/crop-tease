@@ -15,12 +15,12 @@ import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { screenCenter, trackPointer } from '@/lib/pointer'
 import { clamp } from '@/lib/math'
 import {
-  outlineStyle,
   pageNumberText,
   removeElement,
   selectElement,
   stageSize,
   store,
+  textOutline,
   type TextElement,
 } from '@/lib/store'
 
@@ -51,11 +51,12 @@ const faceEl = useTemplateRef('face')
 const editing = ref(false)
 const cursor = ref<string>()
 
-// Unframed text uses the page's line outline, stroked around the letters.
-// The stroke is painted behind the fill, so only its outer half shows:
-// doubling the width gives an outline of the chosen thickness.
+// Unframed text gets a thin black or white outline (whichever contrasts
+// with its color), stroked around the letters. The stroke is painted
+// behind the fill, so only its outer half shows: doubling the width gives
+// an outline of the intended thickness.
 const faceStyle = computed(() => {
-  const outline = el.style === 'none' ? outlineStyle.value : null
+  const outline = el.style === 'none' ? textOutline(el.color) : null
   return {
     fontSize: `${el.fontSize}px`,
     color: el.color,

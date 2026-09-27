@@ -6,10 +6,10 @@ import { computeLayout } from '@/lib/layout'
 import {
   borderStageWidth,
   dividerStageWidth,
-  outlineStyle,
   pageNumberText,
   stageSize,
   store,
+  textOutline,
   type CircleElement,
   type ComicPage,
   type TextElement,
@@ -30,7 +30,7 @@ const texts = computed(() => page.elements.filter((e): e is TextElement => e.kin
 
 const pageNumber = computed(() => {
   const pn = store.pageNumber
-  return pn && { el: pn, text: pageNumberText(pn.text, index) }
+  return pn && { el: pn, text: pageNumberText(pn.text, index), outline: textOutline(pn.color) }
 })
 
 const points = (pts: [number, number][]) => pts.map((p) => p.join(',')).join(' ')
@@ -131,8 +131,8 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :y="pageNumber.el.y + pageNumber.el.h / 2"
         :font-size="pageNumber.el.fontSize"
         :fill="pageNumber.el.color"
-        :stroke="pageNumber.el.style === 'none' ? outlineStyle?.color : undefined"
-        :stroke-width="(outlineStyle?.width ?? 0) * 2"
+        :stroke="pageNumber.el.style === 'none' ? pageNumber.outline.color : undefined"
+        :stroke-width="pageNumber.outline.width * 2"
       >
         {{ pageNumber.text }}
       </text>
