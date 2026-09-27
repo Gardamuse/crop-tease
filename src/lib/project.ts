@@ -3,7 +3,7 @@ import { get, set } from 'idb-keyval'
 import { toRaw, watch } from 'vue'
 import { z } from 'zod'
 
-import { MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE } from './constants'
+import { MAX_BORDER_WIDTH, MAX_DIVIDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE } from './constants'
 import type { ImageFrame } from './imageFrame'
 import {
   addImage,
@@ -33,7 +33,7 @@ import { store, syncCounters, type ComicElement } from './store'
 // ---------------------------------------------------------------------------
 
 export const PROJECT_FORMAT = 'comic-maker'
-export const PROJECT_VERSION = 3
+export const PROJECT_VERSION = 4
 
 /** Upgrades a document from version N (the key) to N+1. */
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
@@ -58,6 +58,24 @@ const MIGRATIONS: Record<number, Migration> = {
     version: 3,
     border: { ...(doc.border as object), outline: 'none' },
   }),
+  // v4 made the divider thickness adjustable and removed the white band inside
+  // close-up rings. The numbers are v3's fixed layout, deliberately not
+  // today's constants: bars were 9 stage units wide (the page's shorter side
+  // being 700 units), and close-up photos sat 8 units in from the circle's
+  // edge; the photo now fills the circle, so shift frames to stay put.
+  3: (doc) => {
+    const page = doc.page as { width: number; height: number }
+    const unitsToPx = Math.min(page.width, page.height) / 700
+    return {
+      ...doc,
+      version: 4,
+      border: { ...(doc.border as object), dividerWidth: Math.round(9 * unitsToPx) },
+      elements: (doc.elements as Record<string, unknown>[]).map((el) => {
+        const frame = el.frame as { tx: number; ty: number } | null | undefined
+        return el.kind === 'circle' && frame ? { ...el, frame: { ...frame, tx: frame.tx + 8, ty: frame.ty + 8 } } : el
+      }),
+    }
+  },
 }
 
 const FrameSchema = z.object({
@@ -139,6 +157,7 @@ const ProjectSchema = z.object({
   exportFormat: z.enum(['webp', 'jpg']),
   border: z.object({
     width: z.number().min(0).max(MAX_BORDER_WIDTH),
+    dividerWidth: z.number().min(0).max(MAX_DIVIDER_WIDTH),
     color: z.string().regex(/^#[0-9a-f]{6}$/i),
     outline: z.enum(['none', 'black', 'white']),
   }),

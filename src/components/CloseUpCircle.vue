@@ -8,7 +8,7 @@ import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
-import { outlineStyle, removeElement, selectElement, setCircleImage, store, type CircleElement } from '@/lib/store'
+import { dividerStageWidth, outlineStyle, removeElement, selectElement, setCircleImage, store, type CircleElement } from '@/lib/store'
 
 const MIN_D = 60
 const MAX_D = 700
@@ -108,26 +108,32 @@ async function useFile(file: File | undefined) {
     @dragover.prevent
     @drop.prevent.stop="onDrop"
   >
-    <!-- The rings are stacked solid discs (ring color, then white, then the
-         clipped photo) rather than border + outline. Each disc's anti-aliased
-         edge then blends with the disc underneath, instead of letting the page
-         show through as a hairline gap where two separate edges meet. The
-         outer element stays unclipped so handles can stick out past the ring. -->
-    <template v-if="outlineStyle">
-      <div class="outline-outer" :style="{ background: outlineStyle.color, '--ow': `${outlineStyle.width}px` }" />
-      <div class="ring" :style="{ background: store.border.color }" />
-      <div class="outline-inner" :style="{ background: outlineStyle.color }" />
-      <div class="mat" :style="{ inset: `${outlineStyle.width}px` }" />
-    </template>
-    <template v-else>
-      <div class="ring shadowed" :style="{ background: store.border.color }" />
-      <div class="mat" />
-    </template>
+    <!-- Layers are stacked solid discs (outline, ring, photo) rather than
+         border + outline, so each anti-aliased edge blends with the disc
+         underneath instead of letting the page show through as a hairline
+         gap. The outer element stays unclipped so handles can stick out past
+         the ring. -->
+    <div
+      v-if="outlineStyle"
+      class="disc shadowed"
+      :style="{ inset: `${-(dividerStageWidth + outlineStyle.width)}px`, background: outlineStyle.color }"
+    />
+    <div
+      class="disc"
+      :class="{ shadowed: !outlineStyle }"
+      :style="{ inset: `${-dividerStageWidth}px`, background: store.border.color }"
+    />
     <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->
     <div class="clip" :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }">
       <img v-if="el.frame" :src="el.frame.src" :style="{ transform: frameTransform(el.frame) }" draggable="false" />
       <span v-else class="hint" v-bind="{ [NO_EXPORT_ATTR]: '' }">Click or drop<br />an image</span>
     </div>
+    <!-- inner outline drawn over the photo's edge; the ring disc below it is opaque, so no gap -->
+    <div
+      v-if="outlineStyle"
+      class="inner-outline"
+      :style="{ borderWidth: `${outlineStyle.width}px`, borderColor: outlineStyle.color }"
+    />
     <input ref="fileInput" type="file" accept="image/*" v-bind="{ [NO_EXPORT_ATTR]: '' }" @change="onFileChosen" />
     <template v-if="selected">
       <ElementHandle type="delete" @grab="removeElement(el.id)" />
@@ -137,9 +143,6 @@ async function useFile(file: File | undefined) {
 </template>
 
 <style scoped lang="scss">
-$ring-width: 5px; // outer ring, in the page border color
-$mat-width: 8px; // white band between the ring and the photo
-
 .circle {
   position: absolute;
   cursor: grab;
@@ -149,41 +152,26 @@ $mat-width: 8px; // white band between the ring and the photo
   }
 }
 
-.outline-outer,
-.ring,
-.outline-inner,
-.mat,
-.clip {
+.disc,
+.clip,
+.inner-outline {
   position: absolute;
   border-radius: 50%;
 }
 
 // the shadow goes on whichever disc is outermost
-.outline-outer,
 .shadowed {
   box-shadow: 0 6px 16px rgba(20, 14, 30, 0.35);
 }
 
-// outline discs sit one line-width outside and inside the ring
-.outline-outer {
-  inset: calc(-#{$ring-width} - var(--ow));
-}
-
-.ring {
-  inset: -$ring-width;
-}
-
-.outline-inner {
+.inner-outline {
   inset: 0;
-}
-
-.mat {
-  inset: 0;
-  background: #fff;
+  border-style: solid;
+  pointer-events: none;
 }
 
 .clip {
-  inset: $mat-width;
+  inset: 0;
   overflow: hidden;
 
   img {

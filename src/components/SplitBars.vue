@@ -2,11 +2,10 @@
 import { computed, ref, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
-import { BAR_WIDTH } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import type { BarGeom, Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
-import { layout, moveBarEnd, removeBar, selectBar, stageSize, store, translateBar } from '@/lib/store'
+import { dividerStageWidth, layout, moveBarEnd, removeBar, selectBar, stageSize, store, translateBar } from '@/lib/store'
 
 defineProps<{
   /** dashed guide for where a split would go, while picking a panel to split */
@@ -91,7 +90,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
       v-bind="b.line"
       :clip-path="`url(#${b.clipId})`"
       :stroke="store.border.color"
-      :stroke-width="BAR_WIDTH"
+      :stroke-width="dividerStageWidth"
     />
     <g v-bind="{ [NO_EXPORT_ATTR]: '' }">
       <line
@@ -101,7 +100,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
         class="bar-hit"
         :class="{ active: b.id === store.selectedBarId || b.id === hoverId }"
         :clip-path="`url(#${b.clipId})`"
-        stroke-width="36"
+        :stroke-width="Math.max(36, dividerStageWidth + 16)"
         @pointerenter="hoverId = b.id"
         @pointerleave="hoverId = null"
         @pointerdown.prevent.stop="dragBar($event, b.geom)"

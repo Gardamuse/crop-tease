@@ -5,9 +5,32 @@ export type SaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { BORDER_COLOR_PRESETS, BORDER_OUTLINES, MAX_BORDER_WIDTH, MAX_PAGE_SIDE, MIN_PAGE_SIDE, PAGE_PRESETS } from '@/lib/constants'
+import PixelSlider from './PixelSlider.vue'
+import {
+  BORDER_COLOR_PRESETS,
+  BORDER_OUTLINES,
+  MAX_BORDER_WIDTH,
+  MAX_DIVIDER_WIDTH,
+  MAX_PAGE_SIDE,
+  MIN_PAGE_SIDE,
+  PAGE_PRESETS,
+} from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { setBorderWidth, setPageSize, store } from '@/lib/store'
+import { setBorderWidth, setDividerWidth, setPageSize, store } from '@/lib/store'
+
+const props = defineProps<{
+  saveStatus: SaveStatus
+}>()
+
+defineEmits<{
+  new: []
+  open: []
+  saveProject: []
+  addCircle: []
+  addCaption: []
+  addBubble: []
+  export: []
+}>()
 
 const FORMATS: ExportFormat[] = ['webp', 'jpg']
 
@@ -28,21 +51,6 @@ function onPreset(e: Event) {
   if (preset) setPageSize(preset.width, preset.height)
 }
 
-const isPresetColor = computed(() =>
-  BORDER_COLOR_PRESETS.some((p) => p.color === store.border.color.toLowerCase()),
-)
-
-function onBorderWidth(e: Event) {
-  const input = e.target as HTMLInputElement
-  const value = Number(input.value)
-  if (Number.isFinite(value)) setBorderWidth(value)
-  input.value = String(store.border.width) // show the clamped value
-}
-
-function onBorderColor(e: Event) {
-  store.border.color = (e.target as HTMLInputElement).value
-}
-
 function onDimension(axis: 'width' | 'height', e: Event) {
   const input = e.target as HTMLInputElement
   const value = Number(input.value)
@@ -54,230 +62,218 @@ function onDimension(axis: 'width' | 'height', e: Event) {
   else setPageSize(store.page.width, value)
 }
 
-const props = defineProps<{
-  saveStatus: SaveStatus
-}>()
+const borderWidth = computed({ get: () => store.border.width, set: setBorderWidth })
+const dividerWidth = computed({ get: () => store.border.dividerWidth, set: setDividerWidth })
 
-defineEmits<{
-  new: []
-  open: []
-  saveProject: []
-  addCircle: []
-  addCaption: []
-  addBubble: []
-  export: []
-}>()
+const isPresetColor = computed(() =>
+  BORDER_COLOR_PRESETS.some((p) => p.color === store.border.color.toLowerCase()),
+)
+
+function onCustomColor(e: Event) {
+  store.border.color = (e.target as HTMLInputElement).value
+}
 </script>
 
 <template>
   <aside class="sidebar">
-    <div>
+    <header class="sidebar-header">
       <h1>Split-Panel Comic Maker</h1>
-      <p class="tagline">
-        Split the page into panels with bars, drop an image into each panel, add close-ups and captions, then
-        export.
-      </p>
-    </div>
+    </header>
 
-    <div class="tool-group">
-      <div class="tool-group-label">Project</div>
-      <div class="button-row">
-        <button title="Start a new, empty project" @click="$emit('new')">✦ New</button>
-        <button title="Open a project saved as .zip" @click="$emit('open')">📂 Open…</button>
-      </div>
-      <button title="Download the project and its images as a .zip" @click="$emit('saveProject')">
-        💾 Save project (.zip)
-      </button>
-      <p class="save-status" :class="saveStatus">{{ statusText }}</p>
-    </div>
-
-    <hr />
-
-    <div class="tool-group">
-      <div class="tool-group-label">Add</div>
-      <button :class="{ active: store.splitMode }" @click="store.splitMode = !store.splitMode">
-        ➗ Split a panel
-      </button>
-      <button @click="$emit('addCircle')">◯ Close-up</button>
-      <button @click="$emit('addCaption')">▭ Caption</button>
-      <button @click="$emit('addBubble')">💬 Speech bubble</button>
-    </div>
-
-    <hr />
-
-    <div class="tool-group">
-      <div class="tool-group-label">Page size (px)</div>
-      <select :value="presetIndex" @change="onPreset">
-        <option :value="-1" disabled>Custom</option>
-        <option v-for="(p, i) in PAGE_PRESETS" :key="p.label" :value="i">
-          {{ p.label }} ({{ p.width }}&times;{{ p.height }})
-        </option>
-      </select>
-      <div class="dimensions">
-        <input
-          type="number"
-          :min="MIN_PAGE_SIDE"
-          :max="MAX_PAGE_SIDE"
-          :value="store.page.width"
-          aria-label="Page width"
-          @change="onDimension('width', $event)"
-        />
-        <span>&times;</span>
-        <input
-          type="number"
-          :min="MIN_PAGE_SIDE"
-          :max="MAX_PAGE_SIDE"
-          :value="store.page.height"
-          aria-label="Page height"
-          @change="onDimension('height', $event)"
-        />
-      </div>
-    </div>
-
-    <hr />
-
-    <div class="tool-group">
-      <div class="tool-group-label">Border &amp; dividers</div>
-      <div class="border-width">
-        <input
-          type="range"
-          min="0"
-          :max="MAX_BORDER_WIDTH"
-          :value="store.border.width"
-          aria-label="Border width"
-          @input="onBorderWidth"
-        />
-        <input
-          type="number"
-          min="0"
-          :max="MAX_BORDER_WIDTH"
-          :value="store.border.width"
-          aria-label="Border width in pixels"
-          @change="onBorderWidth"
-        />
-        <span>px</span>
-      </div>
-      <div class="color-options" role="radiogroup" aria-label="Border color">
-        <button
-          v-for="p in BORDER_COLOR_PRESETS"
-          :key="p.color"
-          role="radio"
-          :aria-checked="store.border.color.toLowerCase() === p.color"
-          :class="{ active: store.border.color.toLowerCase() === p.color }"
-          @click="store.border.color = p.color"
-        >
-          <span class="swatch" :style="{ background: p.color }" />{{ p.label }}
-        </button>
-        <label
-          class="custom-color"
-          :class="{ active: !isPresetColor }"
-          role="radio"
-          :aria-checked="!isPresetColor"
-          title="Pick a custom color"
-        >
-          <span class="swatch" :style="{ background: isPresetColor ? undefined : store.border.color }" />Custom
-          <input type="color" :value="store.border.color" @input="onBorderColor" />
-        </label>
-      </div>
-      <div class="outline-row">
-        <span>Outline</span>
-        <div class="color-options" role="radiogroup" aria-label="Border outline">
-          <button
-            v-for="o in BORDER_OUTLINES"
-            :key="o.value"
-            role="radio"
-            :aria-checked="store.border.outline === o.value"
-            :class="{ active: store.border.outline === o.value }"
-            @click="store.border.outline = o.value"
-          >
-            <span v-if="o.color" class="swatch" :style="{ background: o.color }" />{{ o.label }}
+    <div class="sidebar-body">
+      <section>
+        <h2>Project</h2>
+        <div class="button-row">
+          <button title="Start a new, empty project" @click="$emit('new')">✦ New</button>
+          <button title="Open a project saved as .zip" @click="$emit('open')">📂 Open…</button>
+          <button title="Download the project and its images as a .zip" @click="$emit('saveProject')">
+            💾 Save
           </button>
         </div>
+        <p class="save-status" :class="saveStatus">{{ statusText }}</p>
+      </section>
+
+      <section>
+        <h2>Add</h2>
+        <div class="add-grid">
+          <button
+            :class="{ active: store.splitMode }"
+            title="Then click the panel to split"
+            @click="store.splitMode = !store.splitMode"
+          >
+            <span class="icon">➗</span>Split panel
+          </button>
+          <button @click="$emit('addCircle')"><span class="icon">◯</span>Close-up</button>
+          <button @click="$emit('addCaption')"><span class="icon">▭</span>Caption</button>
+          <button @click="$emit('addBubble')"><span class="icon">💬</span>Speech bubble</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Page size</h2>
+        <div class="page-size">
+          <select :value="presetIndex" aria-label="Page size preset" @change="onPreset">
+            <option :value="-1" disabled>Custom</option>
+            <option v-for="(p, i) in PAGE_PRESETS" :key="p.label" :value="i">{{ p.label }}</option>
+          </select>
+          <input
+            type="number"
+            :min="MIN_PAGE_SIDE"
+            :max="MAX_PAGE_SIDE"
+            :value="store.page.width"
+            aria-label="Page width in pixels"
+            @change="onDimension('width', $event)"
+          />
+          <span>&times;</span>
+          <input
+            type="number"
+            :min="MIN_PAGE_SIDE"
+            :max="MAX_PAGE_SIDE"
+            :value="store.page.height"
+            aria-label="Page height in pixels"
+            @change="onDimension('height', $event)"
+          />
+        </div>
+      </section>
+
+      <section>
+        <h2>Lines</h2>
+        <div class="fields">
+          <span class="field-label">Border</span>
+          <PixelSlider v-model="borderWidth" :max="MAX_BORDER_WIDTH" label="Border width" />
+
+          <span class="field-label" title="Split bars and close-up rings">Dividers</span>
+          <PixelSlider v-model="dividerWidth" :max="MAX_DIVIDER_WIDTH" label="Divider thickness" />
+
+          <span class="field-label">Color</span>
+          <div class="choices" role="radiogroup" aria-label="Line color">
+            <button
+              v-for="p in BORDER_COLOR_PRESETS"
+              :key="p.color"
+              role="radio"
+              :aria-checked="store.border.color.toLowerCase() === p.color"
+              :class="{ active: store.border.color.toLowerCase() === p.color }"
+              @click="store.border.color = p.color"
+            >
+              <span class="swatch" :style="{ background: p.color }" />{{ p.label }}
+            </button>
+            <label
+              class="choice custom-color"
+              :class="{ active: !isPresetColor }"
+              role="radio"
+              :aria-checked="!isPresetColor"
+              title="Pick a custom color"
+            >
+              <span class="swatch" :style="{ background: isPresetColor ? undefined : store.border.color }" />Custom
+              <input type="color" :value="store.border.color" @input="onCustomColor" />
+            </label>
+          </div>
+
+          <span class="field-label" title="A 1px line along both sides of the lines">Outline</span>
+          <div class="choices" role="radiogroup" aria-label="Line outline">
+            <button
+              v-for="o in BORDER_OUTLINES"
+              :key="o.value"
+              role="radio"
+              :aria-checked="store.border.outline === o.value"
+              :class="{ active: store.border.outline === o.value }"
+              @click="store.border.outline = o.value"
+            >
+              <span v-if="o.color" class="swatch" :style="{ background: o.color }" />{{ o.label }}
+            </button>
+          </div>
+        </div>
+        <p class="note">
+          Border runs around the page edge; dividers are the split bars and close-up rings. Color and the 1px
+          outline apply to all of them.
+        </p>
+      </section>
+
+      <details class="tips" open>
+        <summary>How to</summary>
+        <ul>
+          <li><b>Move a bar:</b> drag it. <b>Tilt it:</b> drag an end along the border or another bar.</li>
+          <li><b>Remove a bar:</b> click it, then its ×.</li>
+          <li><b>Set a photo:</b> click an empty panel or close-up, or drop an image on it.</li>
+          <li><b>Reposition a photo:</b> drag a panel, or Ctrl+drag a close-up.</li>
+          <li><b>Zoom a photo:</b> scroll over it.</li>
+          <li><b>Move an element:</b> drag it. Resize or rotate with its handles.</li>
+          <li><b>Edit text:</b> double-click a caption or bubble.</li>
+        </ul>
+      </details>
+    </div>
+
+    <footer class="sidebar-footer">
+      <div class="export-row">
+        <div class="choices format" role="radiogroup" aria-label="Export format">
+          <button
+            v-for="f in FORMATS"
+            :key="f"
+            role="radio"
+            :aria-checked="store.exportFormat === f"
+            :class="{ active: store.exportFormat === f }"
+            @click="store.exportFormat = f"
+          >
+            .{{ f }}
+          </button>
+        </div>
+        <button class="primary" @click="$emit('export')">⬇ Export {{ store.exportFormat.toUpperCase() }}</button>
       </div>
-      <p class="option-note">
-        The color also applies to the split bars and close-up rings. The outline is a 1px line along both sides of
-        them{{ store.border.width ? ' and inside the border' : '' }}.
+      <p class="footnote">
+        {{ store.page.width }}&times;{{ store.page.height }} px &middot; everything stays in your browser
       </p>
-    </div>
-
-    <hr />
-
-    <div class="tool-group">
-      <div class="format-toggle" role="radiogroup" aria-label="Export format">
-        <button
-          v-for="f in FORMATS"
-          :key="f"
-          role="radio"
-          :aria-checked="store.exportFormat === f"
-          :class="{ active: store.exportFormat === f }"
-          @click="store.exportFormat = f"
-        >
-          .{{ f }}
-        </button>
-      </div>
-      <button class="primary" @click="$emit('export')">
-        ⬇ Download {{ store.exportFormat.toUpperCase() }} ({{ store.page.width }}&times;{{ store.page.height }})
-      </button>
-    </div>
-
-    <hr />
-
-    <p class="hint">
-      <b>Move a bar</b> by dragging it; <b>tilt</b> it by dragging an end, which can slide along the border or
-      another bar.<br />
-      <b>Move</b> an element by dragging it.<br />
-      <b>Rotate</b>/<b>resize</b> a selected caption or bubble with its handles.<br />
-      <b>Reposition a photo</b> by dragging a panel, or Ctrl+dragging a close-up.<br />
-      <b>Zoom a photo</b> by scrolling over it.<br />
-      <b>Set a photo</b> by clicking an empty panel or close-up, or dropping an image on it.<br />
-      <b>Edit text</b> by double-clicking a caption or bubble.
-    </p>
-
-    <p class="footnote">Everything stays in your browser &middot; nothing is uploaded anywhere.</p>
+    </footer>
   </aside>
 </template>
 
 <style scoped lang="scss">
+$side-pad: 20px;
+
 .sidebar {
-  flex: 0 0 260px;
-  width: 260px;
-  background: $toolbar-bg;
-  border-right: 1px solid $toolbar-border;
-  padding: 20px 18px;
+  flex: 0 0 360px;
+  width: 360px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  overflow-y: auto; // safety net on very short viewports
+  background: $toolbar-bg;
+  border-right: 1px solid $toolbar-border;
+}
+
+.sidebar-header {
+  padding: 18px $side-pad 12px;
 
   h1 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     letter-spacing: 0.3px;
-    line-height: 1.25;
-  }
-
-  hr {
-    border: none;
-    border-top: 1px solid $toolbar-border;
-    margin: 0;
-    width: 100%;
   }
 }
 
-.tagline {
-  margin: 2px 0 0;
-  font-size: 0.82rem;
-  color: $muted;
-  line-height: 1.4;
+// the middle scrolls on short windows; header and export footer stay put
+.sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 $side-pad 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.tool-group {
+.sidebar-footer {
+  padding: 14px $side-pad 16px;
+  border-top: 1px solid $toolbar-border;
+  background: $toolbar-bg;
+  box-shadow: 0 -6px 14px rgba($ink, 0.05);
+}
+
+section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.tool-group-label {
+h2 {
+  margin: 0;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.6px;
@@ -285,7 +281,8 @@ defineEmits<{
   color: $muted;
 }
 
-button {
+button,
+.choice {
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
@@ -298,8 +295,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  text-align: left;
-  width: 100%;
+  white-space: nowrap;
 
   &:hover {
     background: #fff0f8;
@@ -316,22 +312,11 @@ button {
     background: $ink;
     color: #fff;
     border-color: $ink;
+    justify-content: center;
 
     &:hover {
       background: $ink-soft;
     }
-  }
-}
-
-.dimensions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: $muted;
-
-  input {
-    flex: 1;
-    min-width: 0;
   }
 }
 
@@ -351,103 +336,15 @@ input[type='number'] {
   }
 }
 
-.border-width {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
-  color: $muted;
-
-  input[type='range'] {
-    flex: 1;
-    min-width: 0;
-    accent-color: $pink-deep;
-  }
-
-  input[type='number'] {
-    width: 64px;
-  }
-}
-
-.color-options {
-  display: flex;
-  gap: 6px;
-
-  button,
-  .custom-color {
-    flex: 1 1 0;
-    min-width: 0;
-    justify-content: center;
-    gap: 5px;
-    padding: 7px 4px;
-    font-size: 0.78rem;
-  }
-
-  .custom-color {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 600;
-    border-radius: 8px;
-    border: 1px solid $toolbar-border;
-    background: #fff;
-    cursor: pointer;
-
-    &:hover {
-      background: #fff0f8;
-      border-color: $pink;
-    }
-
-    &.active {
-      background: #fff0f8;
-      border-color: $pink-deep;
-      color: $pink-deep;
-    }
-
-    // the native picker covers the whole label so any click opens it
-    input {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
-    }
-  }
-
-  .swatch {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 4px;
-    border: 1px solid rgba($ink, 0.35);
-    // an empty custom swatch shows a rainbow hint
-    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-  }
-}
-
-.outline-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  > span {
-    font-size: 0.75rem;
-    color: $muted;
-  }
-}
-
-.option-note {
-  margin: 0;
-  font-size: 0.72rem;
-  color: $muted;
-  line-height: 1.4;
-}
-
 .button-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
+
+  button {
+    justify-content: center;
+    padding: 9px 6px;
+  }
 }
 
 .save-status {
@@ -461,36 +358,125 @@ input[type='number'] {
   }
 }
 
-.format-toggle {
-  display: flex;
+.add-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 
-  button {
-    justify-content: center;
-
-    &.active {
-      background: #fff0f8;
-      border-color: $pink-deep;
-      color: $pink-deep;
-    }
+  .icon {
+    width: 1.2em;
+    text-align: center;
   }
 }
 
-.hint {
+.page-size {
+  display: grid;
+  grid-template-columns: 1fr 72px auto 72px;
+  align-items: center;
+  gap: 6px;
+  color: $muted;
+
+  select,
+  input {
+    min-width: 0;
+  }
+}
+
+// label | control rows
+.fields {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  align-items: center;
+  gap: 10px 8px;
+}
+
+.field-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: $ink;
+}
+
+.choices {
+  display: flex;
+  gap: 6px;
+
+  button,
+  .choice {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 4px;
+    font-size: 0.78rem;
+  }
+}
+
+.custom-color {
+  position: relative;
+
+  // the native picker covers the whole button so any click opens it
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba($ink, 0.35);
+  // an empty custom swatch shows a rainbow hint
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+}
+
+.note {
+  margin: 0;
+  font-size: 0.72rem;
+  color: $muted;
+  line-height: 1.4;
+}
+
+.tips {
   font-size: 0.76rem;
   color: $muted;
   line-height: 1.45;
-  margin: 0;
+
+  summary {
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+  }
+
+  ul {
+    margin: 8px 0 0;
+    padding-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
 
   b {
     color: $ink;
   }
 }
 
+.export-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .footnote {
-  margin: auto 0 0;
+  margin: 8px 0 0;
   font-size: 0.68rem;
   color: $muted;
-  line-height: 1.4;
 }
 </style>

@@ -5,6 +5,7 @@ import {
   DEFAULT_BORDER,
   DEFAULT_PAGE,
   MAX_BORDER_WIDTH,
+  MAX_DIVIDER_WIDTH,
   MAX_PAGE_SIDE,
   MIN_PAGE_SIDE,
   OUTLINE_WIDTH,
@@ -130,6 +131,9 @@ export const layout = computed(() => computeLayout(store.layout, stageSize.value
 /** The page border's width in stage units (it's set in output pixels). */
 export const borderStageWidth = computed(() => store.border.width / stageSize.value.exportScale)
 
+/** The split bars' and close-up rings' width in stage units. */
+export const dividerStageWidth = computed(() => store.border.dividerWidth / stageSize.value.exportScale)
+
 /** The border outline's color and width in stage units, or null for none. */
 export const outlineStyle = computed(() => {
   const color = BORDER_OUTLINES.find((o) => o.value === store.border.outline)?.color
@@ -148,6 +152,10 @@ export async function setPageSize(width: number, height: number): Promise<void> 
 
 export function setBorderWidth(width: number): void {
   store.border.width = Math.round(clamp(width, 0, MAX_BORDER_WIDTH))
+}
+
+export function setDividerWidth(width: number): void {
+  store.border.dividerWidth = Math.round(clamp(width, 0, MAX_DIVIDER_WIDTH))
 }
 
 export function selectElement(id: number): void {

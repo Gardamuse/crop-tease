@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { BAR_WIDTH } from '@/lib/constants'
 import { insetPoly, type Point } from '@/lib/layout'
-import { borderStageWidth, layout, outlineStyle, stageSize } from '@/lib/store'
+import { borderStageWidth, dividerStageWidth, layout, outlineStyle, stageSize } from '@/lib/store'
 
 // The outline is traced per panel: each panel's polygon is shrunk to its
 // visible area (in by half a bar along bars, by the border width along the
@@ -17,7 +16,7 @@ const paths = computed(() => {
   const border = borderStageWidth.value
   return layout.value.panels.flatMap((panel) => {
     const inner = insetPoly(panel.poly, (host) => {
-      if (host !== 'border') return BAR_WIDTH / 2 + half
+      if (host !== 'border') return dividerStageWidth.value / 2 + half
       return border > 0 ? border + half : 0 // no border, nothing to outline at the page edge
     })
     return outlinePath(inner.pts, inner.hosts)
