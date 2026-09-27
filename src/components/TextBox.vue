@@ -293,6 +293,8 @@ function onContextMenu(e: MouseEvent) {
   inset: 0;
   outline: none;
   overflow: hidden;
+  // the text is restored as plain text with \n line breaks; show them as breaks
+  white-space: pre-wrap;
   padding: 14px 18px;
   font-family: $ui-font;
   font-weight: 800;
@@ -329,6 +331,11 @@ function onContextMenu(e: MouseEvent) {
     background: $paper;
     border: 4px solid $ink;
     border-radius: 26px;
+    // centered vertically too; "safe" falls back to top-aligned when the
+    // text overflows, so the first lines aren't cut off
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
   }
 }
 
