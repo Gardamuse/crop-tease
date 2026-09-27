@@ -51,11 +51,20 @@ export interface MenuSlider extends MenuEntryBase {
   set: (value: number) => void
 }
 
+/** A labeled dropdown, for picking one of many options; stays open while used. */
+export interface MenuSelect extends MenuEntryBase {
+  kind: 'select'
+  label: string
+  options: { value: string; label: string; /** e.g. a font family to show the option in */ fontFamily?: string }[]
+  value: () => string
+  set: (value: string) => void
+}
+
 export interface MenuSeparator extends MenuEntryBase {
   kind: 'separator'
 }
 
-export type MenuEntry = MenuItem | MenuChoices | MenuSlider | MenuSeparator
+export type MenuEntry = MenuItem | MenuChoices | MenuSlider | MenuSelect | MenuSeparator
 
 /** The single right-click menu shared by the whole app. */
 export const contextMenu = reactive({

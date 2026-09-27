@@ -1,0 +1,3 @@
+whitrabt.ttf was re-saved with fontTools to drop a broken Mac (platform 1)
+character map subtable that claimed zero length; Chrome rejected the
+original file because of it and fell back to a default font.

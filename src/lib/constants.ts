@@ -83,3 +83,33 @@ export const MIN_TYPED_FONT_PX = 1
 export const MAX_TYPED_FONT_PX = 1000
 
 export const TEXT_PALETTE = ['#241b30', '#ffffff', '#ff6fb0', '#78d2d2', '#de3c8d']
+
+export interface TextFont {
+  label: string
+  /** the font file, under public/ (null: the classic mix of a bold sans and serif italic captions) */
+  file: string | null
+}
+
+// The bundled fonts for the comic's text: one for all text (store.textFont),
+// which a text box can override. Each is a single face used for every
+// weight; the files live in public/fonts/text/, with their licenses. Users
+// can add their own fonts too (see textFonts.ts).
+export const TEXT_FONTS = {
+  classic: { label: 'Classic', file: null },
+  'comic-neue': { label: 'Comic Neue', file: 'fonts/text/comic-neue/ComicNeue-Bold.ttf' },
+  komika: { label: 'Komika Hand', file: 'fonts/text/komika/KOMIKAHB.ttf' },
+  'luckiest-guy': { label: 'Luckiest Guy', file: 'fonts/text/luckiest-guy/LuckiestGuy-Regular.ttf' },
+  'patrick-hand': { label: 'Patrick Hand', file: 'fonts/text/patrick-hand/PatrickHand-Regular.ttf' },
+  kalam: { label: 'Kalam', file: 'fonts/text/kalam/Kalam-Bold.ttf' },
+  'my-handwriting-sucks': {
+    label: 'My Handwriting Sucks',
+    file: 'fonts/text/my-handwriting-sucks/MyHandwritingSucks.ttf',
+  },
+  bubbly: { label: 'Bubbly', file: 'fonts/text/bubbly/Bubbly-Regular.otf' },
+  solway: { label: 'Solway', file: 'fonts/text/solway/Solway-Bold.ttf' },
+  'saiba-45': { label: 'Saiba 45', file: 'fonts/text/saiba-45/SAIBA-45.ttf' },
+  'white-rabbit': { label: 'White Rabbit', file: 'fonts/text/white-rabbit/whitrabt.ttf' },
+  'cloister-black': { label: 'Cloister Black', file: 'fonts/text/cloister-black/CloisterBlack.ttf' },
+} as const satisfies Record<string, TextFont>
+
+export type BuiltinFontId = keyof typeof TEXT_FONTS

@@ -9,7 +9,17 @@ import TextBox from './TextBox.vue'
 import { renderStageImage, type ExportFormat, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
-import { borderStageWidth, deselectAll, layout, planSplit, splitPanelAt, stageSize, store } from '@/lib/store'
+import { prepareFonts } from '@/lib/textFonts'
+import {
+  borderStageWidth,
+  deselectAll,
+  layout,
+  planSplit,
+  splitPanelAt,
+  stageSize,
+  store,
+  textFontVars,
+} from '@/lib/store'
 
 const OUTER_PAD = 48 // .stage-outer padding (24px each side)
 
@@ -130,6 +140,9 @@ async function renderImage(
   deselectAll()
   store.splitMode = false
   await nextTick() // let selection chrome disappear before cloning the DOM
+  // the fonts on this page, loaded so the text is measured and drawn in them rather than a fallback
+  const texts = [...store.elements, store.pageNumber].filter((e) => e?.kind === 'text')
+  const fonts = await prepareFonts([store.textFont, ...texts.map((t) => t.font ?? store.textFont)])
   return renderStageImage(
     stageEl.value!,
     {
@@ -137,6 +150,7 @@ async function renderImage(
       height: Math.round(store.pageSize.height * resolution),
       scale: stageSize.value.exportScale * resolution,
       format,
+      fonts,
     },
     onProgress,
   )
@@ -152,7 +166,12 @@ defineExpose({ renderImage })
         ref="stage"
         class="stage"
         :class="{ splitting: store.splitMode }"
-        :style="{ width: `${stageSize.w}px`, height: `${stageSize.h}px`, transform: `scale(${store.displayScale})` }"
+        :style="{
+          width: `${stageSize.w}px`,
+          height: `${stageSize.h}px`,
+          transform: `scale(${store.displayScale})`,
+          ...textFontVars,
+        }"
         @pointerdown="onStagePointerDown"
         @pointerdown.capture="onSplitPointerDown"
         @pointermove="onSplitPointerMove"

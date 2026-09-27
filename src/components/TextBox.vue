@@ -14,6 +14,7 @@ import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { screenCenter, trackPointer } from '@/lib/pointer'
 import { clamp } from '@/lib/math'
+import { fontChoices, fontVars, isMissing, previewFamily, resolveFont } from '@/lib/textFonts'
 import {
   pageNumberText,
   duplicateElement,
@@ -59,6 +60,7 @@ const cursor = ref<string>()
 const faceStyle = computed(() => {
   const outline = el.style === 'none' && el.outline ? textOutline(el.color) : null
   return {
+    ...(el.font && fontVars(el.font)), // its own font if available, else the project's (set on the page)
     fontSize: `${el.fontSize}px`,
     color: el.color,
     ...(outline && { WebkitTextStroke: `${outline.width * 2}px ${outline.color}`, paintOrder: 'stroke fill' }),
@@ -244,6 +246,18 @@ function onContextMenu(e: MouseEvent) {
       })),
     },
     {
+      kind: 'select',
+      label: 'Font',
+      options: [
+        { value: '', label: `Default (${resolveFont(store.textFont).label})` },
+        ...fontChoices.value.map((f) => ({ value: f.id, label: f.label, fontFamily: previewFamily(f.id) })),
+        // a font this browser doesn't have stays listed, so the setting isn't lost
+        ...(el.font && isMissing(el.font) ? [{ value: el.font, label: `${resolveFont(el.font).label} (missing)` }] : []),
+      ],
+      value: () => el.font ?? '',
+      set: (v) => (el.font = v || null),
+    },
+    {
       kind: 'choices',
       label: 'Outline',
       visible: () => el.style === 'none',
@@ -347,8 +361,9 @@ function onContextMenu(e: MouseEvent) {
   // the text is restored as plain text with \n line breaks; show them as breaks
   white-space: pre-wrap;
   padding: 14px 18px;
-  font-family: $ui-font;
-  font-weight: 800;
+  // the project's text font (store.textFontVars), else the classic look
+  font-family: var(--text-font, #{$ui-font});
+  font-weight: var(--text-weight, 800);
   line-height: 1.25;
   text-align: center;
 
@@ -369,9 +384,9 @@ function onContextMenu(e: MouseEvent) {
     background: $paper;
     border: 4px solid $ink;
     border-radius: 4px;
-    font-family: $caption-font;
-    font-style: italic;
-    font-weight: 700;
+    font-family: var(--caption-font, #{$caption-font});
+    font-style: var(--caption-style, italic);
+    font-weight: var(--caption-weight, 700);
     line-height: 1.3;
     text-align: left;
   }

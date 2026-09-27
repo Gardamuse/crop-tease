@@ -19,7 +19,16 @@ import {
   PAGE_PRESETS,
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
-import { removeElement, setBorderWidth, setDividerWidth, setOutlineWidth, setPageSize, store } from '@/lib/store'
+import { addCustomFont, fontChoices, previewFamily, removeCustomFont, resolveFont } from '@/lib/textFonts'
+import {
+  missingFonts,
+  removeElement,
+  setBorderWidth,
+  setDividerWidth,
+  setOutlineWidth,
+  setPageSize,
+  store,
+} from '@/lib/store'
 
 const props = defineProps<{
   saveStatus: SaveStatus
@@ -90,7 +99,7 @@ const closeUpsSummary = computed(() => {
 
 // Which settings sections are unfolded, remembered in this browser.
 const FOLD_KEY = 'crop-tease.open-sections'
-const openSections = reactive<Record<string, boolean>>({ page: false, lines: true, closeUps: false })
+const openSections = reactive<Record<string, boolean>>({ page: false, lines: true, text: false, closeUps: false })
 try {
   Object.assign(openSections, JSON.parse(localStorage.getItem(FOLD_KEY) ?? '{}'))
 } catch {
@@ -108,8 +117,31 @@ function onToggle(key: string, e: Event) {
   openSections[key] = (e.target as HTMLDetailsElement).open
 }
 
+// The user's own fonts, kept in this browser.
+const fontInput = useTemplateRef('fontInput')
+
+async function onFontsChosen() {
+  const input = fontInput.value!
+  const files = [...(input.files ?? [])]
+  input.value = ''
+  for (const file of files) {
+    try {
+      await addCustomFont(file)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err))
+    }
+  }
+}
+
+async function onRemoveFont(name: string) {
+  if (!confirm(`Remove the font "${name}" from this browser? Text using it will be shown in the default font.`)) return
+  await removeCustomFont(name)
+}
+
 // The How-to card, opened from the ? button.
 const helpOpen = ref(false)
+// the app and its save format described for Claude (public/crop-tease-skill.md)
+const SKILL_URL = `${import.meta.env.BASE_URL}crop-tease-skill.md`
 const helpEl = useTemplateRef('help')
 const helpButton = useTemplateRef('helpButton')
 
@@ -273,6 +305,63 @@ onBeforeUnmount(() => {
         </div>
       </details>
 
+      <details class="fold" :open="openSections.text" @toggle="onToggle('text', $event)">
+        <summary>
+          <UiIcon name="chevron" class="chevron" />
+          <span class="fold-title">Text</span>
+          <span class="fold-summary" :class="{ warn: missingFonts.length }">
+            {{ missingFonts.length ? 'font missing' : resolveFont(store.textFont).label }}
+          </span>
+        </summary>
+        <div class="fold-body">
+          <p v-if="missingFonts.length" class="font-missing" role="status">
+            Missing {{ missingFonts.length > 1 ? 'fonts' : 'font' }}:
+            <b v-for="(name, i) in missingFonts" :key="name">{{ name }}{{ i < missingFonts.length - 1 ? ', ' : '' }}</b>.
+            Text using it is shown in the default font until you add the font below or pick another.
+          </p>
+          <div class="font-grid" role="radiogroup" aria-label="Font of all text">
+            <div v-for="font in fontChoices" :key="font.id" class="font-choice">
+              <button
+                role="radio"
+                :aria-checked="store.textFont === font.id"
+                :class="{ active: store.textFont === font.id }"
+                :style="{ fontFamily: previewFamily(font.id) }"
+                :title="
+                  font.id === 'classic'
+                    ? 'A bold sans, with serif italics in square captions'
+                    : font.custom
+                      ? `${font.label} (your font, kept in this browser)`
+                      : font.label
+                "
+                @click="store.textFont = font.id"
+              >
+                {{ font.label }}
+              </button>
+              <button
+                v-if="font.custom"
+                class="font-remove"
+                :title="`Remove ${font.label} from this browser`"
+                :aria-label="`Remove ${font.label}`"
+                @click="onRemoveFont(font.label)"
+              >
+                <UiIcon name="close" />
+              </button>
+            </div>
+            <button class="font-add" title="Use a font file (TTF, OTF, WOFF) from your computer" @click="fontInput?.click()">
+              + Add font…
+            </button>
+          </div>
+          <input
+            ref="fontInput"
+            type="file"
+            accept=".ttf,.otf,.woff,.woff2,font/*"
+            multiple
+            hidden
+            @change="onFontsChosen"
+          />
+        </div>
+      </details>
+
       <details class="fold" :open="openSections.closeUps" @toggle="onToggle('closeUps', $event)">
         <summary>
           <UiIcon name="chevron" class="chevron" />
@@ -349,8 +438,16 @@ onBeforeUnmount(() => {
           <li><b>Zoom a photo:</b> scroll over it.</li>
           <li><b>Move a close-up or text:</b> drag it. <b>Resize it:</b> drag its edge.</li>
           <li><b>Edit text:</b> double-click it. <b>Rotate it:</b> Ctrl+drag.</li>
-          <li><b>Text style, size and color:</b> right-click it.</li>
+          <li><b>Text style, size, color and font:</b> right-click it.</li>
+          <li>
+            <b>Fonts:</b> the Text section sets the font of all text. <b>+ Add font…</b> adds your own font file,
+            kept in this browser. Saved projects (.ct) carry the fonts they use and add them when opened.
+          </li>
         </ul>
+        <p class="help-more">
+          <a :href="SKILL_URL" download="crop-tease-skill.md">Download the Claude skill</a>: a full description of the
+          app and its .ct files, so Claude can lay out comics for you to open and refine here.
+        </p>
       </div>
     </Transition>
   </aside>
@@ -649,6 +746,103 @@ input[type='number'] {
   }
 }
 
+.font-missing {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: $radius;
+  border-left: 2px solid $danger;
+  background: rgba($danger, 0.08);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: $text-main;
+
+  b {
+    font-weight: 700;
+  }
+}
+
+.fold-summary.warn {
+  color: $danger;
+}
+
+// font choices, each named in its own font
+.font-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.font-choice {
+  position: relative;
+  min-width: 0;
+
+  // the remove button of one of the user's fonts shows on hover
+  &:hover .font-remove,
+  &:focus-within .font-remove {
+    opacity: 1;
+  }
+}
+
+.font-choice > button:first-child {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 7px 6px;
+  font-size: 0.95rem;
+  font-size-adjust: cap-height 0.7; // even out fonts drawn much bigger or smaller at the same size
+  font-weight: normal;
+  background: $bg-field;
+
+  &.active {
+    border-color: $accent;
+    color: $accent-ink;
+    box-shadow: 0 0 0 1px $accent-soft;
+  }
+}
+
+// the classic choice shows the classic heavy sans
+.font-choice:first-child > button {
+  font-family: $ui-font;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.font-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  background: $bg-panel-alt;
+  color: $text-dim;
+  opacity: 0;
+  transition: opacity 0.15s;
+
+  &:hover:not(:disabled) {
+    border-color: $danger;
+    color: $danger;
+  }
+}
+
+.font-add {
+  grid-column: 1 / -1;
+  padding: 7px 6px;
+  font-size: 0.78rem;
+  border-style: dashed;
+  background: none;
+  color: $text-dim;
+
+  &:hover:not(:disabled) {
+    color: $accent-ink;
+  }
+}
+
 // label | control rows
 .fields {
   display: grid;
@@ -661,8 +855,10 @@ input[type='number'] {
   min-width: 0;
 }
 
+// same size and color as the checkbox labels
 .field-label {
-  @include micro-label;
+  font-size: 0.8rem;
+  color: $text-main;
   cursor: help;
 }
 
@@ -805,6 +1001,17 @@ input[type='number'] {
     border-radius: 2px;
     background: $accent-soft;
     color: $accent-ink;
+  }
+
+  .help-more {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid $line;
+
+    a {
+      color: $accent-ink;
+      font-weight: 600;
+    }
   }
 }
 

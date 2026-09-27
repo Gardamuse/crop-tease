@@ -20,6 +20,8 @@ export interface ExportOptions {
   /** stage units -> output pixels */
   scale: number
   format: ExportFormat
+  /** font files (as named in the page's @font-face rules) to embed so the text draws in them */
+  fonts?: string[]
 }
 
 /** Marks editor-only chrome that must not appear in the flattened export. */
@@ -60,6 +62,18 @@ async function inlineImages(root: Element, onProgress: (fraction: number) => voi
       onProgress(++done / imgs.length)
     }),
   )
+}
+
+// Like images, fonts can't be loaded by URL from an SVG drawn as an image,
+// so the @font-face sources of the fonts in use are swapped for data URLs.
+async function embedFonts(css: string, files: string[]): Promise<string> {
+  for (const file of files) {
+    const name = file.split('/').pop()!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`url\\(\\s*["']?([^"')]*/${name})["']?\\s*\\)`, 'g')
+    const urls = new Set([...css.matchAll(pattern)].map((m) => m[1]!))
+    for (const url of urls) css = css.split(url).join(await toDataUrl(url))
+  }
+  return css
 }
 
 /** Lets the browser paint (e.g. the progress bar) before the next heavy step. */
@@ -125,11 +139,12 @@ export async function renderStageImage(
   await nextFrame()
 
   const xml = new XMLSerializer().serializeToString(clone)
+  const css = await embedFonts(collectCss(), opts.fonts ?? [])
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${opts.width}" height="${opts.height}">
       <foreignObject width="100%" height="100%">
         <div xmlns="http://www.w3.org/1999/xhtml" style="width:${opts.width}px;height:${opts.height}px;">
-          <style><![CDATA[${collectCss()}]]></style>
+          <style><![CDATA[${css}]]></style>
           ${xml}
         </div>
       </foreignObject>

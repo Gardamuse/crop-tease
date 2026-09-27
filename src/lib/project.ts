@@ -22,14 +22,16 @@ import {
   typeForExtension,
 } from './images'
 import type { Region } from './layout'
-import { store, syncCounters, type ComicElement } from './store'
+import { store, syncCounters, usedFonts, type ComicElement } from './store'
+import { customFontFile, installProjectFont } from './textFonts'
 
 // ---------------------------------------------------------------------------
 // Save format
 //
 // A project is saved as a JSON document plus its images. The same document
 // is used for the browser autosave (IndexedDB) and as project.json inside a
-// saved .ct file (a zip archive), next to images/<id>.<ext>.
+// saved .ct file (a zip archive), next to images/<id>.<ext> and the user's
+// fonts it uses, fonts/<n>.<ext>.
 //
 // VERSIONING: every document carries `version`. When the format changes:
 //   1. bump PROJECT_VERSION,
@@ -115,6 +117,8 @@ const TextSchema = z.object({
   fontSize: z.number().positive(),
   color: z.string(),
   outline: z.boolean().default(true), // added later; older projects had outlines on
+  // added later; kept even if that font isn't available here (it's then drawn in the default)
+  font: z.string().nullable().default(null),
 })
 
 const ElementSchema = z.discriminatedUnion('kind', [
@@ -160,8 +164,16 @@ const ProjectSchema = z.object({
   currentPage: z.number().int().min(0),
   /** text on every page with {n} / {total} filled in, or null */
   pageNumber: TextSchema.nullable(),
+  // added later; kept even if that font isn't available here (it's then drawn in the default)
+  textFont: z.string().default('classic'),
   /** every image the project uses, with its MIME type */
   images: z.array(z.object({ id: z.string(), type: z.string() })),
+  /**
+   * the user's own fonts the project uses, packed in a .ct file as
+   * fonts/<file> so they can be added when it's opened elsewhere (added
+   * later; the autosave leaves this empty, as the browser has the fonts)
+   */
+  fonts: z.array(z.object({ name: z.string(), file: z.string() })).default([]),
 })
 
 export type ProjectDoc = z.infer<typeof ProjectSchema>
@@ -254,10 +266,12 @@ export function serializeProject(): ProjectDoc {
     exportFormat: store.exportFormat,
     border: { ...store.border },
     closeUps: { ...store.closeUps },
+    textFont: store.textFont,
     pages,
     currentPage: store.pageIndex,
     pageNumber: store.pageNumber && { ...toRaw(store.pageNumber) },
     images,
+    fonts: [],
   }
 }
 
@@ -280,6 +294,7 @@ function applyProject(doc: ProjectDoc): void {
   store.exportFormat = doc.exportFormat
   store.border = { ...doc.border }
   store.closeUps = { ...doc.closeUps }
+  store.textFont = doc.textFont
   store.pages = doc.pages.map((page) => ({
     id: page.id,
     layout: loadRegion(page.layout),
@@ -335,7 +350,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.pages, store.pageIndex, store.pageNumber],
+    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.pages, store.pageIndex, store.pageNumber],
     () => {
       if (suspendAutosave) return
       onStatus('saving')
@@ -383,12 +398,18 @@ function imagePath(id: string, type: string): string {
   return `images/${id}.${extensionFor(type)}`
 }
 
-/** Packs the project into a .ct file: a zip of project.json plus images/<id>.<ext>. */
+/** Packs the project into a .ct file: a zip of project.json, images/<id>.<ext> and fonts/<n>.<ext>. */
 export async function buildProjectZip(onProgress?: (fraction: number) => void): Promise<Blob> {
   const doc = serializeProject()
-  const files: Zippable = {
-    [PROJECT_JSON]: [strToU8(JSON.stringify(doc, null, 2)), { level: 6 }],
+  const files: Zippable = {}
+  for (const id of usedFonts.value) {
+    const font = customFontFile(id)
+    if (!font) continue // bundled, classic, or missing here
+    const file = `fonts/${doc.fonts.length + 1}.${font.extension}`
+    files[file] = [new Uint8Array(await font.blob.arrayBuffer()), { level: 6 }]
+    doc.fonts.push({ name: font.name, file })
   }
+  files[PROJECT_JSON] = [strToU8(JSON.stringify(doc, null, 2)), { level: 6 }]
   for (const [i, { id, type }] of doc.images.entries()) {
     const image = getImage(id)
     // images are already compressed, so store them as-is
@@ -423,6 +444,12 @@ export async function openProjectZip(file: Blob): Promise<void> {
   for (const [path, data] of Object.entries(entries)) {
     const m = /^images\/([^/]+)\.([^./]+)$/.exec(path)
     if (m) byId.set(m[1]!, { data, ext: m[2]! })
+  }
+
+  // the user's fonts that came with it, unless this browser has them already
+  for (const { name, file } of doc.fonts) {
+    const data = entries[file]
+    if (data) await installProjectFont(name, data.slice().buffer)
   }
 
   await replaceProject(async () => {

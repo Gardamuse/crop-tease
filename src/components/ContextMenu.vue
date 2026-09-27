@@ -115,6 +115,19 @@ onBeforeUnmount(() => {
             </template>
           </div>
         </div>
+        <label v-else-if="item.kind === 'select'" class="choices-row">
+          <span class="row-label">{{ item.label }}</span>
+          <select
+            class="select"
+            :value="item.value()"
+            :style="{ fontFamily: item.options.find((o) => o.value === item.value())?.fontFamily }"
+            @change="item.set(($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="o in item.options" :key="o.value" :value="o.value" :style="{ fontFamily: o.fontFamily }">
+              {{ o.label }}
+            </option>
+          </select>
+        </label>
         <button v-else role="menuitem" :class="{ danger: item.danger }" @click="run(item)">
           <span class="icon">{{ item.icon }}</span>{{ item.label }}
         </button>
@@ -202,6 +215,14 @@ hr {
   justify-content: space-between;
   gap: 10px;
   padding: 4px 6px 4px 10px;
+}
+
+.select {
+  @include field;
+  min-width: 0;
+  max-width: 190px;
+  padding: 4px 6px;
+  font-size: 0.85rem;
 }
 
 .row-label {

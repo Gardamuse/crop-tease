@@ -3,12 +3,14 @@ import { computed } from 'vue'
 
 import { CLOSE_UP_PLACEHOLDER_COLOR, PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
 import { computeLayout } from '@/lib/layout'
+import { fontVars } from '@/lib/textFonts'
 import {
   borderStageWidth,
   dividerStageWidth,
   pageNumberText,
   stageSize,
   store,
+  textFontVars,
   textOutline,
   type CircleElement,
   type ComicPage,
@@ -38,7 +40,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
 </script>
 
 <template>
-  <svg class="thumb" :viewBox="`0 0 ${stageSize.w} ${stageSize.h}`" aria-hidden="true">
+  <svg class="thumb" :viewBox="`0 0 ${stageSize.w} ${stageSize.h}`" :style="textFontVars" aria-hidden="true">
     <defs>
       <clipPath v-for="p in geom.panels" :id="clipId('panel', p.leaf.id)" :key="p.leaf.id">
         <polygon :points="points(p.poly.pts)" />
@@ -133,6 +135,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :fill="pageNumber.el.color"
         :stroke="pageNumber.el.style === 'none' && pageNumber.el.outline ? pageNumber.outline.color : undefined"
         :stroke-width="pageNumber.outline.width * 2"
+        :style="pageNumber.el.font ? fontVars(pageNumber.el.font) : undefined"
       >
         {{ pageNumber.text }}
       </text>
@@ -148,8 +151,8 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
 }
 
 .page-number {
-  font-family: $ui-font;
-  font-weight: 800;
+  font-family: var(--text-font, #{$ui-font});
+  font-weight: var(--text-weight, 800);
   text-anchor: middle;
   dominant-baseline: central;
   paint-order: stroke fill;

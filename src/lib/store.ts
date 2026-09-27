@@ -37,6 +37,7 @@ import {
   type Region,
 } from './layout'
 import { clamp } from './math'
+import { CLASSIC_VARS, fontVars, isMissing, resolveFont, type FontId } from './textFonts'
 
 interface ElementBase {
   id: number
@@ -66,6 +67,8 @@ export interface TextElement extends ElementBase {
   color: string
   /** unframed text only: a thin black or white outline around the letters */
   outline: boolean
+  /** this text's own font, overriding the project's (store.textFont); null for the project's */
+  font: FontId | null
 }
 
 export type ComicElement = CircleElement | TextElement
@@ -126,6 +129,8 @@ export const store = reactive({
    */
   border: { ...DEFAULT_BORDER },
   closeUps: { ...DEFAULT_CLOSE_UPS },
+  /** the font of all text, on every page */
+  textFont: 'classic' as FontId,
   /**
    * Text shown on every page at the same spot and style, with `{n}` replaced
    * by that page's number and `{total}` by the page count. Null for none.
@@ -268,6 +273,21 @@ export const outlineStyle = computed(() => {
   const color = store.border.outlineColor
   return color ? { color, width: store.border.outlineWidth / stageSize.value.exportScale } : null
 })
+
+/** CSS variables for the project's text font, set on the page; the classic font if it's missing (see fontVars). */
+export const textFontVars = computed(() => fontVars(store.textFont) ?? CLASSIC_VARS)
+
+/** The fonts the project uses: its own and any text box's, on any page. */
+export const usedFonts = computed(() => {
+  const ids = new Set<FontId>([store.textFont])
+  for (const el of [...store.pages.flatMap((p) => p.elements), store.pageNumber]) {
+    if (el?.kind === 'text' && el.font) ids.add(el.font)
+  }
+  return [...ids]
+})
+
+/** Names of the fonts the project uses that aren't available in this browser. */
+export const missingFonts = computed(() => usedFonts.value.filter(isMissing).map((id) => resolveFont(id).label))
 
 /** Width of the outline around unframed text, in output pixels. */
 const TEXT_OUTLINE_WIDTH = 2
@@ -544,6 +564,7 @@ export function addText(opts: Partial<TextElement> = {}): TextElement {
     fontSize: 20,
     color: '#241b30',
     outline: true,
+    font: null,
     ...opts,
   })
   const el = store.elements[store.elements.length - 1] as TextElement
@@ -586,6 +607,7 @@ export function addPageNumber(): void {
     fontSize: 20,
     color: '#ffffff',
     outline: true,
+    font: null,
   }
   selectElement(store.pageNumber.id)
 }
