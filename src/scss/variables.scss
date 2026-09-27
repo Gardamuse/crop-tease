@@ -1,0 +1,20 @@
+// Injected into every component's <style lang="scss"> via vite.config.ts,
+// so keep this to variables and mixins only (nothing that emits CSS).
+$ground: #efe3ec;
+$panel: #ffffff;
+$ink: #241b30;
+$ink-soft: #3a2b52;
+$pink: #ff6fb0;
+$pink-deep: #de3c8d;
+$teal: #78d2d2;
+$muted: #8a7d94;
+$paper: #fffaf3;
+$toolbar-bg: #fbf3f8;
+$toolbar-border: #e3c9dc;
+
+$ui-font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+$caption-font: Georgia, 'Times New Roman', serif;
+
+@mixin handle-shadow {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
