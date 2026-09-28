@@ -395,17 +395,54 @@ export function findElement(id: number): ComicElement | undefined {
 /** How far (stage units) a duplicated close-up or text box is moved from the original. */
 const DUPLICATE_OFFSET = 24
 
+// a plain deep copy (elements hold only JSON-safe data; photos stay shared by id)
+function cloneElement(el: ComicElement): ComicElement {
+  return JSON.parse(JSON.stringify(toRaw(el))) as ComicElement
+}
+
+/** Adds a copy of `source` to the current page, moved by `offset` both ways, and selects it. */
+function placeCopy(source: ComicElement, offset: number): void {
+  const copy = cloneElement(source)
+  copy.id = nextId++
+  copy.x += offset
+  copy.y += offset
+  // a photo that has since gone (e.g. a new project was started) leaves a placeholder
+  if (copy.kind === 'circle' && copy.frame && !getImage(copy.frame.imageId)) copy.frame = null
+  store.elements.push(copy)
+  selectElement(copy.id)
+}
+
 /** Copies a close-up or text box on the current page, a little down and to the right, and selects the copy. */
 export function duplicateElement(id: number): void {
   const source = store.elements.find((e) => e.id === id)
-  if (!source) return
-  // a plain deep copy (elements hold only JSON-safe data; photos stay shared by id)
-  const copy = JSON.parse(JSON.stringify(toRaw(source))) as ComicElement
-  copy.id = nextId++
-  copy.x += DUPLICATE_OFFSET
-  copy.y += DUPLICATE_OFFSET
-  store.elements.push(copy)
-  selectElement(copy.id)
+  if (source) placeCopy(source, DUPLICATE_OFFSET)
+}
+
+/** The close-up or text box last copied (Ctrl+C), as it was then, and how often it's been pasted since. */
+let clipboard: { element: ComicElement; pastes: number } | null = null
+
+/** Copies a close-up or text box for pasting (not the page number, which is one per project). */
+export function copyElement(id: number): boolean {
+  const source = store.elements.find((e) => e.id === id)
+  if (!source) return false
+  clipboard = { element: cloneElement(source), pastes: 0 }
+  return true
+}
+
+/** Pastes the copied item onto the current page; each paste lands a step further along, so they don't stack. */
+export function pasteElement(): boolean {
+  if (!clipboard) return false
+  clipboard.pastes++
+  placeCopy(clipboard.element, DUPLICATE_OFFSET * clipboard.pastes)
+  return true
+}
+
+/** Removes whatever is selected: a close-up, text box, the page number, or a bar. */
+export function removeSelected(): boolean {
+  if (store.selectedId !== null) removeElement(store.selectedId)
+  else if (store.selectedBarId !== null) removeBar(store.selectedBarId)
+  else return false
+  return true
 }
 
 export function removeElement(id: number): void {

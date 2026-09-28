@@ -220,6 +220,13 @@ async function useFile(file: File | undefined) {
       class="inner-outline"
       :style="{ borderWidth: `${outlineStyle.width}px`, borderColor: outlineStyle.color }"
     />
+    <!-- marks the selected close-up, just outside its ring -->
+    <div
+      v-if="selected"
+      class="selection"
+      :style="{ inset: `${-(dividerStageWidth + (outlineStyle?.width ?? 0) + 5)}px` }"
+      v-bind="{ [NO_EXPORT_ATTR]: '' }"
+    />
     <input ref="fileInput" type="file" accept="image/*" v-bind="{ [NO_EXPORT_ATTR]: '' }" @change="onFileChosen" />
   </div>
 </template>
@@ -237,7 +244,8 @@ async function useFile(file: File | undefined) {
 .edge-hit,
 .disc,
 .clip,
-.inner-outline {
+.inner-outline,
+.selection {
   position: absolute;
   border-radius: 50%;
 }
@@ -250,6 +258,10 @@ async function useFile(file: File | undefined) {
 // transparent, only there to catch presses just outside the ring
 .edge-hit {
   background: transparent;
+}
+
+.selection {
+  @include selection-mark(16px);
 }
 
 .inner-outline {

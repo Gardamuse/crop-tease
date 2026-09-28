@@ -6,15 +6,20 @@ import BorderOutlines from './BorderOutlines.vue'
 import ImagePanel from './ImagePanel.vue'
 import SplitBars from './SplitBars.vue'
 import TextBox from './TextBox.vue'
+import { contextMenu } from '@/lib/contextMenu'
 import { renderStageImage, type ExportFormat, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
+import { task } from '@/lib/task'
 import { prepareFonts } from '@/lib/textFonts'
 import {
   borderStageWidth,
+  copyElement,
   deselectAll,
   layout,
+  pasteElement,
   planSplit,
+  removeSelected,
   splitPanelAt,
   stageSize,
   store,
@@ -57,8 +62,26 @@ function fitStage() {
 }
 watch(stageSize, fitStage)
 
+// true while typing somewhere (a text box being edited, a field), where keys are for the text
+function isTyping(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+}
+
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') store.splitMode = false
+  if (isTyping(e.target) || contextMenu.open || task.visible || e.altKey) return
+  const ctrl = e.ctrlKey || e.metaKey
+  let handled = false
+  if (ctrl && e.key.toLowerCase() === 'c') {
+    // leave copying selected page text (e.g. in the help) to the browser
+    if (!window.getSelection()?.isCollapsed) return
+    handled = store.selectedId !== null && copyElement(store.selectedId)
+  } else if (ctrl && e.key.toLowerCase() === 'v') {
+    handled = pasteElement()
+  } else if (!ctrl && !e.shiftKey && e.key === 'Delete') {
+    handled = removeSelected()
+  }
+  if (handled) e.preventDefault()
 }
 
 let observer: ResizeObserver | undefined

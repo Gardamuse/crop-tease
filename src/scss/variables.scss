@@ -40,6 +40,47 @@ $radius: 4px;
 $font-mono: 'Courier Prime Code', 'Manrope', 'Segoe UI', sans-serif;
 $font-heading: 'Manrope', 'Segoe UI', system-ui, sans-serif;
 
+// The mark around a selected close-up or text box, like the panels' corner
+// brackets: accent brackets on all four corners joined by a faint accent
+// line, with a dark edge and a soft glow so it shows on any photo. The
+// element needs position: absolute; its border-radius (e.g. a circle's)
+// shapes the faint line, while the brackets stay square around it.
+@mixin selection-mark($size: 12px) {
+  pointer-events: none;
+  filter: drop-shadow(0 0 1px rgba($shade, 0.85)) drop-shadow(0 0 5px $accent-dim);
+  animation: selection-in 0.15s ease-out;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &::before {
+    border: 1px solid rgba($accent, 0.55);
+    border-radius: inherit;
+  }
+
+  // one border, masked down to its corners
+  &::after {
+    $corner: linear-gradient(#000 0 0);
+    border: 2px solid $accent;
+    mask:
+      $corner top left / $size $size no-repeat,
+      $corner top right / $size $size no-repeat,
+      $corner bottom left / $size $size no-repeat,
+      $corner bottom right / $size $size no-repeat;
+  }
+
+  @keyframes selection-in {
+    from {
+      opacity: 0;
+      transform: scale(1.06);
+    }
+  }
+}
+
 @mixin handle-shadow {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
