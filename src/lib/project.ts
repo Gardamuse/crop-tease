@@ -86,12 +86,20 @@ const OverlaySchema = z.object({
   strength: z.number().min(0).max(100).default(DEFAULT_OVERLAY.strength),
 })
 
+const Level = z.number().int().min(0).max(255)
+
+// a photo's effects (added later, so all optional)
+const PhotoEffectsSchema = {
+  overlay: OverlaySchema.nullable().default(null),
+  blur: z.number().min(0).max(MAX_BLUR).default(0),
+  levels: z.object({ inLow: Level, inHigh: Level, outLow: Level, outHigh: Level }).nullable().default(null),
+}
+
 const LeafSchema = z.object({
   kind: z.literal('leaf'),
   id: z.number().int(),
   frame: FrameSchema.nullable(),
-  overlay: OverlaySchema.nullable().default(null),
-  blur: z.number().min(0).max(MAX_BLUR).default(0), // added later
+  ...PhotoEffectsSchema,
 })
 
 type SavedRegion =
@@ -145,8 +153,7 @@ const ElementSchema = z.discriminatedUnion('kind', [
     kind: z.literal('circle'),
     d: z.number().positive(),
     frame: FrameSchema.nullable(),
-    overlay: OverlaySchema.nullable().default(null),
-    blur: z.number().min(0).max(MAX_BLUR).default(0), // added later
+    ...PhotoEffectsSchema,
   }),
   TextSchema,
 ])
@@ -243,7 +250,10 @@ function saveFrame(f: ImageFrame | null): SavedFrame | null {
 }
 
 function saveRegion(node: Region): SavedRegion {
-  if (node.kind === 'leaf') return { kind: 'leaf', id: node.id, frame: saveFrame(node.frame), overlay: node.overlay && { ...node.overlay }, blur: node.blur }
+  if (node.kind === 'leaf') {
+    const { id, frame, overlay, blur, levels } = toRaw(node)
+    return { kind: 'leaf', id, frame: saveFrame(frame), overlay, blur, levels }
+  }
   return {
     kind: 'split',
     bar: { id: node.bar.id, a: { ...node.bar.a }, b: { ...node.bar.b } },
@@ -315,7 +325,7 @@ function applyProject(doc: ProjectDoc): void {
   }
   const loadRegion = (node: SavedRegion): Region =>
     node.kind === 'leaf'
-      ? { kind: 'leaf', id: node.id, frame: loadFrame(node.frame), overlay: node.overlay, blur: node.blur }
+      ? { ...node, frame: loadFrame(node.frame) }
       : { kind: 'split', bar: node.bar, front: loadRegion(node.front), back: loadRegion(node.back) }
 
   store.name = doc.name

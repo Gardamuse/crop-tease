@@ -1,5 +1,5 @@
 import type { ImageFrame } from './imageFrame'
-import type { ImageOverlay } from './photoEffects'
+import type { PhotoEffects } from './photoEffects'
 import { clamp } from './math'
 
 // The page is divided by split bars into a binary tree. Each bar cuts one
@@ -35,15 +35,12 @@ export interface Bar {
   b: Anchor
 }
 
-export interface Leaf {
+/** A panel; its photo effects stay when the photo changes. */
+export interface Leaf extends PhotoEffects {
   kind: 'leaf'
   id: number
   /** null shows a flat placeholder color */
   frame: ImageFrame | null
-  /** a color over the photo; kept when the photo changes */
-  overlay: ImageOverlay | null
-  /** blur radius in output pixels, 0 for none; kept when the photo changes */
-  blur: number
 }
 
 /** `front` is the region to the left of the bar looking from `a` to `b` (on screen, y down). */

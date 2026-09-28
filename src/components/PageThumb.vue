@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import PhotoFilter from './PhotoFilter.vue'
 import { CLOSE_UP_PLACEHOLDER_COLOR, PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
 import { computeLayout } from '@/lib/layout'
-import { blurRadius, overlayGradient } from '@/lib/photoEffects'
+import { hasPhotoFilter, overlayGradient } from '@/lib/photoEffects'
 import { fontVars } from '@/lib/textFonts'
 import {
   dividerStageWidth,
@@ -66,31 +67,16 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
       <clipPath v-for="c in circles" :id="clipId('circle', c.id)" :key="c.id">
         <circle :cx="c.x + c.d / 2" :cy="c.y + c.d / 2" :r="c.d / 2" />
       </clipPath>
-      <template v-for="p in geom.panels" :key="`blur-${p.leaf.id}`">
-        <filter
-          v-if="p.leaf.frame && p.leaf.blur"
-          :id="clipId('blur-panel', p.leaf.id)"
-          x="0"
-          y="0"
-          width="1"
-          height="1"
-          color-interpolation-filters="sRGB"
-        >
-          <feGaussianBlur :stdDeviation="blurRadius(p.leaf.blur, p.leaf.frame)" edgeMode="duplicate" />
-        </filter>
+      <template v-for="p in geom.panels" :key="`filter-${p.leaf.id}`">
+        <PhotoFilter
+          v-if="p.leaf.frame && hasPhotoFilter(p.leaf)"
+          :id="clipId('filter-panel', p.leaf.id)"
+          :effects="p.leaf"
+          :frame="p.leaf.frame"
+        />
       </template>
-      <template v-for="c in circles" :key="`blur-${c.id}`">
-        <filter
-          v-if="c.frame && c.blur"
-          :id="clipId('blur-circle', c.id)"
-          x="0"
-          y="0"
-          width="1"
-          height="1"
-          color-interpolation-filters="sRGB"
-        >
-          <feGaussianBlur :stdDeviation="blurRadius(c.blur, c.frame)" edgeMode="duplicate" />
-        </filter>
+      <template v-for="c in circles" :key="`filter-${c.id}`">
+        <PhotoFilter v-if="c.frame && hasPhotoFilter(c)" :id="clipId('filter-circle', c.id)" :effects="c" :frame="c.frame" />
       </template>
       <linearGradient
         v-for="o in overlays"
@@ -113,7 +99,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :width="p.leaf.frame.natW"
         :height="p.leaf.frame.natH"
         :transform="`translate(${p.leaf.frame.tx} ${p.leaf.frame.ty}) scale(${p.leaf.frame.scale})`"
-        :filter="p.leaf.blur ? `url(#${clipId('blur-panel', p.leaf.id)})` : undefined"
+        :filter="hasPhotoFilter(p.leaf) ? `url(#${clipId('filter-panel', p.leaf.id)})` : undefined"
         preserveAspectRatio="none"
       />
       <rect
@@ -160,7 +146,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :height="c.frame.natH"
         :transform="`translate(${c.x + c.frame.tx} ${c.y + c.frame.ty}) scale(${c.frame.scale})`"
         :clip-path="`url(#${clipId('circle', c.id)})`"
-        :filter="c.blur ? `url(#${clipId('blur-circle', c.id)})` : undefined"
+        :filter="hasPhotoFilter(c) ? `url(#${clipId('filter-circle', c.id)})` : undefined"
         preserveAspectRatio="none"
       />
       <circle

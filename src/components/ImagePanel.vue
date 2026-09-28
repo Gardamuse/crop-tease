@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 
+import PhotoFilter from './PhotoFilter.vue'
 import { PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import type { PanelGeom } from '@/lib/layout'
 import { openContextMenu } from '@/lib/contextMenu'
-import { blurRadius, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
+import { hasPhotoFilter, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
 import { clearPanelImage, deselectAll, setPanelImage, store } from '@/lib/store'
 
 const props = defineProps<{
@@ -18,6 +19,7 @@ const props = defineProps<{
 
 const fileInput = useTemplateRef('fileInput')
 const frame = computed(() => props.panel.leaf.frame)
+const filterId = computed(() => `photo-filter-panel-${props.panel.leaf.id}`)
 const placeholderColor = computed(() => PANEL_PLACEHOLDER_COLORS[props.index % PANEL_PLACEHOLDER_COLORS.length])
 const dragOver = ref(false)
 let panning = false
@@ -110,17 +112,14 @@ function onDrop(e: DragEvent) {
         Drop or click to<br />set an image
       </span>
     </div>
-    <!-- the blur repeats the photo's edge pixels outward, so its edges stay solid instead of fading -->
-    <svg v-if="frame && panel.leaf.blur" class="filter-defs" aria-hidden="true">
-      <filter :id="`blur-panel-${panel.leaf.id}`" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
-        <feGaussianBlur :stdDeviation="blurRadius(panel.leaf.blur, frame)" edgeMode="duplicate" />
-      </filter>
+    <svg v-if="frame && hasPhotoFilter(panel.leaf)" class="filter-defs" aria-hidden="true">
+      <PhotoFilter :id="filterId" :effects="panel.leaf" :frame="frame" />
     </svg>
     <img
       v-if="frame"
       class="panel-img"
       :src="frame.src"
-      :style="{ transform: frameTransform(frame), filter: panel.leaf.blur ? `url(#blur-panel-${panel.leaf.id})` : undefined }"
+      :style="{ transform: frameTransform(frame), filter: hasPhotoFilter(panel.leaf) ? `url(#${filterId})` : undefined }"
       draggable="false"
     />
     <!-- over the panel's own area, so the fade runs across what's visible -->

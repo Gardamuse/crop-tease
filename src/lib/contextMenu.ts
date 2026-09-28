@@ -67,6 +67,22 @@ export interface MenuSlider extends MenuEntryBase {
   }
 }
 
+/**
+ * A labeled pair of values on one track (a low and a high handle), each also
+ * in a number box, like the level sliders in image editors.
+ */
+export interface MenuRange extends MenuEntryBase {
+  kind: 'range'
+  label: string
+  title?: string
+  min: number
+  max: number
+  /** the least the high value must be above the low one */
+  minGap: number
+  value: () => [number, number]
+  set: (value: [number, number]) => void
+}
+
 /** A labeled dropdown, for picking one of many options; stays open while used. */
 export interface MenuSelect extends MenuEntryBase {
   kind: 'select'
@@ -80,7 +96,7 @@ export interface MenuSeparator extends MenuEntryBase {
   kind: 'separator'
 }
 
-export type MenuEntry = MenuItem | MenuChoices | MenuSlider | MenuSelect | MenuSeparator
+export type MenuEntry = MenuItem | MenuChoices | MenuSlider | MenuRange | MenuSelect | MenuSeparator
 
 /** The single right-click menu shared by the whole app. */
 export const contextMenu = reactive({

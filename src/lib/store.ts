@@ -18,7 +18,7 @@ import {
 } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
-import type { ImageOverlay } from './photoEffects'
+import type { PhotoEffects } from './photoEffects'
 import { getImage, type StoredImage } from './images'
 import {
   anchorAt,
@@ -48,15 +48,12 @@ interface ElementBase {
   z: number
 }
 
-export interface CircleElement extends ElementBase {
+/** A close-up; its photo effects stay when the photo changes. */
+export interface CircleElement extends ElementBase, PhotoEffects {
   kind: 'circle'
   d: number
   /** null shows a flat placeholder color */
   frame: ImageFrame | null
-  /** a color over the photo; kept when the photo changes */
-  overlay: ImageOverlay | null
-  /** blur radius in output pixels, 0 for none; kept when the photo changes */
-  blur: number
 }
 
 export interface TextElement extends ElementBase {
@@ -108,8 +105,11 @@ export function syncCounters(): void {
   zTop = Math.max(10, store.pageNumber?.z ?? 0, ...store.pages.flatMap((p) => p.elements.map((e) => e.z)))
 }
 
+// a photo as it comes, before any effects
+const NO_EFFECTS: PhotoEffects = { overlay: null, blur: 0, levels: null }
+
 function newLeaf(frame: ImageFrame | null = null): Leaf {
-  return { kind: 'leaf', id: nextId++, frame, overlay: null, blur: 0 }
+  return { kind: 'leaf', id: nextId++, frame, ...NO_EFFECTS }
 }
 
 // default: one vertical bar through the middle (top-mid to bottom-mid)
@@ -602,8 +602,7 @@ export function addCircle(image: StoredImage | null, opts: Partial<CircleElement
     z: 0,
     d,
     frame: null,
-    overlay: null,
-    blur: 0,
+    ...NO_EFFECTS,
     ...opts,
   })
   // re-read through the reactive array so later mutations are tracked

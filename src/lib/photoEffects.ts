@@ -3,9 +3,9 @@ import type { ImageFrame } from './imageFrame'
 import { clamp } from './math'
 import { stageSize } from './store'
 
-// Effects on a panel's or close-up's photo: a blur, and a color laid over it
-// fading out from the top or bottom, turned by `angle`. They belong to the panel or close-up, so they stay when the
-// photo is changed.
+// Effects on a panel's or close-up's photo: a blur, levels, and a color
+// laid over it fading out from the top or bottom, turned by `angle`. They
+// belong to the panel or close-up, so they stay when the photo is changed.
 
 /** the strongest blur, in output pixels */
 export const MAX_BLUR = 50 // also in the skill doc (public/crop-tease-skill.md)
@@ -15,6 +15,37 @@ export interface PhotoEffects {
   overlay: ImageOverlay | null
   /** blur radius in output pixels; 0 for none */
   blur: number
+  /** null leaves the photo's tones as they are */
+  levels: Levels | null
+}
+
+/**
+ * Levels, as in Krita but without the midtone: the input range (inLow to
+ * inHigh) is stretched to full black to full white, anything outside it
+ * clipped, and that is then fitted into the output range (outLow to
+ * outHigh). All 0-255, applied to each color channel alike.
+ */
+export interface Levels {
+  inLow: number
+  inHigh: number
+  outLow: number
+  outHigh: number
+}
+
+export const FULL_LEVELS: Levels = { inLow: 0, inHigh: 255, outLow: 0, outHigh: 255 }
+
+/** The levels as two linear steps of an SVG filter; its results are clamped to 0-1 after each. */
+export function levelsTransfers(l: Levels): { slope: number; intercept: number }[] {
+  const stretch = 255 / Math.max(1, l.inHigh - l.inLow)
+  return [
+    { slope: stretch, intercept: (-l.inLow / 255) * stretch },
+    { slope: (l.outHigh - l.outLow) / 255, intercept: l.outLow / 255 },
+  ]
+}
+
+/** Whether the photo needs its filter (blur or levels). */
+export function hasPhotoFilter(e: PhotoEffects): boolean {
+  return e.blur > 0 || e.levels !== null
 }
 
 export type OverlayFrom = 'top' | 'bottom'
@@ -116,6 +147,12 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
     target.overlay = { ...(target.overlay ?? fresh), ...change }
   }
   const isPreset = () => OVERLAY_COLORS.some((c) => c.color === target.overlay?.color.toLowerCase())
+  const levels = () => target.levels ?? FULL_LEVELS
+  const setLevels = (change: Partial<Levels>) => {
+    const l = { ...levels(), ...change }
+    const full = (Object.keys(FULL_LEVELS) as (keyof Levels)[]).every((k) => l[k] === FULL_LEVELS[k])
+    target.levels = full ? null : l
+  }
   return [
     { kind: 'separator', visible: hasPhoto },
     {
@@ -126,6 +163,28 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
       max: MAX_BLUR,
       value: () => target.blur,
       set: (px) => (target.blur = Math.round(clamp(px, 0, MAX_BLUR))),
+    },
+    {
+      kind: 'range',
+      label: 'Levels in',
+      title: 'Input levels: the tones that become black and white',
+      visible: hasPhoto,
+      min: 0,
+      max: 255,
+      minGap: 1,
+      value: () => [levels().inLow, levels().inHigh],
+      set: ([inLow, inHigh]) => setLevels({ inLow, inHigh }),
+    },
+    {
+      kind: 'range',
+      label: 'Levels out',
+      title: 'Output levels: the darkest and lightest tones the photo keeps',
+      visible: hasPhoto,
+      min: 0,
+      max: 255,
+      minGap: 0,
+      value: () => [levels().outLow, levels().outHigh],
+      set: ([outLow, outHigh]) => setLevels({ outLow, outHigh }),
     },
     {
       kind: 'choices',

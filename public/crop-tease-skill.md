@@ -350,6 +350,10 @@ optional; they only show while it has a photo, and stay if it changes):
 
 ```jsonc
 "blur": 8,               // blur radius in output pixels, 0..50 (0 or missing: none)
+"levels": {              // or null / missing for none; all 0..255, per color channel
+  "inLow": 20, "inHigh": 235,  // these input tones become black and white (inLow < inHigh), beyond clipped
+  "outLow": 0, "outHigh": 255  // then fitted into this output range
+},
 "overlay": {             // a color fading over the photo, or null / missing for none
   "from": "bottom",      // "top" | "bottom": the side it fades from
   "angle": 0,            // degrees clockwise the fade is turned, -90..90

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 
+import PhotoFilter from './PhotoFilter.vue'
 import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
 import { openContextMenu } from '@/lib/contextMenu'
-import { blurRadius, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
+import { hasPhotoFilter, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
@@ -214,16 +215,13 @@ async function useFile(file: File | undefined) {
     />
     <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->
     <div class="clip" :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }">
-      <!-- the blur repeats the photo's edge pixels outward, so its edges stay solid instead of fading -->
-      <svg v-if="el.frame && el.blur" class="filter-defs" aria-hidden="true">
-        <filter :id="`blur-circle-${el.id}`" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
-          <feGaussianBlur :stdDeviation="blurRadius(el.blur, el.frame)" edgeMode="duplicate" />
-        </filter>
+      <svg v-if="el.frame && hasPhotoFilter(el)" class="filter-defs" aria-hidden="true">
+        <PhotoFilter :id="`photo-filter-circle-${el.id}`" :effects="el" :frame="el.frame" />
       </svg>
       <img
         v-if="el.frame"
         :src="el.frame.src"
-        :style="{ transform: frameTransform(el.frame), filter: el.blur ? `url(#blur-circle-${el.id})` : undefined }"
+        :style="{ transform: frameTransform(el.frame), filter: hasPhotoFilter(el) ? `url(#photo-filter-circle-${el.id})` : undefined }"
         draggable="false"
       />
       <span v-else class="hint" v-bind="{ [NO_EXPORT_ATTR]: '' }">Click or drop<br />an image</span>

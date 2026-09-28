@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import PixelSlider from './PixelSlider.vue'
+import RangeSlider from './RangeSlider.vue'
 import UiIcon from './UiIcon.vue'
 import { closeContextMenu, contextMenu, type MenuItem } from '@/lib/contextMenu'
 
@@ -122,6 +123,18 @@ onBeforeUnmount(() => {
             :max="item.max"
             :steps="item.steps"
             :unit="item.unit"
+            :label="item.label"
+            @update:model-value="item.set"
+          />
+        </div>
+        <div v-else-if="item.kind === 'range'" class="slider-row" :title="item.title">
+          <span class="row-label">{{ item.label }}</span>
+          <RangeSlider
+            class="slider"
+            :model-value="item.value()"
+            :min="item.min"
+            :max="item.max"
+            :min-gap="item.minGap"
             :label="item.label"
             @update:model-value="item.set"
           />
@@ -254,7 +267,7 @@ hr {
 
   // so stacked sliders line up
   > .row-label {
-    min-width: 64px;
+    min-width: 84px;
   }
 
   .slider {
