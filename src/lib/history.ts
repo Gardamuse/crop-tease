@@ -39,6 +39,7 @@ function projectState() {
     closeUps: store.closeUps,
     textFont: store.textFont,
     textSize: store.textSize,
+    photoFilters: store.photoFilters,
     pages: store.pages,
     pageNumber: store.pageNumber,
   }
@@ -63,6 +64,7 @@ function restore(step: Step): void {
   store.closeUps = s.closeUps
   store.textFont = s.textFont
   store.textSize = s.textSize
+  Object.assign(store.photoFilters, s.photoFilters) // the same object: the sidebar's controls hold it
   store.pages = s.pages
   store.pageNumber = s.pageNumber
   store.pageIndex = Math.min(step.page, store.pages.length - 1)

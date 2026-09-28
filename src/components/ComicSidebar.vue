@@ -6,6 +6,7 @@ export type SaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 
 import ColorChoices from './ColorChoices.vue'
+import MenuEntries from './MenuEntries.vue'
 import PixelSlider from './PixelSlider.vue'
 import UiIcon from './UiIcon.vue'
 import {
@@ -23,6 +24,7 @@ import {
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
 import { clamp } from '@/lib/math'
+import { toneEntries } from '@/lib/photoEffects'
 import { addCustomFont, fontChoices, previewFamily, removeCustomFont, resolveFont } from '@/lib/textFonts'
 import {
   missingFonts,
@@ -106,6 +108,15 @@ const pageSummary = computed(() => {
   return `${PAGE_PRESETS[presetIndex.value]?.label.split(' ')[0] ?? 'Custom'} · ${width}×${height}`
 })
 const linesSummary = computed(() => `${store.border.width} / ${store.border.dividerWidth} px`)
+const photosSummary = computed(() => {
+  const { levels, colorBalance } = store.photoFilters
+  const parts = [levels && 'levels', colorBalance && 'color balance'].filter(Boolean)
+  return parts.length ? parts.join(', ') : 'as they are'
+})
+
+// the project's levels and color balance, with the same controls as a photo's menu
+const photoFilterEntries = toneEntries(store.photoFilters, 'global', () => true, 'global')
+
 const closeUpsSummary = computed(() => {
   const parts = [store.closeUps.shadow && 'shadow', store.closeUps.withinBorder && 'inside border'].filter(Boolean)
   return parts.length ? parts.join(', ') : 'plain'
@@ -113,7 +124,13 @@ const closeUpsSummary = computed(() => {
 
 // Which settings sections are unfolded, remembered in this browser.
 const FOLD_KEY = 'crop-tease.open-sections'
-const openSections = reactive<Record<string, boolean>>({ page: false, lines: true, text: false, closeUps: false })
+const openSections = reactive<Record<string, boolean>>({
+  page: false,
+  lines: true,
+  text: false,
+  closeUps: false,
+  photos: false,
+})
 try {
   Object.assign(openSections, JSON.parse(localStorage.getItem(FOLD_KEY) ?? '{}'))
 } catch {
@@ -406,6 +423,18 @@ onBeforeUnmount(() => {
           </label>
         </div>
       </details>
+
+      <details class="fold" :open="openSections.photos" @toggle="onToggle('photos', $event)">
+        <summary>
+          <UiIcon name="chevron" class="chevron" />
+          <span class="fold-title">Filters</span>
+          <span class="fold-summary">{{ photosSummary }}</span>
+        </summary>
+        <div class="fold-body">
+          <p class="fold-note">Right-click image to set local filter instead.</p>
+          <MenuEntries class="photo-filters" :items="photoFilterEntries" />
+        </div>
+      </details>
     </div>
 
     <footer class="sidebar-footer">
@@ -462,7 +491,7 @@ onBeforeUnmount(() => {
           </li>
           <li>
             <b>Photos:</b> click an empty panel or close-up, or drop an image on it. Drag to reposition
-            (Ctrl+drag in a close-up), scroll to zoom. Right-click to change it or add effects: blur, levels, color balance, a color overlay.
+            (Ctrl+drag in a close-up), scroll to zoom. Right-click to change it or add effects: blur, a color overlay, levels, color balance. The Filters section sets levels and color balance for all photos.
           </li>
           <li>
             <b>Close-ups and text:</b> drag to move, drag the edge to resize, right-click for options.
@@ -497,8 +526,8 @@ $side-pad: 18px;
 .sidebar {
   position: relative;
   z-index: 20; // the help card floats over the workspace
-  flex: 0 0 304px;
-  width: 304px;
+  flex: 0 0 364px;
+  width: 364px;
   display: flex;
   flex-direction: column;
   background: $bg-panel;
@@ -791,6 +820,37 @@ input[type='number'] {
 
   input {
     min-width: 0;
+  }
+}
+
+.fold-note {
+  margin: 0 0 2px;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: $text-dim;
+}
+
+// the menu's rows, sitting flush with the section's own and labeled like its fields
+.photo-filters {
+  margin: 0 -6px 0 -10px;
+
+  :deep(.row-label),
+  :deep(.range-slider .label) {
+    font-family: inherit;
+    font-size: 0.8rem;
+    text-transform: none;
+    letter-spacing: normal;
+    color: $text-main;
+  }
+
+  // the narrower sidebar: a row of choices too wide for it moves below its label
+  :deep(.choices-row) {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  :deep(.choices) {
+    margin-left: auto;
   }
 }
 

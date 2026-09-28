@@ -142,7 +142,7 @@ function onContextMenu(e: MouseEvent) {
   selectElement(el.id)
   openContextMenu(e, [
     { label: el.frame ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
-    ...photoMenuEntries(el, () => !!el.frame),
+    ...photoMenuEntries(el, () => !!el.frame, `photo-${el.id}`),
     { kind: 'separator' },
     { label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) },
     { label: 'Delete close-up', icon: '🗑', danger: true, action: () => removeElement(el.id) },

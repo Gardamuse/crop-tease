@@ -1,9 +1,9 @@
 import { ref } from 'vue'
 
-import type { MenuEntry } from './contextMenu'
+import type { MenuChoice, MenuEntry } from './contextMenu'
 import type { ImageFrame } from './imageFrame'
 import { clamp } from './math'
-import { stageSize } from './store'
+import { stageSize, store } from './store'
 
 // Effects on a panel's or close-up's photo: a blur, levels, and a color
 // laid over it fading out from the top or bottom, turned by `angle`. They
@@ -17,9 +17,9 @@ export interface PhotoEffects {
   overlay: ImageOverlay | null
   /** blur radius in output pixels; 0 for none */
   blur: number
-  /** null when levels are off (its sliders hidden); FULL_LEVELS while on but untouched */
+  /** null to follow the project's (store.photoFilters); FULL_LEVELS while its own but untouched */
   levels: Levels | null
-  /** null when color balance is off (its sliders hidden) */
+  /** null to follow the project's (store.photoFilters) */
   colorBalance: ColorBalance | null
 }
 
@@ -123,9 +123,19 @@ export function balanceTables(b: ColorBalance): [string, string, string] {
   return tables.map((t) => t.map((v) => v.toFixed(4)).join(' ')) as [string, string, string]
 }
 
+/** A photo's effects as drawn: its own levels and color balance, or else the project's. */
+export function effectiveEffects(e: PhotoEffects): PhotoEffects {
+  return {
+    ...e,
+    levels: e.levels ?? store.photoFilters.levels,
+    colorBalance: e.colorBalance ?? store.photoFilters.colorBalance,
+  }
+}
+
 /** Whether the photo needs its filter (blur, or levels or color balance that change something). */
 export function hasPhotoFilter(e: PhotoEffects): boolean {
-  return e.blur > 0 || changesTones(e.levels) || changesColor(e.colorBalance)
+  const { blur, levels, colorBalance } = effectiveEffects(e)
+  return blur > 0 || changesTones(levels) || changesColor(colorBalance)
 }
 
 export type OverlayFrom = 'top' | 'bottom'
@@ -222,42 +232,76 @@ export function blurRadius(blur: number, frame: ImageFrame): number {
 /** which tone range the color balance sliders show, shared by all photo menus while the app runs */
 const balanceRange = ref<ToneRange>('midtones')
 
-/** The right-click menu entries for a photo's effects, shown while it has a photo. */
-export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean): MenuEntry[] {
-  const on = () => hasPhoto() && target.overlay !== null
-  const set = (change: Partial<ImageOverlay>) => {
-    const fresh: ImageOverlay = { from: 'top', angle: 0, color: OVERLAY_COLORS[0]!.color, ...DEFAULT_OVERLAY }
-    target.overlay = { ...(target.overlay ?? fresh), ...change }
-  }
-  const isPreset = () => OVERLAY_COLORS.some((c) => c.color === target.overlay?.color.toLowerCase())
+/** The settings levels and color balance can come from: a photo's own, or the project's (for all photos). */
+export type ToneFilters = Pick<PhotoEffects, 'levels' | 'colorBalance'>
+
+/**
+ * Levels, color balance and overlays that were switched off (to Off or
+ * None, or a photo's to Global), by whose they were (memoryKey) and which:
+ * switching back on brings them back. Kept only while the app runs, never
+ * saved.
+ */
+const switchedOff = new Map<string, unknown>()
+
+/** a deep copy, so settings put aside or copied don't change with the original */
+const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value))
+
+/**
+ * The menu entries for levels and color balance. The project's ('global')
+ * switch each Off and On; a photo's ('local') switch between following the
+ * project's (Global) and having its own (Local). Switched back on, they're
+ * as they were when switched off this session, else a photo's start from
+ * the project's. memoryKey tells whose they are ('global', or the photo's
+ * panel or close-up id), as the settings objects change on undo.
+ */
+export function toneEntries(
+  target: ToneFilters,
+  mode: 'global' | 'local',
+  shown: () => boolean,
+  memoryKey: string,
+): MenuEntry[] {
   const levels = () => target.levels ?? FULL_LEVELS
   const setLevels = (change: Partial<Levels>) => (target.levels = { ...levels(), ...change })
-  const levelsOn = () => hasPhoto() && target.levels !== null
-  const balanceOn = () => hasPhoto() && target.colorBalance !== null
+  const levelsOn = () => shown() && target.levels !== null
+  const balanceOn = () => shown() && target.colorBalance !== null
+  // the row's two choices: off (following the project's, for a photo) or set here
+  function switchOptions<K extends keyof ToneFilters>(field: K, start: () => NonNullable<ToneFilters[K]>, what: string) {
+    const local = mode === 'local'
+    const memory = `${memoryKey}:${field}`
+    const What = `${what[0]!.toUpperCase()}${what.slice(1)}`
+    const options: MenuChoice[] = [
+      {
+        label: local ? 'Global' : 'Off',
+        title: local ? "Follow the project's (in the sidebar's Filters section)" : undefined,
+        active: () => target[field] === null,
+        pick: () => {
+          if (target[field] === null) return
+          switchedOff.set(memory, copy(target[field]))
+          target[field] = null
+        },
+      },
+      {
+        label: local ? 'Local' : 'On',
+        title: local ? `${What}, for this photo only` : `${What}, for all photos without a local one`,
+        active: () => target[field] !== null,
+        pick: () => {
+          if (target[field] !== null) return
+          target[field] = copy((switchedOff.get(memory) as ToneFilters[K] | undefined) ?? start())
+        },
+      },
+    ]
+    return options
+  }
   return [
-    { kind: 'separator', visible: hasPhoto },
-    {
-      kind: 'slider',
-      label: 'Blur',
-      visible: hasPhoto,
-      min: 0,
-      max: MAX_BLUR,
-      value: () => target.blur,
-      set: (px) => (target.blur = Math.round(clamp(px, 0, MAX_BLUR))),
-    },
     {
       kind: 'choices',
       label: 'Levels',
-      visible: hasPhoto,
-      options: [
-        { label: 'Off', active: () => target.levels === null, pick: () => (target.levels = null) },
-        {
-          label: 'On',
-          title: "Set the photo's black and white points, as in Krita",
-          active: () => target.levels !== null,
-          pick: () => (target.levels ??= { ...FULL_LEVELS }),
-        },
-      ],
+      visible: shown,
+      options: switchOptions(
+        'levels',
+        () => store.photoFilters.levels ?? FULL_LEVELS,
+        'black and white points, as in Krita',
+      ),
     },
     {
       kind: 'range',
@@ -284,16 +328,12 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
     {
       kind: 'choices',
       label: 'Color balance',
-      visible: hasPhoto,
-      options: [
-        { label: 'Off', active: () => target.colorBalance === null, pick: () => (target.colorBalance = null) },
-        {
-          label: 'On',
-          title: "Shift the photo's shadows, midtones and highlights toward colors, as in Krita",
-          active: () => target.colorBalance !== null,
-          pick: () => (target.colorBalance ??= neutralBalance()),
-        },
-      ],
+      visible: shown,
+      options: switchOptions(
+        'colorBalance',
+        () => store.photoFilters.colorBalance ?? neutralBalance(),
+        'color shifts for shadows, midtones and highlights, as in Krita',
+      ),
     },
     {
       kind: 'choices',
@@ -344,12 +384,42 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
         },
       ],
     },
+  ]
+}
+
+/** The right-click menu entries for a photo's effects, shown while it has a photo. */
+export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean, memoryKey: string): MenuEntry[] {
+  const on = () => hasPhoto() && target.overlay !== null
+  // like levels and color balance, an overlay set to None this session comes back as it was
+  const memory = `${memoryKey}:overlay`
+  const set = (change: Partial<ImageOverlay>) => {
+    const fresh: ImageOverlay = { from: 'top', angle: 0, color: OVERLAY_COLORS[0]!.color, ...DEFAULT_OVERLAY }
+    const start = target.overlay ?? (switchedOff.get(memory) as ImageOverlay | undefined) ?? fresh
+    target.overlay = { ...copy(start), ...change }
+  }
+  const setNone = () => {
+    if (target.overlay === null) return
+    switchedOff.set(memory, copy(target.overlay))
+    target.overlay = null
+  }
+  const isPreset = () => OVERLAY_COLORS.some((c) => c.color === target.overlay?.color.toLowerCase())
+  return [
+    { kind: 'separator', visible: hasPhoto },
+    {
+      kind: 'slider',
+      label: 'Blur',
+      visible: hasPhoto,
+      min: 0,
+      max: MAX_BLUR,
+      value: () => target.blur,
+      set: (px) => (target.blur = Math.round(clamp(px, 0, MAX_BLUR))),
+    },
     {
       kind: 'choices',
       label: 'Overlay',
       visible: hasPhoto,
       options: [
-        { label: 'None', active: () => target.overlay === null, pick: () => (target.overlay = null) },
+        { label: 'None', active: () => target.overlay === null, pick: setNone },
         ...OVERLAY_FROM.map((f) => ({
           label: f.label,
           title: `A color fading from the ${f.value}`,
@@ -408,5 +478,8 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
         },
       ],
     },
+    // last, as they can come from the project's settings
+    { kind: 'separator', visible: hasPhoto },
+    ...toneEntries(target, 'local', hasPhoto, memoryKey),
   ]
 }

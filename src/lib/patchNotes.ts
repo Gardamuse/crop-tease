@@ -11,6 +11,7 @@ export const PATCH_NOTES: { version: string; notes: string[] }[] = [
       'Speech bubble tails can sit on either edge at each corner: four more spots.',
       "Levels for a photo, like Krita's: set its input and output black and white points.",
       "Color balance for a photo, like Krita's: shift its shadows, midtones and highlights toward red, green or blue, with or without keeping its lightness.",
+      'Levels and color balance for every photo at once, in the new Filters section of the sidebar; a photo can have local ones instead.',
       'Blur a photo, or lay a color over it fading from the top or the bottom, with its angle, size and strength: right-click the photo.',
       "Turn the page border off for a single page from its right-click menu in the page strip. That page shows no page number; if it's the first page, it's a cover and numbering starts after it.",
       'Fixed: a right-click menu that grew while open could run off the bottom of the window.',

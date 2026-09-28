@@ -18,7 +18,7 @@ import {
 } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
-import type { PhotoEffects } from './photoEffects'
+import type { ColorBalance, Levels, PhotoEffects } from './photoEffects'
 import { getImage, type StoredImage } from './images'
 import {
   anchorAt,
@@ -142,6 +142,12 @@ export const store = reactive({
   textFont: 'classic' as FontId,
   /** the size of all text that hasn't been given its own, in stage units */
   textSize: DEFAULT_TEXT_SIZE,
+  /**
+   * levels and color balance for every photo without its own; null for
+   * none. Always this one object (loading replaces its contents), as the
+   * sidebar's controls hold on to it.
+   */
+  photoFilters: { levels: null as Levels | null, colorBalance: null as ColorBalance | null },
   /**
    * Text shown on every page at the same spot and style, with `{n}` replaced
    * by that page's number and `{total}` by the page count. Null for none.

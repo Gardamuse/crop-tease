@@ -91,19 +91,19 @@ const Balance = z.number().transform((v) => Math.round(clamp(v, -MAX_BALANCE, MA
 const BalanceRange = z.tuple([Balance, Balance, Balance])
 
 // a photo's effects (added later, so all optional)
+const LevelsSchema = z.object({ inLow: Level, inHigh: Level, outLow: Level, outHigh: Level })
+const ColorBalanceSchema = z.object({
+  shadows: BalanceRange,
+  midtones: BalanceRange,
+  highlights: BalanceRange,
+  preserveLuminosity: z.boolean(),
+})
+
 const PhotoEffectsSchema = {
   overlay: OverlaySchema.nullable().default(null),
   blur: z.number().min(0).max(MAX_BLUR).default(0),
-  levels: z.object({ inLow: Level, inHigh: Level, outLow: Level, outHigh: Level }).nullable().default(null),
-  colorBalance: z
-    .object({
-      shadows: BalanceRange,
-      midtones: BalanceRange,
-      highlights: BalanceRange,
-      preserveLuminosity: z.boolean(),
-    })
-    .nullable()
-    .default(null),
+  levels: LevelsSchema.nullable().default(null),
+  colorBalance: ColorBalanceSchema.nullable().default(null),
 }
 
 const LeafSchema = z.object({
@@ -211,6 +211,10 @@ const ProjectSchema = z.object({
    * in older projects, whose texts at the old default size then follow it)
    */
   textSize: z.number().positive().optional(),
+  /** levels and color balance for every photo without its own (added later) */
+  photoFilters: z
+    .object({ levels: LevelsSchema.nullable(), colorBalance: ColorBalanceSchema.nullable() })
+    .default({ levels: null, colorBalance: null }),
   /** every image the project uses, with its MIME type */
   images: z.array(z.object({ id: z.string(), type: z.string() })),
   /**
@@ -317,6 +321,7 @@ export function serializeProject(): ProjectDoc {
     closeUps: { ...store.closeUps },
     textFont: store.textFont,
     textSize: store.textSize,
+    photoFilters: toRaw(store.photoFilters),
     pages,
     currentPage: store.pageIndex,
     pageNumber: store.pageNumber && { ...toRaw(store.pageNumber) },
@@ -346,6 +351,7 @@ function applyProject(doc: ProjectDoc): void {
   store.closeUps = { ...doc.closeUps }
   store.textFont = doc.textFont
   store.textSize = doc.textSize ?? DEFAULT_TEXT_SIZE
+  Object.assign(store.photoFilters, doc.photoFilters) // the same object: the sidebar's controls hold it
   // before the project had a text size, a text at the default size hadn't been resized
   const loadText = (el: z.infer<typeof TextSchema>): TextElement =>
     doc.textSize === undefined && el.fontSize === DEFAULT_TEXT_SIZE ? { ...el, fontSize: null } : { ...el }
@@ -405,7 +411,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.textSize, store.pages, store.pageIndex, store.pageNumber],
+    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.textSize, store.photoFilters, store.pages, store.pageIndex, store.pageNumber],
     () => {
       if (suspendAutosave) return
       onStatus('saving')

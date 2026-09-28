@@ -2,29 +2,32 @@
 import { computed } from 'vue'
 
 import type { ImageFrame } from '@/lib/imageFrame'
-import { balanceTables, blurRadius, levelsTransfers, type PhotoEffects } from '@/lib/photoEffects'
+import { balanceTables, blurRadius, effectiveEffects, levelsTransfers, type PhotoEffects } from '@/lib/photoEffects'
 
 // The SVG filter for a photo's blur, levels and color balance, applied in
 // that order, for use inside an <svg>. Its region is the photo itself: the
 // blur repeats the edge pixels outward, so the photo's edges stay solid
 // instead of fading.
-const { effects, frame } = defineProps<{
+const props = defineProps<{
   id: string
+  /** the photo's own; the project's levels and color balance stand in where it has none */
   effects: PhotoEffects
   frame: ImageFrame
 }>()
 
+const effects = computed(() => effectiveEffects(props.effects))
+
 // each pixel's lightness (the channels' average) in all three channels, alpha kept
 const LIGHTNESS = '1 1 1 0 0  1 1 1 0 0  1 1 1 0 0  0 0 0 3 0'.replace(/\S+/g, (n) => String(Number(n) / 3))
 
-const transfers = computed(() => (effects.levels ? levelsTransfers(effects.levels) : []))
+const transfers = computed(() => (effects.value.levels ? levelsTransfers(effects.value.levels) : []))
 const balance = computed(() => {
-  const b = effects.colorBalance
+  const b = effects.value.colorBalance
   return b && { tables: balanceTables(b), preserveLuminosity: b.preserveLuminosity }
 })
 
 // which result each stage starts from
-const afterBlur = computed(() => (effects.blur ? 'blurred' : 'SourceGraphic'))
+const afterBlur = computed(() => (effects.value.blur ? 'blurred' : 'SourceGraphic'))
 const afterLevels = computed(() => (transfers.value.length ? 'leveled' : afterBlur.value))
 </script>
 
@@ -33,7 +36,7 @@ const afterLevels = computed(() => (transfers.value.length ? 'leveled' : afterBl
     <feGaussianBlur
       v-if="effects.blur"
       in="SourceGraphic"
-      :stdDeviation="blurRadius(effects.blur, frame)"
+      :stdDeviation="blurRadius(effects.blur, props.frame)"
       edgeMode="duplicate"
       result="blurred"
     />
