@@ -73,6 +73,8 @@ const faceStyle = computed(() => {
 // The page-number text stores a template ({n}, {total}) and shows it filled
 // in for the current page; while being edited it shows the template itself.
 const isPageNumber = computed(() => store.pageNumber?.id === el.id)
+// unframed text has no visible edge, so its bounds show while it's selected
+const showBounds = computed(() => el.style === 'none' && store.selectedId === el.id && !editing.value)
 const shownText = computed(() => (isPageNumber.value ? pageNumberText(el.text, store.pageIndex) : el.text))
 
 onMounted(() => {
@@ -319,6 +321,7 @@ function onContextMenu(e: MouseEvent) {
   >
     <!-- invisible grab zone reaching a little past the edge, so it's easy to catch -->
     <div class="edge-hit" :style="{ inset: `${-EDGE_SLOP / store.displayScale}px` }" v-bind="{ [NO_EXPORT_ATTR]: '' }" />
+    <div v-if="showBounds" class="bounds" v-bind="{ [NO_EXPORT_ATTR]: '' }" />
     <div
       ref="face"
       class="face"
@@ -360,6 +363,16 @@ function onContextMenu(e: MouseEvent) {
 
 .edge-hit {
   position: absolute;
+}
+
+// the selected unframed text's edges, where it can be grabbed to resize;
+// fainter than the editing outline, and on top of the text
+.bounds {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  outline: 2px dashed rgba($teal, 0.7);
+  pointer-events: none;
 }
 
 .face {
