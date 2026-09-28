@@ -124,6 +124,10 @@ A page's `layout` is a binary tree. A **leaf** is one panel:
 { "kind": "leaf", "id": 2, "frame": null }   // frame: a photo (see Photos) or null
 ```
 
+A panel without a photo shows a flat color: `"fill": "#20304a"` (#rrggbb),
+or a pastel placeholder color if it's null or missing. Exports show it too,
+so set a fill (e.g. white or black) on panels meant to stay empty.
+
 A **split** cuts a region in two with one straight bar:
 
 ```jsonc

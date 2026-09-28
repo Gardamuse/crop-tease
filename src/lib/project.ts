@@ -110,6 +110,8 @@ const LeafSchema = z.object({
   kind: z.literal('leaf'),
   id: z.number().int(),
   frame: FrameSchema.nullable(),
+  // added later
+  fill: z.string().regex(/^#[0-9a-f]{6}$/i).nullable().default(null),
   ...PhotoEffectsSchema,
 })
 
@@ -266,8 +268,8 @@ function saveFrame(f: ImageFrame | null): SavedFrame | null {
 
 function saveRegion(node: Region): SavedRegion {
   if (node.kind === 'leaf') {
-    const { id, frame, overlay, blur, levels, colorBalance } = toRaw(node)
-    return { kind: 'leaf', id, frame: saveFrame(frame), overlay, blur, levels, colorBalance }
+    const { id, frame, fill, overlay, blur, levels, colorBalance } = toRaw(node)
+    return { kind: 'leaf', id, frame: saveFrame(frame), fill, overlay, blur, levels, colorBalance }
   }
   return {
     kind: 'split',

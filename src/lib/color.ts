@@ -15,6 +15,17 @@ export function normalizeHex(text: string): string | null {
   return `#${hex.toLowerCase()}`
 }
 
+/** Whether light text reads better than dark on this #rrggbb color (by its luminance). */
+export function isDark(hex: string): boolean {
+  const n = parseInt(hex.slice(1), 16)
+  const lin = (c: number) => {
+    const s = c / 255
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+  }
+  const l = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255)
+  return l < 0.18
+}
+
 export function hexToHsv(hex: string): Hsv {
   const n = parseInt(hex.slice(1), 16)
   const r = ((n >> 16) & 255) / 255

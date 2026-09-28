@@ -12,6 +12,7 @@ import {
   MAX_PAGE_SIDE,
   MIN_OUTLINE_WIDTH,
   MIN_PAGE_SIDE,
+  PANEL_PLACEHOLDER_COLORS,
   STAGE_SHORT,
   type TailPosition,
   type TextStyle,
@@ -109,7 +110,7 @@ export function syncCounters(): void {
 const NO_EFFECTS: PhotoEffects = { overlay: null, blur: 0, levels: null, colorBalance: null }
 
 function newLeaf(frame: ImageFrame | null = null): Leaf {
-  return { kind: 'leaf', id: nextId++, frame, ...NO_EFFECTS }
+  return { kind: 'leaf', id: nextId++, frame, fill: null, ...NO_EFFECTS }
 }
 
 // default: one vertical bar through the middle (top-mid to bottom-mid)
@@ -491,6 +492,11 @@ export function firstPanelImage(): StoredImage | null {
 export async function setPanelImage(leafId: number, image: StoredImage): Promise<void> {
   const panel = layout.value.panels.find((p) => p.leaf.id === leafId)
   if (panel) panel.leaf.frame = await coverPanel(image, panel.bbox)
+}
+
+/** The color a panel shows without a photo: its own, or a placeholder color by its place on the page. */
+export function panelFill(leaf: Leaf, index: number): string {
+  return leaf.fill ?? PANEL_PLACEHOLDER_COLORS[index % PANEL_PLACEHOLDER_COLORS.length]!
 }
 
 export function clearPanelImage(leafId: number): void {

@@ -50,6 +50,15 @@ export const COLOR_PRESETS = [
 
 // flat fills shown where no image has been set yet; panels cycle through the list
 export const PANEL_PLACEHOLDER_COLORS = ['#f4b6d2', '#a9dede', '#cbbcf2', '#fbeaa0', '#b9e5bf', '#f7c3a3']
+
+/** the preset colors offered for overlays and empty panels (a custom one can be picked too) */
+export const SWATCH_COLORS = [
+  { label: 'Black', color: '#000000' },
+  { label: 'White', color: '#ffffff' },
+  { label: 'Wine', color: '#7b2649' },
+  { label: 'Pink', color: '#ff6fb0' },
+  { label: 'Teal', color: '#78d2d2' },
+]
 export const CLOSE_UP_PLACEHOLDER_COLOR = '#ffd9a8'
 
 export type TextStyle = 'none' | 'speech' | 'square'

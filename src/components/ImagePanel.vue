@@ -2,14 +2,15 @@
 import { computed, ref, useTemplateRef } from 'vue'
 
 import PhotoFilter from './PhotoFilter.vue'
-import { PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
+import { isDark } from '@/lib/color'
+import { SWATCH_COLORS } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import type { PanelGeom } from '@/lib/layout'
-import { openContextMenu } from '@/lib/contextMenu'
+import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { hasPhotoFilter, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
-import { clearPanelImage, deselectAll, setPanelImage, store } from '@/lib/store'
+import { clearPanelImage, deselectAll, panelFill, setPanelImage, store } from '@/lib/store'
 
 const props = defineProps<{
   panel: PanelGeom
@@ -20,7 +21,7 @@ const props = defineProps<{
 const fileInput = useTemplateRef('fileInput')
 const frame = computed(() => props.panel.leaf.frame)
 const filterId = computed(() => `photo-filter-panel-${props.panel.leaf.id}`)
-const placeholderColor = computed(() => PANEL_PLACEHOLDER_COLORS[props.index % PANEL_PLACEHOLDER_COLORS.length])
+const fillColor = computed(() => panelFill(props.panel.leaf, props.index))
 const dragOver = ref(false)
 let panning = false
 let lastX = 0
@@ -71,8 +72,39 @@ function onContextMenu(e: MouseEvent) {
     ...(frame.value
       ? [{ label: 'Remove image', icon: '🗑', danger: true, action: () => clearPanelImage(leafId) }]
       : []),
+    ...fillEntries(),
     ...photoMenuEntries(props.panel.leaf, () => !!frame.value, `photo-${props.panel.leaf.id}`),
   ])
+}
+
+// Without a photo, the panel's color: its placeholder color (Auto), a
+// preset or a custom one.
+function fillEntries(): MenuEntry[] {
+  const leaf = props.panel.leaf
+  const empty = () => !frame.value
+  return [
+    { kind: 'separator', visible: empty },
+    {
+      kind: 'choices',
+      label: 'Color',
+      visible: empty,
+      options: [
+        { label: 'Auto', title: 'A placeholder color', active: () => leaf.fill === null, pick: () => (leaf.fill = null) },
+        ...SWATCH_COLORS.map((c) => ({
+          label: c.label,
+          swatch: c.color,
+          active: () => leaf.fill === c.color,
+          pick: () => (leaf.fill = c.color),
+        })),
+        {
+          label: 'Custom color',
+          active: () => leaf.fill !== null && !SWATCH_COLORS.some((c) => c.color === leaf.fill),
+          pick: () => {},
+          pickColor: { value: () => fillColor.value, set: (color: string) => (leaf.fill = color) },
+        },
+      ],
+    },
+  ]
 }
 
 function onFileChosen() {
@@ -103,9 +135,10 @@ function onDrop(e: DragEvent) {
     @dragleave="dragOver = false"
     @drop.prevent="onDrop"
   >
-    <div v-if="!frame" class="placeholder" :style="{ background: placeholderColor }">
+    <div v-if="!frame" class="placeholder" :style="{ background: fillColor }">
       <span
         class="hint"
+        :class="{ light: isDark(fillColor) }"
         :style="{ left: `${panel.center[0]}px`, top: `${panel.center[1]}px` }"
         v-bind="{ [NO_EXPORT_ATTR]: '' }"
       >
@@ -188,6 +221,11 @@ function onDrop(e: DragEvent) {
   white-space: nowrap;
   font-size: 0.95rem;
   color: rgba($ink, 0.6);
+
+  // on a dark fill
+  &.light {
+    color: rgba(#fff, 0.7);
+  }
 }
 
 input[type='file'] {

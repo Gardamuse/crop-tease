@@ -2,13 +2,14 @@
 import { computed } from 'vue'
 
 import PhotoFilter from './PhotoFilter.vue'
-import { CLOSE_UP_PLACEHOLDER_COLOR, PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
+import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
 import { computeLayout } from '@/lib/layout'
 import { hasPhotoFilter, overlayGradient } from '@/lib/photoEffects'
 import { fontVars } from '@/lib/textFonts'
 import {
   dividerStageWidth,
   pageBorderWidth,
+  panelFill,
   pageNumberText,
   pageShowsNumber,
   stageSize,
@@ -114,7 +115,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         v-if="!p.leaf.frame"
         :width="stageSize.w"
         :height="stageSize.h"
-        :fill="PANEL_PLACEHOLDER_COLORS[i % PANEL_PLACEHOLDER_COLORS.length]"
+        :fill="panelFill(p.leaf, i)"
       />
     </g>
     <line

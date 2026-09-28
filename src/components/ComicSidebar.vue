@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
             remove, or click and then ×.
           </li>
           <li>
-            <b>Photos:</b> click an empty panel or close-up, or drop an image on it. Drag to reposition
+            <b>Photos:</b> click an empty panel or close-up, or drop an image on it (or right-click an empty panel for a color). Drag to reposition
             (Ctrl+drag in a close-up), scroll to zoom. Right-click to change it or add effects: blur, a color overlay, levels, color balance. The Filters section sets levels and color balance for all photos.
           </li>
           <li>
@@ -507,8 +507,8 @@ onBeforeUnmount(() => {
             page is a cover and isn't counted.
           </li>
           <li>
-            <b>Keys</b> (on the last clicked item): Ctrl+C / Ctrl+V copy and paste, Delete removes. Ctrl+Z undoes,
-            Ctrl+Shift+Z or Ctrl+Y redoes.
+            <b>Keys</b> (on the last clicked item): Ctrl+C / Ctrl+V copy and paste, Delete removes, the arrows move
+            it (Shift for further). Ctrl+Z undoes, Ctrl+Shift+Z or Ctrl+Y redoes.
           </li>
         </ul>
         <p class="help-more">

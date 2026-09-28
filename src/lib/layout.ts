@@ -39,8 +39,10 @@ export interface Bar {
 export interface Leaf extends PhotoEffects {
   kind: 'leaf'
   id: number
-  /** null shows a flat placeholder color */
+  /** null shows a flat color: fill */
   frame: ImageFrame | null
+  /** the color the panel shows without a photo (#rrggbb); null for a placeholder color */
+  fill: string | null
 }
 
 /** `front` is the region to the left of the bar looking from `a` to `b` (on screen, y down). */

@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 
+import { SWATCH_COLORS } from './constants'
 import type { MenuChoice, MenuEntry } from './contextMenu'
 import type { ImageFrame } from './imageFrame'
 import { clamp } from './math'
@@ -167,13 +168,6 @@ export const OVERLAY_FROM: { value: OverlayFrom; label: string }[] = [
   { value: 'bottom', label: 'Bottom' },
 ]
 
-export const OVERLAY_COLORS = [
-  { label: 'Black', color: '#000000' },
-  { label: 'White', color: '#ffffff' },
-  { label: 'Wine', color: '#7b2649' },
-  { label: 'Pink', color: '#ff6fb0' },
-  { label: 'Teal', color: '#78d2d2' },
-]
 
 // the fade's direction as a CSS gradient angle: 0deg runs bottom to top, 180deg top to bottom
 function cssAngle(o: ImageOverlay): number {
@@ -393,7 +387,7 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean, 
   // like levels and color balance, an overlay set to None this session comes back as it was
   const memory = `${memoryKey}:overlay`
   const set = (change: Partial<ImageOverlay>) => {
-    const fresh: ImageOverlay = { from: 'top', angle: 0, color: OVERLAY_COLORS[0]!.color, ...DEFAULT_OVERLAY }
+    const fresh: ImageOverlay = { from: 'top', angle: 0, color: SWATCH_COLORS[0]!.color, ...DEFAULT_OVERLAY }
     const start = target.overlay ?? (switchedOff.get(memory) as ImageOverlay | undefined) ?? fresh
     target.overlay = { ...copy(start), ...change }
   }
@@ -402,7 +396,7 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean, 
     switchedOff.set(memory, copy(target.overlay))
     target.overlay = null
   }
-  const isPreset = () => OVERLAY_COLORS.some((c) => c.color === target.overlay?.color.toLowerCase())
+  const isPreset = () => SWATCH_COLORS.some((c) => c.color === target.overlay?.color.toLowerCase())
   return [
     { kind: 'separator', visible: hasPhoto },
     {
@@ -464,7 +458,7 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean, 
       label: 'Color',
       visible: on,
       options: [
-        ...OVERLAY_COLORS.map((c) => ({
+        ...SWATCH_COLORS.map((c) => ({
           label: c.label,
           swatch: c.color,
           active: () => target.overlay?.color.toLowerCase() === c.color,
