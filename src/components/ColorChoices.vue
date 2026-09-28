@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import CustomColorSwatch from './CustomColorSwatch.vue'
+
 // Preset color buttons plus a Custom button that opens the native picker,
 // optionally with a "None" choice (null).
 const props = defineProps<{
@@ -42,21 +44,13 @@ const isCustom = computed(() => current.value !== null && !props.presets.some((p
       :style="{ background: p.color }"
       @click="emit('update:modelValue', p.color)"
     />
-    <label
-      class="dot custom"
-      :class="{ active: isCustom }"
-      role="radio"
-      :aria-checked="isCustom"
-      title="Pick a custom color"
-    >
-      <span class="swatch" :style="{ background: isCustom ? modelValue! : undefined }" />
-      <input
-        type="color"
-        aria-label="Custom color"
-        :value="modelValue ?? '#000000'"
-        @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-      />
-    </label>
+    <CustomColorSwatch
+      class="dot"
+      :model-value="modelValue ?? '#000000'"
+      :active="isCustom"
+      label="Pick a custom color"
+      @update:model-value="emit('update:modelValue', $event)"
+    />
   </div>
 </template>
 
@@ -104,26 +98,5 @@ $dot: 24px;
   width: 1.5px;
   background: $accent;
   transform: translateX(-50%) rotate(45deg);
-}
-
-.custom {
-  overflow: hidden;
-
-  .swatch {
-    position: absolute;
-    inset: 0;
-    // an unset custom swatch shows a rainbow hint
-    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-  }
-
-  // the native picker covers the whole dot so any click opens it
-  input {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-  }
 }
 </style>

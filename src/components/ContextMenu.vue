@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
+import { COLOR_POPOVER_ATTR } from './CustomColorSwatch.vue'
 import MenuEntries from './MenuEntries.vue'
 import { closeContextMenu, contextMenu, type MenuItem } from '@/lib/contextMenu'
 
@@ -51,6 +52,7 @@ function onKeyDown(e: KeyboardEvent) {
     return
   }
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+  if (!menuEl.value?.contains(e.target as Node)) return // e.g. typing in a color picker's hex field
   e.preventDefault()
   const buttons = Array.from(menuEl.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])
   const i = buttons.indexOf(document.activeElement as HTMLButtonElement)
@@ -58,23 +60,20 @@ function onKeyDown(e: KeyboardEvent) {
   buttons[(i + step + buttons.length) % buttons.length]?.focus()
 }
 
-// leaving the window closes the menu, except for the color picker a custom
-// swatch opened (which may be a window of its own)
-function onWindowBlur() {
-  const active = document.activeElement
-  if (active instanceof HTMLInputElement && active.type === 'color' && menuEl.value?.contains(active)) return
-  closeContextMenu()
-}
+// a color picker a swatch in the menu opened counts as part of the menu
+const inMenu = (target: EventTarget | null) =>
+  target instanceof Node &&
+  (menuEl.value?.contains(target) || !!(target as Element).closest?.(`[${COLOR_POPOVER_ATTR}]`))
 
 // any press outside the menu, or the page changing under it, closes it
 function onOutsidePointer(e: PointerEvent) {
-  if (contextMenu.open && !menuEl.value?.contains(e.target as Node)) closeContextMenu()
+  if (contextMenu.open && !inMenu(e.target)) closeContextMenu()
 }
 
 onMounted(() => {
   window.addEventListener('pointerdown', onOutsidePointer, true)
   window.addEventListener('keydown', onKeyDown)
-  window.addEventListener('blur', onWindowBlur)
+  window.addEventListener('blur', closeContextMenu)
   window.addEventListener('resize', closeContextMenu)
   window.addEventListener('wheel', closeContextMenu, { passive: true })
 })
@@ -82,7 +81,7 @@ onBeforeUnmount(() => {
   resizeObserver.disconnect()
   window.removeEventListener('pointerdown', onOutsidePointer, true)
   window.removeEventListener('keydown', onKeyDown)
-  window.removeEventListener('blur', onWindowBlur)
+  window.removeEventListener('blur', closeContextMenu)
   window.removeEventListener('resize', closeContextMenu)
   window.removeEventListener('wheel', closeContextMenu)
 })

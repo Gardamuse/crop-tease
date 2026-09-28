@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomColorSwatch from './CustomColorSwatch.vue'
 import PixelSlider from './PixelSlider.vue'
 import RangeSlider from './RangeSlider.vue'
 import UiIcon from './UiIcon.vue'
@@ -68,20 +69,14 @@ const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : 
           >
             <template v-for="(o, j) in item.options" :key="j">
               <span v-if="!o" class="spacer" />
-              <label
+              <CustomColorSwatch
                 v-else-if="o.pickColor"
                 class="custom-color"
-                :class="{ active: o.active?.() }"
-                :title="o.title ?? labelOf(o)"
-              >
-                <span class="rainbow" :style="{ background: o.active?.() ? o.pickColor.value() : undefined }" />
-                <input
-                  type="color"
-                  :aria-label="labelOf(o)"
-                  :value="o.pickColor.value()"
-                  @input="o.pickColor.set(($event.target as HTMLInputElement).value)"
-                />
-              </label>
+                :model-value="o.pickColor.value()"
+                :active="o.active?.() ?? false"
+                :label="o.title ?? labelOf(o)"
+                @update:model-value="o.pickColor.set"
+              />
               <button
                 v-else
                 role="menuitemradio"
@@ -260,42 +255,24 @@ hr {
     }
   }
 
-  // a swatch like the others, showing a rainbow until a custom color is chosen
+  // a swatch like the others (a rainbow until a custom color is chosen), opening the color picker
   .custom-color {
-    position: relative;
     flex: none;
     width: 22px;
     height: 22px;
-    border-radius: 50%;
     border: 1px solid rgba($shade, 0.25);
-    overflow: hidden;
-    cursor: pointer;
+    border-radius: 50%;
+
+    &:hover,
+    &:focus-visible {
+      background: none;
+    }
 
     &.active {
-      overflow: visible;
       box-shadow:
         0 0 0 2px $bg-panel-alt,
         0 0 0 3px $accent,
         0 0 10px $accent-dim;
-    }
-
-    .rainbow {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-    }
-
-    // the native picker covers the swatch so any click opens it
-    input {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      padding: 0;
-      border: none;
-      opacity: 0;
-      cursor: pointer;
     }
   }
 }
