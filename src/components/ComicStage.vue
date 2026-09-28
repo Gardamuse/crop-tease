@@ -7,6 +7,7 @@ import ImagePanel from './ImagePanel.vue'
 import SplitBars from './SplitBars.vue'
 import TextBox from './TextBox.vue'
 import { contextMenu } from '@/lib/contextMenu'
+import { redo, undo } from '@/lib/history'
 import { renderStageImage, type ExportFormat, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
@@ -78,6 +79,12 @@ function onKeyDown(e: KeyboardEvent) {
     handled = store.selectedId !== null && copyElement(store.selectedId)
   } else if (ctrl && e.key.toLowerCase() === 'v') {
     handled = pasteElement()
+  } else if ((ctrl && e.key.toLowerCase() === 'z' && e.shiftKey) || (ctrl && e.key.toLowerCase() === 'y')) {
+    redo()
+    handled = true // even with nothing to redo, so the browser doesn't act on it
+  } else if (ctrl && e.key.toLowerCase() === 'z') {
+    undo()
+    handled = true
   } else if (!ctrl && !e.shiftKey && e.key === 'Delete') {
     handled = removeSelected()
   }

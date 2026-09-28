@@ -48,7 +48,8 @@ npm run dist:all     # both
 Windows builds can be made on Linux with Wine installed (it's used to set the
 exe's icon and version info). Bump the version with
 `npm version <version> --no-git-tag-version`; it also shows in the app's
-corner. `electron/main.js` serves `dist/` from an `app://` origin, so storage,
+corner, which opens the patch notes in `src/lib/patchNotes.ts` (add the new
+version's notes there too). `electron/main.js` serves `dist/` from an `app://` origin, so storage,
 fonts and the save dialog work as on the web.
 
 ## Layout

@@ -5,9 +5,11 @@ import ComicSidebar, { type SaveStatus } from '@/components/ComicSidebar.vue'
 import ComicStage from '@/components/ComicStage.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import PageBar from '@/components/PageBar.vue'
+import PatchNotes from '@/components/PatchNotes.vue'
 import TaskDialog from '@/components/TaskDialog.vue'
 import { EXPORT_MIME, zipImages, type ExportFormat } from '@/lib/exportImage'
 import { MAX_PAGE_SIDE } from '@/lib/constants'
+import { startHistory } from '@/lib/history'
 import { buildPdf } from '@/lib/pdf'
 import {
   buildProjectZip,
@@ -209,6 +211,7 @@ async function onExportPdf() {
 
 onMounted(async () => {
   if (!(await restoreAutosave())) loadStarterPage()
+  startHistory()
   startAutosave((status) => (saveStatus.value = status))
   saveStatus.value = 'saved'
 })
@@ -231,7 +234,7 @@ onMounted(async () => {
     <div class="workspace">
       <PageBar />
       <ComicStage ref="stage" />
-      <span class="version-tag">v{{ APP_VERSION }}</span>
+      <PatchNotes :version="APP_VERSION" />
     </div>
     <TaskDialog />
     <ContextMenu />
@@ -255,17 +258,5 @@ onMounted(async () => {
   background:
     radial-gradient(rgba(#fff, 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
     $dark-void;
-}
-
-.version-tag {
-  position: absolute;
-  right: 10px;
-  bottom: 6px;
-  font-family: $font-mono;
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-  color: $dark-dim;
-  opacity: 0.7;
-  pointer-events: none;
 }
 </style>

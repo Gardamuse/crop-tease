@@ -24,6 +24,7 @@ import {
   storedImageKey,
   typeForExtension,
 } from './images'
+import { resetHistory } from './history'
 import type { Region } from './layout'
 import { store, syncCounters, usedFonts, type ComicElement, type TextElement } from './store'
 import { customFontFile, installProjectFont } from './textFonts'
@@ -388,6 +389,7 @@ async function replaceProject(load: () => void | Promise<void>): Promise<void> {
   suspendAutosave = true
   try {
     await load()
+    resetHistory() // undo can't reach back into the previous project
     await writeAutosave()
     await pruneStoredImages(usedImageIds(serializeProject()))
   } finally {

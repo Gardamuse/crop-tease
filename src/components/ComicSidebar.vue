@@ -452,23 +452,33 @@ onBeforeUnmount(() => {
         </header>
         <ul>
           <li>
-            <b>Pages:</b> the strip beside the page switches them and adds more (＋). Drag a page to reorder it; its
-            <b>···</b> button or a right-click duplicates, moves or deletes it.
+            <b>Pages:</b> the strip beside the page switches and adds them (＋); drag one to reorder. Its
+            <b>···</b> or a right-click duplicates, moves or deletes it.
           </li>
-          <li><b>Page numbers:</b> one text shown on every page; <code>{n}</code> is the page number.</li>
-          <li><b>Split a panel:</b> click it; hold and drag to choose which side gets the new panel.</li>
-          <li><b>Move a bar:</b> drag it. <b>Tilt it:</b> drag an end along the border or another bar.</li>
-          <li><b>Remove a bar:</b> right-click it, or click it and then its ×.</li>
-          <li><b>Set a photo:</b> click an empty panel or close-up, or drop an image on it.</li>
-          <li><b>Change or remove a photo, delete a close-up:</b> right-click it.</li>
-          <li><b>Reposition a photo:</b> drag a panel, or Ctrl+drag a close-up.</li>
-          <li><b>Zoom a photo:</b> scroll over it.</li>
-          <li><b>Move a close-up or text:</b> drag it. <b>Resize it:</b> drag its edge.</li>
-          <li><b>Edit text:</b> double-click it. <b>Rotate it:</b> Ctrl+drag.</li>
-          <li><b>Text style, size, color and font:</b> right-click it.</li>
+          <li><b>Split a panel:</b> Split, then click the panel; drag to choose which side is new.</li>
           <li>
-            <b>Fonts:</b> the Text section sets the font of all text. <b>+ Add font…</b> adds your own font file,
-            kept in this browser. Saved projects (.ct) carry the fonts they use and add them when opened.
+            <b>Bars:</b> drag to move; drag an end along the border or another bar to tilt. Right-click to
+            remove, or click and then ×.
+          </li>
+          <li>
+            <b>Photos:</b> click an empty panel or close-up, or drop an image on it. Drag to reposition
+            (Ctrl+drag in a close-up), scroll to zoom, right-click to change or remove.
+          </li>
+          <li>
+            <b>Close-ups and text:</b> drag to move, drag the edge to resize, right-click for options.
+            <b>Text:</b> double-click to edit, Ctrl+drag to rotate.
+          </li>
+          <li>
+            <b>Text section:</b> the font and size of all text; right-click a text to give it its own.
+            <b>+ Add font…</b> adds a font file, kept in this browser; saved projects (.ct) carry their fonts.
+          </li>
+          <li>
+            <b>Page numbers:</b> one text shown on every page; <code>{n}</code> is the page number,
+            <code>{total}</code> the page count.
+          </li>
+          <li>
+            <b>Keys</b> (on the last clicked item): Ctrl+C / Ctrl+V copy and paste, Delete removes. Ctrl+Z undoes,
+            Ctrl+Shift+Z or Ctrl+Y redoes.
           </li>
         </ul>
         <p class="help-more">
