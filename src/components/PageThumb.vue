@@ -5,8 +5,8 @@ import { CLOSE_UP_PLACEHOLDER_COLOR, PANEL_PLACEHOLDER_COLORS } from '@/lib/cons
 import { computeLayout } from '@/lib/layout'
 import { fontVars } from '@/lib/textFonts'
 import {
-  borderStageWidth,
   dividerStageWidth,
+  pageBorderWidth,
   pageNumberText,
   stageSize,
   store,
@@ -28,6 +28,7 @@ const { page, index } = defineProps<{
 }>()
 
 const geom = computed(() => computeLayout(page.layout, stageSize.value))
+const border = computed(() => pageBorderWidth(page))
 const circles = computed(() => page.elements.filter((e): e is CircleElement => e.kind === 'circle'))
 const texts = computed(() => page.elements.filter((e): e is TextElement => e.kind === 'text' && e.style !== 'none'))
 
@@ -78,14 +79,14 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
       :stroke-width="dividerStageWidth"
     />
     <rect
-      v-if="store.border.width > 0"
-      :x="borderStageWidth / 2"
-      :y="borderStageWidth / 2"
-      :width="stageSize.w - borderStageWidth"
-      :height="stageSize.h - borderStageWidth"
+      v-if="border > 0"
+      :x="border / 2"
+      :y="border / 2"
+      :width="stageSize.w - border"
+      :height="stageSize.h - border"
       fill="none"
       :stroke="store.border.color"
-      :stroke-width="borderStageWidth"
+      :stroke-width="border"
     />
     <g v-for="c in circles" :key="c.id">
       <circle :cx="c.x + c.d / 2" :cy="c.y + c.d / 2" :r="c.d / 2 + dividerStageWidth" :fill="store.border.color" />

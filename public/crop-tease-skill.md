@@ -108,7 +108,8 @@ required keys make the file fail to open, so include every field shown.
 {
   "id": 1,
   "layout": { /* region tree, see Panels and bars */ },
-  "elements": [ /* close-ups and text, see Elements */ ]
+  "elements": [ /* close-ups and text, see Elements */ ],
+  "border": true   // optional: false leaves the page border off this page (e.g. a full-bleed cover)
 }
 ```
 

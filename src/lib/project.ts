@@ -162,6 +162,8 @@ const ProjectSchema = z.object({
         id: z.number().int(),
         layout: RegionSchema,
         elements: z.array(ElementSchema),
+        /** whether the page border is drawn on this page (added later) */
+        border: z.boolean().default(true),
       }),
     )
     .min(1),
@@ -262,6 +264,7 @@ export function serializeProject(): ProjectDoc {
       elements: page.elements.map((el): SavedPage['elements'][number] =>
         el.kind === 'circle' ? { ...toRaw(el), frame: saveFrame(el.frame) } : { ...toRaw(el) },
       ),
+      border: page.border,
     }),
   )
   const images = [...usedImageIds({ pages })].map((id) => ({
@@ -316,6 +319,7 @@ function applyProject(doc: ProjectDoc): void {
     elements: page.elements.map(
       (el): ComicElement => (el.kind === 'circle' ? { ...el, frame: loadFrame(el.frame) } : loadText(el)),
     ),
+    border: page.border,
   }))
   store.pageIndex = Math.min(doc.currentPage, doc.pages.length - 1)
   store.pageNumber = doc.pageNumber && loadText(doc.pageNumber)

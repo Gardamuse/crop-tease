@@ -3,7 +3,7 @@ import { nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import PageThumb from './PageThumb.vue'
 import { openContextMenu } from '@/lib/contextMenu'
-import { addPage, duplicatePage, movePage, removePage, store, switchPage } from '@/lib/store'
+import { addPage, duplicatePage, movePage, removePage, store, switchPage, togglePageBorder } from '@/lib/store'
 
 const barEl = useTemplateRef('bar')
 
@@ -21,6 +21,12 @@ function onTabMenu(e: MouseEvent, index: number) {
       icon: '↓',
       visible: () => index < store.pages.length - 1,
       action: () => movePage(index, index + 1),
+    },
+    {
+      label: store.pages[index]?.border ? 'Hide border on this page' : 'Show border on this page',
+      icon: '▢',
+      visible: () => store.border.width > 0,
+      action: () => togglePageBorder(index),
     },
     { kind: 'separator' },
     {

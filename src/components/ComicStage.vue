@@ -216,7 +216,7 @@ defineExpose({ renderImage })
         </div>
         <SplitBars :preview="splitPreview" />
         <div
-          v-if="store.border.width > 0"
+          v-if="borderStageWidth > 0"
           class="page-border"
           :style="{ borderWidth: `${borderStageWidth}px`, borderColor: store.border.color }"
         />

@@ -80,6 +80,8 @@ export interface ComicPage {
   id: number
   layout: Region
   elements: ComicElement[]
+  /** whether the page border (store.border.width) is drawn on this page */
+  border: boolean
 }
 
 let nextId = 1
@@ -117,7 +119,7 @@ function starterLayout(): Region {
 
 /** An empty page: one full-page panel, nothing on it. */
 function newPage(layout: Region = newLeaf()): ComicPage {
-  return { id: nextId++, layout, elements: [] }
+  return { id: nextId++, layout, elements: [], border: true }
 }
 
 export const store = reactive({
@@ -267,7 +269,18 @@ export const stageSize = computed(() => {
 export const layout = computed(() => computeLayout(store.layout, stageSize.value))
 
 /** The page border's width in stage units (it's set in output pixels). */
-export const borderStageWidth = computed(() => store.border.width / stageSize.value.exportScale)
+export const borderStageWidth = computed(() => pageBorderWidth(store.pages[store.pageIndex]!))
+
+/** The width of a page's border in stage units: 0 when the page has it turned off. */
+export function pageBorderWidth(page: ComicPage): number {
+  return page.border ? store.border.width / stageSize.value.exportScale : 0
+}
+
+/** Turns the page border on or off for one page. */
+export function togglePageBorder(index: number): void {
+  const page = store.pages[index]
+  if (page) page.border = !page.border
+}
 
 /** The split bars' and close-up rings' width in stage units. */
 export const dividerStageWidth = computed(() => store.border.dividerWidth / stageSize.value.exportScale)
@@ -332,7 +345,7 @@ export function textOutline(textColor: string): { color: string; width: number }
  * the border and its outline, in stage units. Null when they aren't clipped.
  */
 export const closeUpBounds = computed(() => {
-  if (!store.closeUps.withinBorder || store.border.width <= 0) return null
+  if (!store.closeUps.withinBorder || borderStageWidth.value <= 0) return null
   const inset = borderStageWidth.value + (outlineStyle.value?.width ?? 0)
   const { w, h } = stageSize.value
   return { left: inset, top: inset, right: w - inset, bottom: h - inset }
