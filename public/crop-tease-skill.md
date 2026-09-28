@@ -223,8 +223,10 @@ around the outside of the diameter.
 {
   "id": 21, "kind": "text",
   "style": "speech",     // "none" | "speech" | "square"
-  "tail": "bottom-left", // speech bubbles only: "top-left" | "top" | "top-right" | "left" |
-                         //   "right" | "bottom-left" | "bottom" | "bottom-right"
+  "tail": "bottom-left", // speech bubbles only: the edge it points out of, then which end:
+                         //   "top-left" | "top" | "top-right" | "right-top" | "right" |
+                         //   "right-bottom" | "bottom-right" | "bottom" | "bottom-left" |
+                         //   "left-bottom" | "left" | "left-top"
   "x": 60, "y": 60,      // top-left of the box before rotation, stage units
   "w": 260, "h": 90,     // box size, stage units (the app's handles allow at least 60 x 30)
   "rot": 0,              // rotation in degrees, clockwise, about the box's center
@@ -242,7 +244,9 @@ Styles:
 
 - `speech`: white rounded bubble with a dark 4-unit border; text centered both
   ways; padding 16/20 units (vertical/horizontal). The tail points outward from
-  the named side or corner (a corner tail sits 26 units in from the side) and
+  the named edge, at its middle or near one end (26 units in from the corner:
+  "bottom-left" points down near the left end, "left-bottom" points left near
+  the bottom end) and
   sticks out about 28 units: point it at the speaker.
 - `square`: white caption box with a dark border; text left-aligned from the
   top, padding 14/18; in the classic font it's a serif italic. Good for

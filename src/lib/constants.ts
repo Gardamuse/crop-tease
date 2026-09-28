@@ -59,17 +59,38 @@ export const TEXT_STYLES: { value: TextStyle; label: string }[] = [
   { value: 'square', label: 'Square' },
 ]
 
-/** Where a speech bubble's tail sits, as a compass position around the bubble. */
-export type TailPosition = 'top-left' | 'top' | 'top-right' | 'left' | 'right' | 'bottom-left' | 'bottom' | 'bottom-right'
+/**
+ * Where a speech bubble's tail sits: the edge it points out of, then (for a
+ * spot near a corner) which end of that edge. So 'bottom-left' points down
+ * near the left end of the bottom edge, 'left-bottom' points left near the
+ * bottom end of the left edge.
+ */
+export type TailPosition =
+  | 'top-left'
+  | 'top'
+  | 'top-right'
+  | 'right-top'
+  | 'right'
+  | 'right-bottom'
+  | 'bottom-right'
+  | 'bottom'
+  | 'bottom-left'
+  | 'left-bottom'
+  | 'left'
+  | 'left-top'
 export const TAIL_POSITIONS: TailPosition[] = [
   'top-left',
   'top',
   'top-right',
-  'left',
+  'right-top',
   'right',
-  'bottom-left',
-  'bottom',
+  'right-bottom',
   'bottom-right',
+  'bottom',
+  'bottom-left',
+  'left-bottom',
+  'left',
+  'left-top',
 ]
 
 // Text size limits in output pixels: the slider snaps to these steps (fine

@@ -11,6 +11,8 @@ import {
   MAX_PAGE_SIDE,
   MIN_OUTLINE_WIDTH,
   MIN_PAGE_SIDE,
+  TAIL_POSITIONS,
+  type TailPosition,
 } from './constants'
 import type { ImageFrame } from './imageFrame'
 import {
@@ -110,7 +112,7 @@ const TextSchema = z.object({
   ...ElementBase,
   kind: z.literal('text'),
   style: z.enum(['none', 'speech', 'square']),
-  tail: z.enum(['top-left', 'top', 'top-right', 'left', 'right', 'bottom-left', 'bottom', 'bottom-right']),
+  tail: z.enum(TAIL_POSITIONS as [TailPosition, ...TailPosition[]]),
   w: z.number().positive(),
   h: z.number().positive(),
   rot: z.number(),

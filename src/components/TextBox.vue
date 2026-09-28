@@ -5,7 +5,6 @@ import {
   FONT_SIZE_STEPS,
   MAX_TYPED_FONT_PX,
   MIN_TYPED_FONT_PX,
-  TAIL_POSITIONS,
   TEXT_PALETTE,
   TEXT_STYLES,
   type TailPosition,
@@ -29,17 +28,28 @@ import {
 
 const MIN_W = 60
 const MIN_H = 30
-// arrows for the tail compass in the menu
+// arrows for the tail picker in the menu, the way each tail points
 const TAIL_ARROWS: Record<TailPosition, string> = {
-  'top-left': '↖',
+  'top-left': '↑',
   top: '↑',
-  'top-right': '↗',
-  left: '←',
+  'top-right': '↑',
+  'right-top': '→',
   right: '→',
-  'bottom-left': '↙',
+  'right-bottom': '→',
+  'bottom-right': '↓',
   bottom: '↓',
-  'bottom-right': '↘',
+  'bottom-left': '↓',
+  'left-bottom': '←',
+  left: '←',
+  'left-top': '←',
 }
+// the tail picker, laid out like the bubble: the side edges' spots in the
+// outer columns, the top and bottom edges' spots in the rows between
+const TAIL_GRID: (TailPosition | null)[] = [
+  'left-top', 'top-left', 'top', 'top-right', 'right-top',
+  'left', null, null, null, 'right',
+  'left-bottom', 'bottom-left', 'bottom', 'bottom-right', 'right-bottom',
+]
 // how far (screen px) inside and outside the box edge a press grabs the edge
 const EDGE_SLOP = 7
 // resize cursors by direction, starting east, going clockwise (y down)
@@ -252,17 +262,17 @@ function onContextMenu(e: MouseEvent) {
       kind: 'choices',
       label: 'Tail',
       visible: () => el.style === 'speech',
-      columns: 3,
-      // compass layout with an empty middle
-      options: [...TAIL_POSITIONS.slice(0, 4), null, ...TAIL_POSITIONS.slice(4)].map(
-        (pos) =>
-          pos && {
-            label: TAIL_ARROWS[pos],
-            title: `Tail ${pos.replace('-', ' ')}`,
-            active: () => el.tail === pos,
-            pick: () => (el.tail = pos),
-          },
-      ),
+      columns: 5,
+      options: TAIL_GRID.map((pos) => {
+        if (!pos) return null
+        const [edge, end] = pos.split('-')
+        return {
+          label: TAIL_ARROWS[pos],
+          title: end ? `Tail on the ${edge} edge, near the ${end}` : `Tail on the ${edge} edge`,
+          active: () => el.tail === pos,
+          pick: () => (el.tail = pos),
+        }
+      }),
     },
     {
       // shown in output pixels, like the border and divider widths; the
@@ -465,7 +475,7 @@ function onContextMenu(e: MouseEvent) {
 }
 
 $bubble-border: 4px;
-$tail-inset: 26px; // distance of a corner tail from the bubble's side
+$tail-inset: 26px; // distance of a corner tail from the edge it's near
 
 // Anchored at a point on the inner edge of the border, then flipped or
 // rotated about that point (transform-origin 0 0) so it points outward.
@@ -510,6 +520,27 @@ $tail-inset: 26px; // distance of a corner tail from the bubble's side
   &.tail-right {
     left: calc(100% - #{$bubble-border});
     top: calc(50% + 11px);
+    transform: rotate(-90deg);
+  }
+  // near a corner on the sides, leaning toward that corner
+  &.tail-left-top {
+    left: $bubble-border;
+    top: $tail-inset;
+    transform: rotate(90deg);
+  }
+  &.tail-left-bottom {
+    left: $bubble-border;
+    top: calc(100% - #{$tail-inset});
+    transform: scaleY(-1) rotate(90deg);
+  }
+  &.tail-right-top {
+    left: calc(100% - #{$bubble-border});
+    top: $tail-inset;
+    transform: scaleY(-1) rotate(-90deg);
+  }
+  &.tail-right-bottom {
+    left: calc(100% - #{$bubble-border});
+    top: calc(100% - #{$tail-inset});
     transform: rotate(-90deg);
   }
 }
