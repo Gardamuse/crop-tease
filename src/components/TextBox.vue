@@ -188,10 +188,47 @@ async function startEdit() {
   sel?.addRange(range)
 }
 
+/**
+ * The typed text, with \n line breaks. Pressing Enter makes the browser
+ * wrap the new line in a <div> (Chrome) or add a <br> (Firefox), with a
+ * placeholder <br> keeping an empty line open; innerText counts both the
+ * line and its placeholder, adding a newline each time. Here each block
+ * starts one line, and a <br> that ends its block is only a placeholder.
+ */
+function editedText(root: HTMLElement): string {
+  let text = ''
+  let started = false // anything seen yet, even an empty line
+  let breakBefore = false // the last thing was a block, so what follows starts a line
+  const isBlock = (n: Node) => n instanceof HTMLElement && getComputedStyle(n).display !== 'inline'
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child, i) => {
+      if (child.nodeType === Node.TEXT_NODE || child.nodeName === 'BR') {
+        const isBr = child.nodeName === 'BR'
+        if (!isBr && !child.nodeValue) return
+        if (breakBefore) text += '\n'
+        breakBefore = false
+        started = true
+        if (!isBr) text += child.nodeValue
+        else if (i < node.childNodes.length - 1) text += '\n'
+      } else if (isBlock(child)) {
+        if (started && (breakBefore || !text.endsWith('\n'))) text += '\n'
+        started = true
+        breakBefore = false
+        walk(child)
+        breakBefore = true
+      } else {
+        walk(child)
+      }
+    })
+  }
+  walk(root)
+  return text
+}
+
 function stopEdit() {
   editing.value = false
   const face = faceEl.value!
-  el.text = face.innerText
+  el.text = editedText(face)
   face.textContent = shownText.value
   // while typing, the box may scroll to keep the caret in view; put it back
   // so the text always renders (and exports) from its normal position
