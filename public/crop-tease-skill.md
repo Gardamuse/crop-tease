@@ -109,7 +109,7 @@ required keys make the file fail to open, so include every field shown.
   "id": 1,
   "layout": { /* region tree, see Panels and bars */ },
   "elements": [ /* close-ups and text, see Elements */ ],
-  "border": true   // optional: false leaves the page border off this page (e.g. a full-bleed cover)
+  "border": true   // optional: false leaves the page border and the page number off this page
 }
 ```
 
@@ -278,6 +278,10 @@ text replaced by the page number and `{total}` by the page count:
 }
 ```
 
+Pages with `"border": false` don't show it. If the first page has
+`"border": false`, it's a cover and isn't counted: the page after it is
+number 1, and `{total}` leaves it out. Later borderless pages still count.
+
 ## Fonts
 
 `textFont` (and a text's own `font`) is one of these ids:
@@ -338,6 +342,25 @@ Image ids are any string that's safe in a file name; the app uses the first
 its MIME type (`image/jpeg`, `image/png`, `image/webp`, `image/gif`,
 `image/avif`) and store it as `images/<id>.<ext>` (`jpg`, `png`, `webp`,
 `gif`, `avif`). A frame whose image is missing shows a placeholder.
+
+### Blur and color overlay
+
+A panel leaf or a close-up can also carry effects on its photo (both
+optional; they only show while it has a photo, and stay if it changes):
+
+```jsonc
+"blur": 8,               // blur radius in output pixels, 0..50 (0 or missing: none)
+"overlay": {             // a color fading over the photo, or null / missing for none
+  "from": "bottom",      // "top" | "bottom": the side it fades from
+  "angle": 0,            // degrees clockwise the fade is turned, -90..90
+  "color": "#000000",    // #rrggbb
+  "size": 100,           // how far the fade reaches, % of the photo
+  "strength": 100        // the color's opacity where it's strongest, %
+}
+```
+
+A black `"bottom"` overlay is a good backdrop for captions at the foot of a
+panel.
 
 ## Building the file
 

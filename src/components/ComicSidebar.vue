@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
           </li>
           <li>
             <b>Photos:</b> click an empty panel or close-up, or drop an image on it. Drag to reposition
-            (Ctrl+drag in a close-up), scroll to zoom, right-click to change or remove.
+            (Ctrl+drag in a close-up), scroll to zoom. Right-click to change, blur or tint it.
           </li>
           <li>
             <b>Close-ups and text:</b> drag to move, drag the edge to resize, right-click for options.
@@ -474,7 +474,8 @@ onBeforeUnmount(() => {
           </li>
           <li>
             <b>Page numbers:</b> one text shown on every page; <code>{n}</code> is the page number,
-            <code>{total}</code> the page count.
+            <code>{total}</code> the page count. Pages with their border hidden don't show it; a borderless first
+            page is a cover and isn't counted.
           </li>
           <li>
             <b>Keys</b> (on the last clicked item): Ctrl+C / Ctrl+V copy and paste, Delete removes. Ctrl+Z undoes,

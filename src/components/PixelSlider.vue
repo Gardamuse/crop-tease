@@ -11,8 +11,10 @@ const props = withDefaults(
     disabled?: boolean
     /** if given, the slider snaps to these values (the number box still takes anything in min..max) */
     steps?: number[]
+    /** shown after the number */
+    unit?: string
   }>(),
-  { min: 0, disabled: false },
+  { min: 0, disabled: false, unit: 'px' },
 )
 
 const emit = defineEmits<{
@@ -56,7 +58,7 @@ function onChange(e: Event) {
       :max="steps ? steps.length - 1 : max"
       :value="steps ? stepIndex : modelValue"
       :aria-label="label"
-      :aria-valuetext="`${modelValue} px`"
+      :aria-valuetext="`${modelValue} ${unit}`"
       :disabled="disabled"
       @input="onSlide"
     />
@@ -66,10 +68,10 @@ function onChange(e: Event) {
       :max="max"
       :disabled="disabled"
       :value="modelValue"
-      :aria-label="`${label} in pixels`"
+      :aria-label="unit === 'px' ? `${label} in pixels` : label"
       @change="onChange"
     />
-    <span>px</span>
+    <span>{{ unit }}</span>
   </div>
 </template>
 

@@ -25,7 +25,9 @@ import {
   typeForExtension,
 } from './images'
 import { resetHistory } from './history'
+import { DEFAULT_OVERLAY, MAX_BLUR, MAX_OVERLAY_ANGLE } from './photoEffects'
 import type { Region } from './layout'
+import { clamp } from './math'
 import { store, syncCounters, usedFonts, type ComicElement, type TextElement } from './store'
 import { customFontFile, installProjectFont } from './textFonts'
 
@@ -75,10 +77,21 @@ const AnchorSchema = z.object({
   t: z.number(),
 })
 
+// a color over a photo (added later)
+const OverlaySchema = z.object({
+  from: z.enum(['top', 'bottom']),
+  angle: z.number().transform((a) => clamp(a, -MAX_OVERLAY_ANGLE, MAX_OVERLAY_ANGLE)),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  size: z.number().min(0).max(100).default(DEFAULT_OVERLAY.size),
+  strength: z.number().min(0).max(100).default(DEFAULT_OVERLAY.strength),
+})
+
 const LeafSchema = z.object({
   kind: z.literal('leaf'),
   id: z.number().int(),
   frame: FrameSchema.nullable(),
+  overlay: OverlaySchema.nullable().default(null),
+  blur: z.number().min(0).max(MAX_BLUR).default(0), // added later
 })
 
 type SavedRegion =
@@ -132,6 +145,8 @@ const ElementSchema = z.discriminatedUnion('kind', [
     kind: z.literal('circle'),
     d: z.number().positive(),
     frame: FrameSchema.nullable(),
+    overlay: OverlaySchema.nullable().default(null),
+    blur: z.number().min(0).max(MAX_BLUR).default(0), // added later
   }),
   TextSchema,
 ])
@@ -228,7 +243,7 @@ function saveFrame(f: ImageFrame | null): SavedFrame | null {
 }
 
 function saveRegion(node: Region): SavedRegion {
-  if (node.kind === 'leaf') return { kind: 'leaf', id: node.id, frame: saveFrame(node.frame) }
+  if (node.kind === 'leaf') return { kind: 'leaf', id: node.id, frame: saveFrame(node.frame), overlay: node.overlay && { ...node.overlay }, blur: node.blur }
   return {
     kind: 'split',
     bar: { id: node.bar.id, a: { ...node.bar.a }, b: { ...node.bar.b } },
@@ -300,7 +315,7 @@ function applyProject(doc: ProjectDoc): void {
   }
   const loadRegion = (node: SavedRegion): Region =>
     node.kind === 'leaf'
-      ? { kind: 'leaf', id: node.id, frame: loadFrame(node.frame) }
+      ? { kind: 'leaf', id: node.id, frame: loadFrame(node.frame), overlay: node.overlay, blur: node.blur }
       : { kind: 'split', bar: node.bar, front: loadRegion(node.front), back: loadRegion(node.back) }
 
   store.name = doc.name

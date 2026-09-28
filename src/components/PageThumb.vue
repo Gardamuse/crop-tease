@@ -3,11 +3,13 @@ import { computed } from 'vue'
 
 import { CLOSE_UP_PLACEHOLDER_COLOR, PANEL_PLACEHOLDER_COLORS } from '@/lib/constants'
 import { computeLayout } from '@/lib/layout'
+import { blurRadius, overlayGradient } from '@/lib/photoEffects'
 import { fontVars } from '@/lib/textFonts'
 import {
   dividerStageWidth,
   pageBorderWidth,
   pageNumberText,
+  pageShowsNumber,
   stageSize,
   store,
   textFontSize,
@@ -34,8 +36,22 @@ const texts = computed(() => page.elements.filter((e): e is TextElement => e.kin
 
 const pageNumber = computed(() => {
   const pn = store.pageNumber
-  return pn && { el: pn, text: pageNumberText(pn.text, index), outline: textOutline(pn.color) }
+  return pn && pageShowsNumber(index) && { el: pn, text: pageNumberText(pn.text, index), outline: textOutline(pn.color) }
 })
+
+// the photos' color overlays, each as an SVG gradient over its panel's or close-up's box
+const overlays = computed(() => [
+  ...geom.value.panels.flatMap((p) =>
+    p.leaf.frame && p.leaf.overlay
+      ? [{ key: `panel-${p.leaf.id}`, color: p.leaf.overlay.color, ...overlayGradient(p.leaf.overlay, p.bbox) }]
+      : [],
+  ),
+  ...circles.value.flatMap((c) =>
+    c.frame && c.overlay
+      ? [{ key: `circle-${c.id}`, color: c.overlay.color, ...overlayGradient(c.overlay, { x: c.x, y: c.y, w: c.d, h: c.d }) }]
+      : [],
+  ),
+])
 
 const points = (pts: [number, number][]) => pts.map((p) => p.join(',')).join(' ')
 const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
@@ -50,6 +66,44 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
       <clipPath v-for="c in circles" :id="clipId('circle', c.id)" :key="c.id">
         <circle :cx="c.x + c.d / 2" :cy="c.y + c.d / 2" :r="c.d / 2" />
       </clipPath>
+      <template v-for="p in geom.panels" :key="`blur-${p.leaf.id}`">
+        <filter
+          v-if="p.leaf.frame && p.leaf.blur"
+          :id="clipId('blur-panel', p.leaf.id)"
+          x="0"
+          y="0"
+          width="1"
+          height="1"
+          color-interpolation-filters="sRGB"
+        >
+          <feGaussianBlur :stdDeviation="blurRadius(p.leaf.blur, p.leaf.frame)" edgeMode="duplicate" />
+        </filter>
+      </template>
+      <template v-for="c in circles" :key="`blur-${c.id}`">
+        <filter
+          v-if="c.frame && c.blur"
+          :id="clipId('blur-circle', c.id)"
+          x="0"
+          y="0"
+          width="1"
+          height="1"
+          color-interpolation-filters="sRGB"
+        >
+          <feGaussianBlur :stdDeviation="blurRadius(c.blur, c.frame)" edgeMode="duplicate" />
+        </filter>
+      </template>
+      <linearGradient
+        v-for="o in overlays"
+        :id="`thumb-${page.id}-overlay-${o.key}`"
+        :key="o.key"
+        gradientUnits="userSpaceOnUse"
+        :x1="o.x1"
+        :y1="o.y1"
+        :x2="o.x2"
+        :y2="o.y2"
+      >
+        <stop v-for="s in o.stops" :key="s.offset" :offset="s.offset" :stop-color="o.color" :stop-opacity="s.opacity" />
+      </linearGradient>
     </defs>
     <rect :width="stageSize.w" :height="stageSize.h" fill="#000" />
     <g v-for="(p, i) in geom.panels" :key="p.leaf.id" :clip-path="`url(#${clipId('panel', p.leaf.id)})`">
@@ -59,10 +113,19 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :width="p.leaf.frame.natW"
         :height="p.leaf.frame.natH"
         :transform="`translate(${p.leaf.frame.tx} ${p.leaf.frame.ty}) scale(${p.leaf.frame.scale})`"
+        :filter="p.leaf.blur ? `url(#${clipId('blur-panel', p.leaf.id)})` : undefined"
         preserveAspectRatio="none"
       />
       <rect
-        v-else
+        v-if="p.leaf.frame && p.leaf.overlay"
+        :x="p.bbox.x"
+        :y="p.bbox.y"
+        :width="p.bbox.w"
+        :height="p.bbox.h"
+        :fill="`url(#thumb-${page.id}-overlay-panel-${p.leaf.id})`"
+      />
+      <rect
+        v-if="!p.leaf.frame"
         :width="stageSize.w"
         :height="stageSize.h"
         :fill="PANEL_PLACEHOLDER_COLORS[i % PANEL_PLACEHOLDER_COLORS.length]"
@@ -97,7 +160,15 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :height="c.frame.natH"
         :transform="`translate(${c.x + c.frame.tx} ${c.y + c.frame.ty}) scale(${c.frame.scale})`"
         :clip-path="`url(#${clipId('circle', c.id)})`"
+        :filter="c.blur ? `url(#${clipId('blur-circle', c.id)})` : undefined"
         preserveAspectRatio="none"
+      />
+      <circle
+        v-if="c.frame && c.overlay"
+        :cx="c.x + c.d / 2"
+        :cy="c.y + c.d / 2"
+        :r="c.d / 2"
+        :fill="`url(#thumb-${page.id}-overlay-circle-${c.id})`"
       />
       <circle v-else :cx="c.x + c.d / 2" :cy="c.y + c.d / 2" :r="c.d / 2" :fill="CLOSE_UP_PLACEHOLDER_COLOR" />
     </g>

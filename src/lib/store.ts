@@ -18,6 +18,7 @@ import {
 } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
+import type { ImageOverlay } from './photoEffects'
 import { getImage, type StoredImage } from './images'
 import {
   anchorAt,
@@ -52,6 +53,10 @@ export interface CircleElement extends ElementBase {
   d: number
   /** null shows a flat placeholder color */
   frame: ImageFrame | null
+  /** a color over the photo; kept when the photo changes */
+  overlay: ImageOverlay | null
+  /** blur radius in output pixels, 0 for none; kept when the photo changes */
+  blur: number
 }
 
 export interface TextElement extends ElementBase {
@@ -104,7 +109,7 @@ export function syncCounters(): void {
 }
 
 function newLeaf(frame: ImageFrame | null = null): Leaf {
-  return { kind: 'leaf', id: nextId++, frame }
+  return { kind: 'leaf', id: nextId++, frame, overlay: null, blur: 0 }
 }
 
 // default: one vertical bar through the middle (top-mid to bottom-mid)
@@ -279,7 +284,10 @@ export function pageBorderWidth(page: ComicPage): number {
 /** Turns the page border on or off for one page. */
 export function togglePageBorder(index: number): void {
   const page = store.pages[index]
-  if (page) page.border = !page.border
+  if (!page) return
+  page.border = !page.border
+  // the page number goes from that page, so it can't stay selected there
+  if (!page.border && index === store.pageIndex && store.selectedId === store.pageNumber?.id) store.selectedId = null
 }
 
 /** The split bars' and close-up rings' width in stage units. */
@@ -594,6 +602,8 @@ export function addCircle(image: StoredImage | null, opts: Partial<CircleElement
     z: 0,
     d,
     frame: null,
+    overlay: null,
+    blur: 0,
     ...opts,
   })
   // re-read through the reactive array so later mutations are tracked
@@ -642,9 +652,23 @@ export function fileBaseName(): string {
   return safe || DEFAULT_NAME
 }
 
+// Pages with their border turned off don't show the page number. A first
+// page like that is a cover and isn't counted either, so the page after it
+// is number 1; later ones still count.
+function coverPages(): number {
+  return store.pages[0]?.border === false ? 1 : 0
+}
+
+/** Whether a page (0-based index) shows the page number. */
+export function pageShowsNumber(index: number): boolean {
+  return store.pages[index]?.border !== false
+}
+
 /** The page-number text for a page (0-based index), from its template. */
 export function pageNumberText(template: string, index: number): string {
-  return template.split('{n}').join(String(index + 1)).split('{total}').join(String(store.pages.length))
+  const n = index + 1 - coverPages()
+  const total = store.pages.length - coverPages()
+  return template.split('{n}').join(String(n)).split('{total}').join(String(total))
 }
 
 /** Adds the page-number text (one shared item shown on every page) at the bottom center. */

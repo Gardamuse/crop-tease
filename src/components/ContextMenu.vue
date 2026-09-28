@@ -10,20 +10,32 @@ const EDGE_GAP = 6 // keep the menu this far inside the window
 const menuEl = useTemplateRef('menu')
 const pos = ref({ x: 0, y: 0 })
 
-// open at the pointer, flipped/shifted as needed to stay inside the window
+// Placed at the pointer, flipped or shifted as needed to stay inside the
+// window; placed again whenever its size changes (rows can appear while
+// it's open, e.g. an overlay's color once an overlay is picked).
+function place() {
+  const menu = menuEl.value
+  if (!menu) return
+  const { width, height } = menu.getBoundingClientRect()
+  let { x, y } = contextMenu
+  if (x + width > innerWidth - EDGE_GAP) x = Math.max(EDGE_GAP, x - width)
+  if (y + height > innerHeight - EDGE_GAP) y = Math.max(EDGE_GAP, innerHeight - EDGE_GAP - height)
+  pos.value = { x, y }
+}
+
+const resizeObserver = new ResizeObserver(place)
+
 watch(
   () => contextMenu.open && [contextMenu.x, contextMenu.y],
   async (open) => {
+    resizeObserver.disconnect()
     if (!open) return
     pos.value = { x: contextMenu.x, y: contextMenu.y }
     await nextTick()
     const menu = menuEl.value
     if (!menu) return
-    const { width, height } = menu.getBoundingClientRect()
-    let { x, y } = pos.value
-    if (x + width > innerWidth - EDGE_GAP) x = Math.max(EDGE_GAP, x - width)
-    if (y + height > innerHeight - EDGE_GAP) y = Math.max(EDGE_GAP, innerHeight - EDGE_GAP - height)
-    pos.value = { x, y }
+    place()
+    resizeObserver.observe(menu)
     menu.querySelector<HTMLButtonElement>('button')?.focus()
   },
 )
@@ -47,6 +59,14 @@ function onKeyDown(e: KeyboardEvent) {
   buttons[(i + step + buttons.length) % buttons.length]?.focus()
 }
 
+// leaving the window closes the menu, except for the color picker a custom
+// swatch opened (which may be a window of its own)
+function onWindowBlur() {
+  const active = document.activeElement
+  if (active instanceof HTMLInputElement && active.type === 'color' && menuEl.value?.contains(active)) return
+  closeContextMenu()
+}
+
 // any press outside the menu, or the page changing under it, closes it
 function onOutsidePointer(e: PointerEvent) {
   if (contextMenu.open && !menuEl.value?.contains(e.target as Node)) closeContextMenu()
@@ -55,14 +75,15 @@ function onOutsidePointer(e: PointerEvent) {
 onMounted(() => {
   window.addEventListener('pointerdown', onOutsidePointer, true)
   window.addEventListener('keydown', onKeyDown)
-  window.addEventListener('blur', closeContextMenu)
+  window.addEventListener('blur', onWindowBlur)
   window.addEventListener('resize', closeContextMenu)
   window.addEventListener('wheel', closeContextMenu, { passive: true })
 })
 onBeforeUnmount(() => {
+  resizeObserver.disconnect()
   window.removeEventListener('pointerdown', onOutsidePointer, true)
   window.removeEventListener('keydown', onKeyDown)
-  window.removeEventListener('blur', closeContextMenu)
+  window.removeEventListener('blur', onWindowBlur)
   window.removeEventListener('resize', closeContextMenu)
   window.removeEventListener('wheel', closeContextMenu)
 })
@@ -100,6 +121,7 @@ onBeforeUnmount(() => {
             :min="item.min"
             :max="item.max"
             :steps="item.steps"
+            :unit="item.unit"
             :label="item.label"
             @update:model-value="item.set"
           />
@@ -113,6 +135,20 @@ onBeforeUnmount(() => {
           >
             <template v-for="(o, j) in item.options" :key="j">
               <span v-if="!o" class="spacer" />
+              <label
+                v-else-if="o.pickColor"
+                class="custom-color"
+                :class="{ active: o.active?.() }"
+                :title="o.title ?? o.label"
+              >
+                <span class="rainbow" :style="{ background: o.active?.() ? o.pickColor.value() : undefined }" />
+                <input
+                  type="color"
+                  :aria-label="o.label"
+                  :value="o.pickColor.value()"
+                  @input="o.pickColor.set(($event.target as HTMLInputElement).value)"
+                />
+              </label>
               <button
                 v-else
                 role="menuitemradio"
@@ -216,6 +252,11 @@ hr {
   gap: 10px;
   padding: 4px 6px 4px 10px;
 
+  // so stacked sliders line up
+  > .row-label {
+    min-width: 64px;
+  }
+
   .slider {
     flex: 1;
     min-width: 150px;
@@ -297,6 +338,45 @@ hr {
           0 0 0 3px $accent,
           0 0 10px $accent-dim;
       }
+    }
+  }
+
+  // a swatch like the others, showing a rainbow until a custom color is chosen
+  .custom-color {
+    position: relative;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba($shade, 0.25);
+    overflow: hidden;
+    cursor: pointer;
+
+    &.active {
+      overflow: visible;
+      box-shadow:
+        0 0 0 2px $bg-panel-alt,
+        0 0 0 3px $accent,
+        0 0 10px $accent-dim;
+    }
+
+    .rainbow {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+    }
+
+    // the native picker covers the swatch so any click opens it
+    input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: none;
+      opacity: 0;
+      cursor: pointer;
     }
   }
 }

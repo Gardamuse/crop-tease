@@ -18,6 +18,7 @@ import {
   copyElement,
   deselectAll,
   layout,
+  pageShowsNumber,
   pasteElement,
   planSplit,
   removeSelected,
@@ -225,9 +226,9 @@ defineExpose({ renderImage })
           <CloseUpCircle v-if="el.kind === 'circle'" :element="el" />
           <TextBox v-else :element="el" />
         </template>
-        <!-- one shared item drawn on every page -->
+        <!-- one shared item drawn on every page (but those with their border off) -->
         <TextBox
-          v-if="store.pageNumber"
+          v-if="store.pageNumber && pageShowsNumber(store.pageIndex)"
           :key="`${store.generation}-${store.pageNumber.id}`"
           :element="store.pageNumber"
         />

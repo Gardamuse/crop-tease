@@ -7,6 +7,7 @@ import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import type { PanelGeom } from '@/lib/layout'
 import { openContextMenu } from '@/lib/contextMenu'
+import { blurRadius, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
 import { clearPanelImage, deselectAll, setPanelImage, store } from '@/lib/store'
 
 const props = defineProps<{
@@ -68,6 +69,7 @@ function onContextMenu(e: MouseEvent) {
     ...(frame.value
       ? [{ label: 'Remove image', icon: '🗑', danger: true, action: () => clearPanelImage(leafId) }]
       : []),
+    ...photoMenuEntries(props.panel.leaf, () => !!frame.value),
   ])
 }
 
@@ -108,7 +110,31 @@ function onDrop(e: DragEvent) {
         Drop or click to<br />set an image
       </span>
     </div>
-    <img v-else class="panel-img" :src="frame.src" :style="{ transform: frameTransform(frame) }" draggable="false" />
+    <!-- the blur repeats the photo's edge pixels outward, so its edges stay solid instead of fading -->
+    <svg v-if="frame && panel.leaf.blur" class="filter-defs" aria-hidden="true">
+      <filter :id="`blur-panel-${panel.leaf.id}`" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+        <feGaussianBlur :stdDeviation="blurRadius(panel.leaf.blur, frame)" edgeMode="duplicate" />
+      </filter>
+    </svg>
+    <img
+      v-if="frame"
+      class="panel-img"
+      :src="frame.src"
+      :style="{ transform: frameTransform(frame), filter: panel.leaf.blur ? `url(#blur-panel-${panel.leaf.id})` : undefined }"
+      draggable="false"
+    />
+    <!-- over the panel's own area, so the fade runs across what's visible -->
+    <div
+      v-if="frame && panel.leaf.overlay"
+      class="overlay"
+      :style="{
+        left: `${panel.bbox.x}px`,
+        top: `${panel.bbox.y}px`,
+        width: `${panel.bbox.w}px`,
+        height: `${panel.bbox.h}px`,
+        background: overlayBackground(panel.leaf.overlay),
+      }"
+    />
     <input ref="fileInput" type="file" accept="image/*" v-bind="{ [NO_EXPORT_ATTR]: '' }" @change="onFileChosen" />
   </div>
 </template>
@@ -132,6 +158,17 @@ function onDrop(e: DragEvent) {
   &:active {
     cursor: grabbing;
   }
+}
+
+.overlay {
+  position: absolute;
+  pointer-events: none;
+}
+
+.filter-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
 }
 
 .placeholder {

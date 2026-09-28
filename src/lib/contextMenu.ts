@@ -36,12 +36,16 @@ export interface MenuChoice {
   title?: string
   active?: () => boolean
   pick: () => void
+  /** makes this a custom-color swatch that opens the color picker */
+  pickColor?: { value: () => string; set: (color: string) => void }
 }
 
-/** A labeled slider + number box (in px) that stays open while used. */
+/** A labeled slider + number box (in px, or `unit`) that stays open while used. */
 export interface MenuSlider extends MenuEntryBase {
   kind: 'slider'
   label: string
+  /** shown after the number (default px) */
+  unit?: string
   /** range for typed values */
   min: number
   max: number

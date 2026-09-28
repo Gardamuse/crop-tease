@@ -3,6 +3,7 @@ import { computed, ref, useTemplateRef } from 'vue'
 
 import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
 import { openContextMenu } from '@/lib/contextMenu'
+import { blurRadius, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
@@ -140,6 +141,8 @@ function onContextMenu(e: MouseEvent) {
   selectElement(el.id)
   openContextMenu(e, [
     { label: el.frame ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
+    ...photoMenuEntries(el, () => !!el.frame),
+    { kind: 'separator' },
     { label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) },
     { label: 'Delete close-up', icon: '🗑', danger: true, action: () => removeElement(el.id) },
   ])
@@ -211,8 +214,20 @@ async function useFile(file: File | undefined) {
     />
     <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->
     <div class="clip" :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }">
-      <img v-if="el.frame" :src="el.frame.src" :style="{ transform: frameTransform(el.frame) }" draggable="false" />
+      <!-- the blur repeats the photo's edge pixels outward, so its edges stay solid instead of fading -->
+      <svg v-if="el.frame && el.blur" class="filter-defs" aria-hidden="true">
+        <filter :id="`blur-circle-${el.id}`" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+          <feGaussianBlur :stdDeviation="blurRadius(el.blur, el.frame)" edgeMode="duplicate" />
+        </filter>
+      </svg>
+      <img
+        v-if="el.frame"
+        :src="el.frame.src"
+        :style="{ transform: frameTransform(el.frame), filter: el.blur ? `url(#blur-circle-${el.id})` : undefined }"
+        draggable="false"
+      />
       <span v-else class="hint" v-bind="{ [NO_EXPORT_ATTR]: '' }">Click or drop<br />an image</span>
+      <div v-if="el.frame && el.overlay" class="overlay" :style="{ background: overlayBackground(el.overlay) }" />
     </div>
     <!-- inner outline drawn over the photo's edge; the ring disc below it is opaque, so no gap -->
     <div
@@ -282,6 +297,18 @@ async function useFile(file: File | undefined) {
     max-width: none;
     -webkit-user-drag: none;
     pointer-events: none;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .filter-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
   }
 }
 
