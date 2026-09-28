@@ -17,6 +17,7 @@ import {
   borderStageWidth,
   copyElement,
   deselectAll,
+  findElement,
   layout,
   pageShowsNumber,
   pasteElement,
@@ -64,6 +65,29 @@ function fitStage() {
 }
 watch(stageSize, fitStage)
 
+// Arrow keys move the selected close-up or text by about a screen pixel, or
+// ten with Shift. The page is drawn in whole stage units before it's scaled
+// to fit, so a move of a fraction of a unit would show as nothing one press
+// and a jump the next: each press moves a whole number of units (as many as
+// come nearest a screen pixel) from a whole-unit position, so every step
+// looks the same.
+const NUDGE: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+}
+
+function nudgeSelected(e: KeyboardEvent): boolean {
+  const el = store.selectedId !== null ? findElement(store.selectedId) : undefined
+  if (!el) return false
+  const [dx, dy] = NUDGE[e.key]!
+  const step = Math.max(1, Math.round(1 / store.displayScale)) * (e.shiftKey ? 10 : 1)
+  el.x = Math.round(el.x) + dx * step
+  el.y = Math.round(el.y) + dy * step
+  return true
+}
+
 // true while typing somewhere (a text box being edited, a field), where keys are for the text
 function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
@@ -88,6 +112,8 @@ function onKeyDown(e: KeyboardEvent) {
     handled = true
   } else if (!ctrl && !e.shiftKey && e.key === 'Delete') {
     handled = removeSelected()
+  } else if (!ctrl && e.key in NUDGE) {
+    handled = nudgeSelected(e)
   }
   if (handled) e.preventDefault()
 }
@@ -118,6 +144,11 @@ function stagePoint(e: PointerEvent): Point {
 
 function onStagePointerDown(e: PointerEvent) {
   if (e.target === stageEl.value) deselectAll()
+}
+
+// a press on the workspace around the page deselects too
+function onOuterPointerDown(e: PointerEvent) {
+  if (!stageEl.value?.contains(e.target as Node)) deselectAll()
 }
 
 function showPlan(plan: ReturnType<typeof planSplit>) {
@@ -191,7 +222,7 @@ defineExpose({ renderImage })
 </script>
 
 <template>
-  <main ref="outer" class="stage-outer">
+  <main ref="outer" class="stage-outer" @pointerdown="onOuterPointerDown">
     <div class="stage-card" :style="{ width: `${card.w}px`, height: `${card.h}px` }">
       <div
         ref="stage"

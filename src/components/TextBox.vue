@@ -310,12 +310,20 @@ function onContextMenu(e: MouseEvent) {
     {
       kind: 'choices',
       label: 'Color',
-      options: TEXT_PALETTE.map((c) => ({
-        label: c,
-        swatch: c,
-        active: () => el.color.toLowerCase() === c,
-        pick: () => (el.color = c),
-      })),
+      options: [
+        ...TEXT_PALETTE.map((c) => ({
+          label: c,
+          swatch: c,
+          active: () => el.color.toLowerCase() === c,
+          pick: () => (el.color = c),
+        })),
+        {
+          label: 'Custom color',
+          active: () => !TEXT_PALETTE.includes(el.color.toLowerCase()),
+          pick: () => {},
+          pickColor: { value: () => el.color, set: (color: string) => (el.color = color) },
+        },
+      ],
     },
     {
       kind: 'select',

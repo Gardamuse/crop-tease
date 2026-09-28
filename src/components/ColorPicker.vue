@@ -12,10 +12,12 @@ const emit = defineEmits<{ 'update:modelValue': [color: string] }>()
 
 // The hue is kept here too: a grey or black has none of its own, and
 // dragging through one shouldn't lose it.
-const hsv = ref<Hsv>(hexToHsv(props.modelValue))
-let sent = props.modelValue.toLowerCase()
+// a color that isn't #rgb or #rrggbb (a project may use any CSS color) starts from black
+const asHex = (color: string) => normalizeHex(color) ?? '#000000'
+const hsv = ref<Hsv>(hexToHsv(asHex(props.modelValue)))
+let sent = asHex(props.modelValue)
 watch(
-  () => props.modelValue.toLowerCase(),
+  () => asHex(props.modelValue),
   (hex) => {
     if (hex !== sent) hsv.value = hexToHsv(hex) // changed elsewhere (e.g. a preset picked)
   },
