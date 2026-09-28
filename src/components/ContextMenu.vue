@@ -127,10 +127,8 @@ onBeforeUnmount(() => {
             @update:model-value="item.set"
           />
         </div>
-        <div v-else-if="item.kind === 'range'" class="slider-row" :title="item.title">
-          <span class="row-label">{{ item.label }}</span>
+        <div v-else-if="item.kind === 'range'" class="range-row" :title="item.title">
           <RangeSlider
-            class="slider"
             :model-value="item.value()"
             :min="item.min"
             :max="item.max"
@@ -267,7 +265,7 @@ hr {
 
   // so stacked sliders line up
   > .row-label {
-    min-width: 84px;
+    min-width: 64px;
   }
 
   .slider {
@@ -296,6 +294,11 @@ hr {
   &:focus-within {
     opacity: 0.8;
   }
+}
+
+// label and values above, the bar across the row's full width below
+.range-row {
+  padding: 4px 6px 6px 10px;
 }
 
 .choices-row {

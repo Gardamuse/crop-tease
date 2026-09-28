@@ -3,10 +3,12 @@ import { useTemplateRef } from 'vue'
 
 import { clamp } from '@/lib/math'
 
-// A low and a high value on one black-to-white track, like the level sliders
-// in image editors: drag either triangle (or press the track to bring the
-// nearer one there), use the arrow keys on it (Shift for steps of 10), or
-// type into the boxes at the ends. Double-clicking the track resets both.
+// A low and a high value on one black-to-white bar, like the level sliders
+// in image editors, styled like the app's other sliders: the label and both
+// values on a line, the bar below it at full width. Drag either knob (or
+// press the bar to bring the nearer one there), use the arrow keys on it
+// (Shift for steps of 10), or type into the boxes. Double-clicking the bar
+// resets both ends.
 const props = defineProps<{
   modelValue: [number, number]
   min: number
@@ -20,9 +22,10 @@ const emit = defineEmits<{
   'update:modelValue': [value: [number, number]]
 }>()
 
-const trackEl = useTemplateRef('track')
+const barEl = useTemplateRef('bar')
 
-const percent = (v: number) => `${((v - props.min) / (props.max - props.min)) * 100}%`
+const fraction = (v: number) => (v - props.min) / (props.max - props.min)
+const percent = (v: number) => `${fraction(v) * 100}%`
 
 /** Sets one end, keeping the other at least minGap away (by pushing it along if needed). */
 function setEnd(end: 0 | 1, value: number) {
@@ -39,23 +42,19 @@ function setEnd(end: 0 | 1, value: number) {
 }
 
 function valueAt(clientX: number): number {
-  const r = trackEl.value!.getBoundingClientRect()
+  const r = barEl.value!.getBoundingClientRect()
   return props.min + ((clientX - r.left) / r.width) * (props.max - props.min)
 }
 
-// a press picks the nearer handle (the one pressed, if it's a handle) and drags it
+// a press picks the knob pressed, or else the nearer one (moving it there), and drags it
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 0) return
-  const target = e.target as HTMLElement
-  const [low, high] = props.modelValue
+  const knob = (e.target as HTMLElement).dataset.end
   const at = valueAt(e.clientX)
-  const end: 0 | 1 = target.dataset.end
-    ? (Number(target.dataset.end) as 0 | 1)
-    : Math.abs(at - low) <= Math.abs(at - high)
-      ? 0
-      : 1
-  if (!target.dataset.end) setEnd(end, at)
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  const [low, high] = props.modelValue
+  const end: 0 | 1 = knob ? (Number(knob) as 0 | 1) : Math.abs(at - low) <= Math.abs(at - high) ? 0 : 1
+  if (!knob) setEnd(end, at)
+  ;(e.target as HTMLElement).closest<HTMLElement>('.bar')?.querySelector<HTMLElement>(`[data-end="${end}"]`)?.focus()
   const move = (ev: PointerEvent) => setEnd(end, valueAt(ev.clientX))
   const up = () => {
     window.removeEventListener('pointermove', move)
@@ -87,120 +86,145 @@ function onBox(e: Event, end: 0 | 1) {
 
 <template>
   <div class="range-slider">
-    <input
-      type="number"
-      :min="min"
-      :max="max"
-      :value="modelValue[0]"
-      :aria-label="`${label}: low`"
-      @change="onBox($event, 0)"
-    />
+    <div class="head">
+      <span class="label">{{ label }}</span>
+      <input
+        type="number"
+        :min="min"
+        :max="max"
+        :value="modelValue[0]"
+        :aria-label="`${label}: black point`"
+        @change="onBox($event, 0)"
+      />
+      <span class="dash">–</span>
+      <input
+        type="number"
+        :min="min"
+        :max="max"
+        :value="modelValue[1]"
+        :aria-label="`${label}: white point`"
+        @change="onBox($event, 1)"
+      />
+    </div>
     <div
-      ref="track"
-      class="track"
+      ref="bar"
+      class="bar"
       @pointerdown.prevent="onPointerDown"
       @dblclick="emit('update:modelValue', [min, max])"
     >
       <div class="gradient" />
+      <!-- the tones outside the range, dimmed -->
+      <div class="outside" :style="{ left: 0, width: percent(modelValue[0]) }" />
+      <div class="outside" :style="{ left: percent(modelValue[1]), right: 0 }" />
       <button
         v-for="end in [0, 1] as const"
         :key="end"
-        class="handle"
-        :class="end === 0 ? 'low' : 'high'"
+        class="knob"
+        :class="end === 0 ? 'black' : 'white'"
         :data-end="end"
         :style="{ left: percent(modelValue[end]) }"
         role="slider"
-        :aria-label="`${label}: ${end === 0 ? 'low' : 'high'}`"
+        :aria-label="`${label}: ${end === 0 ? 'black' : 'white'} point`"
         :aria-valuemin="min"
         :aria-valuemax="max"
         :aria-valuenow="modelValue[end]"
         @keydown="onKey($event, end)"
       />
     </div>
-    <input
-      type="number"
-      :min="min"
-      :max="max"
-      :value="modelValue[1]"
-      :aria-label="`${label}: high`"
-      @change="onBox($event, 1)"
-    />
   </div>
 </template>
 
 <style scoped lang="scss">
 .range-slider {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+// the label, then "black – white" in number boxes like the other sliders'
+.head {
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+
+  .label {
+    @include micro-label;
+    flex: 1;
+  }
 
   input[type='number'] {
     @include field;
-    width: 48px;
-    padding: 4px 5px;
+    width: 54px;
+    padding: 4px 6px;
+    font-size: 0.72rem;
+  }
+
+  .dash {
+    color: $text-dim;
     font-size: 0.72rem;
   }
 }
 
-// the black-to-white bar, with the handles' triangles pointing up at it from below
-.track {
+// a slim black-to-white bar across the whole row, knobs riding on it; the
+// sides are inset by a knob's radius so the knobs stay inside at 0 and 255
+.bar {
   position: relative;
-  flex: 1;
-  min-width: 110px;
-  height: 22px;
+  height: 20px;
+  margin: 0 8px;
   cursor: pointer;
   touch-action: none;
 }
 
-.gradient {
+.gradient,
+.outside {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 2px;
-  height: 8px;
-  border-radius: 2px;
-  background: linear-gradient(to right, #000, #fff);
-  box-shadow: inset 0 0 0 1px rgba($shade, 0.25);
+  top: 7px;
+  height: 6px;
 }
 
-.handle {
+.gradient {
+  left: -1px;
+  right: -1px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #000, #fff);
+  box-shadow: inset 0 0 0 1px $line;
+}
+
+.outside {
+  background: repeating-linear-gradient(135deg, rgba($bg-panel-alt, 0.75) 0 3px, rgba($bg-panel-alt, 0.35) 3px 6px);
+}
+
+// the app's slider knob (see PixelSlider), filled with the tone it sets
+.knob {
   position: absolute;
-  top: 11px;
-  width: 12px;
-  height: 10px;
-  margin-left: -6px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
   padding: 0;
   border: none;
-  background: none;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px $accent,
+    0 0 0 5px $accent-soft;
   cursor: grab;
-  // a triangle with a thin outline, drawn by its two layers
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transition: box-shadow 0.2s ease;
+
+  &.black {
+    background: #111;
   }
-  &::before {
-    background: $shade;
-  }
-  &::after {
-    inset: 2px 2.5px 1px;
-  }
-  &.low::after {
-    background: #222;
-  }
-  &.high::after {
+
+  &.white {
     background: #fff;
   }
 
-  &:hover::before,
-  &:focus-visible::before {
-    background: $accent;
-  }
-
+  &:hover,
   &:focus-visible {
     outline: none;
+    box-shadow:
+      0 0 0 2px $accent,
+      0 0 0 6px $accent-soft,
+      0 0 10px $accent-dim;
   }
 
   &:active {

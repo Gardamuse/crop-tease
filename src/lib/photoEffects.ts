@@ -15,7 +15,7 @@ export interface PhotoEffects {
   overlay: ImageOverlay | null
   /** blur radius in output pixels; 0 for none */
   blur: number
-  /** null leaves the photo's tones as they are */
+  /** null when levels are off (its sliders hidden); FULL_LEVELS while on but untouched */
   levels: Levels | null
 }
 
@@ -43,9 +43,13 @@ export function levelsTransfers(l: Levels): { slope: number; intercept: number }
   ]
 }
 
-/** Whether the photo needs its filter (blur or levels). */
+function changesTones(l: Levels | null): boolean {
+  return !!l && (Object.keys(FULL_LEVELS) as (keyof Levels)[]).some((k) => l[k] !== FULL_LEVELS[k])
+}
+
+/** Whether the photo needs its filter (blur, or levels that change something). */
 export function hasPhotoFilter(e: PhotoEffects): boolean {
-  return e.blur > 0 || e.levels !== null
+  return e.blur > 0 || changesTones(e.levels)
 }
 
 export type OverlayFrom = 'top' | 'bottom'
@@ -148,11 +152,8 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
   }
   const isPreset = () => OVERLAY_COLORS.some((c) => c.color === target.overlay?.color.toLowerCase())
   const levels = () => target.levels ?? FULL_LEVELS
-  const setLevels = (change: Partial<Levels>) => {
-    const l = { ...levels(), ...change }
-    const full = (Object.keys(FULL_LEVELS) as (keyof Levels)[]).every((k) => l[k] === FULL_LEVELS[k])
-    target.levels = full ? null : l
-  }
+  const setLevels = (change: Partial<Levels>) => (target.levels = { ...levels(), ...change })
+  const levelsOn = () => hasPhoto() && target.levels !== null
   return [
     { kind: 'separator', visible: hasPhoto },
     {
@@ -165,10 +166,24 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
       set: (px) => (target.blur = Math.round(clamp(px, 0, MAX_BLUR))),
     },
     {
-      kind: 'range',
-      label: 'Levels in',
-      title: 'Input levels: the tones that become black and white',
+      kind: 'choices',
+      label: 'Levels',
       visible: hasPhoto,
+      options: [
+        { label: 'Off', active: () => target.levels === null, pick: () => (target.levels = null) },
+        {
+          label: 'On',
+          title: "Set the photo's black and white points, as in Krita",
+          active: () => target.levels !== null,
+          pick: () => (target.levels ??= { ...FULL_LEVELS }),
+        },
+      ],
+    },
+    {
+      kind: 'range',
+      label: 'Input',
+      title: 'The tones that become black and white; those beyond are clipped',
+      visible: levelsOn,
       min: 0,
       max: 255,
       minGap: 1,
@@ -177,9 +192,9 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
     },
     {
       kind: 'range',
-      label: 'Levels out',
-      title: 'Output levels: the darkest and lightest tones the photo keeps',
-      visible: hasPhoto,
+      label: 'Output',
+      title: 'The darkest and lightest tones the photo is fitted into',
+      visible: levelsOn,
       min: 0,
       max: 255,
       minGap: 0,
