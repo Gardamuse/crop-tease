@@ -466,7 +466,7 @@ onBeforeUnmount(() => {
           </li>
           <li>
             <b>Close-ups and text:</b> drag to move, drag the edge to resize, right-click for options.
-            <b>Text:</b> double-click to edit, Ctrl+drag to rotate.
+            <b>Text:</b> double-click to edit; drag its knob (or Ctrl+drag) to rotate, Shift snaps.
           </li>
           <li>
             <b>Text section:</b> the font and size of all text; right-click a text to give it its own.

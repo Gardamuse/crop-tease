@@ -11,6 +11,7 @@ import {
 } from '@/lib/constants'
 import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
+import UiIcon from './UiIcon.vue'
 import { screenCenter, trackPointer } from '@/lib/pointer'
 import { clamp } from '@/lib/math'
 import { fontChoices, fontVars, isMissing, previewFamily, resolveFont } from '@/lib/textFonts'
@@ -50,6 +51,8 @@ const TAIL_GRID: (TailPosition | null)[] = [
   'left', null, null, null, 'right',
   'left-bottom', 'bottom-left', 'bottom', 'bottom-right', 'right-bottom',
 ]
+// Shift+rotating snaps to steps of this many degrees
+const ROTATE_SNAP = 15
 // how far (screen px) inside and outside the box edge a press grabs the edge
 const EDGE_SLOP = 7
 // resize cursors by direction, starting east, going clockwise (y down)
@@ -175,15 +178,24 @@ function resize(e: PointerEvent, { hx, hy }: { hx: number; hy: number }) {
   })
 }
 
-// rotates by how far the pointer turns around the box's center
+// rotates by how far the pointer turns around the box's center; with Shift
+// held it snaps to steps of ROTATE_SNAP degrees
 function rotate(e: PointerEvent) {
   const { cx, cy } = screenCenter(rootEl.value!)
   const angle = (ev: PointerEvent) => (Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI
   const startAngle = angle(e)
   const startRot = el.rot
   trackPointer(e, (_dx, _dy, ev) => {
-    el.rot = startRot + angle(ev) - startAngle
+    const rot = startRot + angle(ev) - startAngle
+    const snapped = ev.shiftKey ? Math.round(rot / ROTATE_SNAP) * ROTATE_SNAP : rot
+    el.rot = ((((snapped + 180) % 360) + 360) % 360) - 180 // kept in -180..180
   })
+}
+
+function onRotateHandle(e: PointerEvent) {
+  if (e.button !== 0) return
+  selectElement(el.id)
+  rotate(e)
 }
 
 async function startEdit() {
@@ -371,6 +383,18 @@ function onContextMenu(e: MouseEvent) {
     <!-- invisible grab zone reaching a little past the edge, so it's easy to catch -->
     <div class="edge-hit" :style="{ inset: `${-EDGE_SLOP / store.displayScale}px` }" v-bind="{ [NO_EXPORT_ATTR]: '' }" />
     <div v-if="showBounds" class="bounds" :class="{ framed: el.style !== 'none' }" v-bind="{ [NO_EXPORT_ATTR]: '' }" />
+    <!-- drag to rotate; above the top edge, turning with the box -->
+    <div
+      v-if="showBounds"
+      class="rotate-handle"
+      :class="{ framed: el.style !== 'none' }"
+      title="Drag to rotate (Shift snaps to 15°)"
+      v-bind="{ [NO_EXPORT_ATTR]: '' }"
+      @pointerdown.stop.prevent="onRotateHandle"
+      @dblclick.stop="el.rot = 0"
+    >
+      <UiIcon name="rotate" />
+    </div>
     <div
       ref="face"
       class="face"
@@ -412,6 +436,74 @@ function onContextMenu(e: MouseEvent) {
 
 .edge-hit {
   position: absolute;
+}
+
+// A small round button above the top edge, joined to the selection mark by
+// a slim line: white with an accent arrow, filling with the accent and
+// glowing on hover, like the app's accent buttons.
+.rotate-handle {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: -34px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: $accent-ink;
+  font-size: 11px;
+  box-shadow:
+    0 0 0 1.5px $accent,
+    0 2px 6px rgba($shade, 0.35);
+  cursor: grab;
+  animation: rotate-handle-in 0.15s ease-out;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  :deep(.ui-icon) {
+    stroke-width: 2.6;
+  }
+
+  &:hover,
+  &:active {
+    background: $accent;
+    color: #fff;
+    box-shadow:
+      0 0 0 1.5px $accent,
+      0 0 12px $accent-dim;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // the line down to the selection mark
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 1.5px;
+    height: 14px;
+    margin-left: -0.75px;
+    background: linear-gradient($accent, rgba($accent, 0.4));
+  }
+
+  &.framed {
+    top: -39px; // the mark sits 5px out from a frame
+  }
+}
+
+@keyframes rotate-handle-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 // marks the selected text, on top of it

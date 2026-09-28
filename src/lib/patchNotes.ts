@@ -7,6 +7,7 @@ export const PATCH_NOTES: { version: string; notes: string[] }[] = [
       'Copy and paste the selected close-up or text with Ctrl+C and Ctrl+V; Delete removes the selected item.',
       'The selected close-up or text is marked with corner brackets.',
       'A size for all text, in the Text section. A text resized on its own keeps its size; the link icon in its menu joins it back.',
+      'Rotate the selected text with the knob above it; Shift snaps to 15°, a double-click on the knob straightens it.',
       'Speech bubble tails can sit on either edge at each corner: four more spots.',
       'Turn the page border off for a single page from its right-click menu in the page strip.',
       'Patch notes, from the version number.',
