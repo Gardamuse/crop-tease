@@ -57,8 +57,9 @@ stageH = pageHeight / exportScale
 ```
 
 Origin is the top-left corner, x to the right, y **down**. Text sizes are in
-stage units too (a `fontSize` of 20 on a 1600x2000 page is about 46 output
-pixels). The exceptions are the line widths in `border`, which are in output
+stage units too (a `fontSize` or `textSize` of 20 on a 1600x2000 page is
+about 46 output pixels). If `textSize` is left out (as in projects from before
+it existed), it is 20 and every text with a `fontSize` of exactly 20 follows it. The exceptions are the line widths in `border`, which are in output
 pixels.
 
 ## project.json
@@ -82,6 +83,7 @@ pixels.
     "withinBorder": false        // true: clip close-ups at the inner edge of the page border
   },
   "textFont": "classic",         // font of all text (see Fonts)
+  "textSize": 20,                // size of text without its own fontSize, stage units
   "pages": [ /* at least one page, see Pages */ ],
   "currentPage": 0,              // index of the page shown when opened
   "pageNumber": null,            // a text element shown on every page, or null (see Page numbers)
@@ -227,7 +229,8 @@ around the outside of the diameter.
   "w": 260, "h": 90,     // box size, stage units (the app's handles allow at least 60 x 30)
   "rot": 0,              // rotation in degrees, clockwise, about the box's center
   "text": "Line one\nline two", // plain text; \n for line breaks
-  "fontSize": 20,        // stage units (output px = fontSize * exportScale)
+  "fontSize": null,      // null = the project's textSize, or this text's own size in stage units
+                         //   (output px = size * exportScale)
   "color": "#241b30",    // text color, any CSS color (hex recommended)
   "outline": true,       // style "none" only: thin black/white outline for contrast
   "font": null,          // null = the project's textFont, or a font id for this text alone
@@ -266,7 +269,7 @@ text replaced by the page number and `{total}` by the page count:
 "pageNumber": {
   "id": 99, "kind": "text", "style": "none", "tail": "bottom-left",
   "x": 290, "y": 795, "w": 120, "h": 50, "rot": 0, "z": 10,
-  "text": "{n} / {total}", "fontSize": 20, "color": "#ffffff", "outline": true, "font": null
+  "text": "{n} / {total}", "fontSize": null, "color": "#ffffff", "outline": true, "font": null
 }
 ```
 
@@ -355,7 +358,7 @@ def leaf():
 def border(t):
     return {"host": "border", "t": t}
 
-def text(x, y, w, h, s, style="speech", tail="bottom-left", size=20, z=12, **kw):
+def text(x, y, w, h, s, style="speech", tail="bottom-left", size=None, z=12, **kw):
     return {"id": nid(), "kind": "text", "style": style, "tail": tail, "x": x, "y": y, "w": w, "h": h,
             "rot": 0, "text": s, "fontSize": size, "color": "#241b30", "outline": True, "font": None,
             "z": z, **kw}
@@ -390,7 +393,7 @@ doc = {
     "pageSize": {"width": W, "height": H}, "exportFormat": "webp",
     "border": {"width": 40, "dividerWidth": 20, "color": "#ffffff", "outlineColor": "#000000", "outlineWidth": 2},
     "closeUps": {"shadow": True, "withinBorder": False},
-    "textFont": "komika",
+    "textFont": "komika", "textSize": 20,
     "pages": pages, "currentPage": 0,
     "pageNumber": None,
     "images": [],

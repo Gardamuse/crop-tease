@@ -10,6 +10,7 @@ import {
   pageNumberText,
   stageSize,
   store,
+  textFontSize,
   textFontVars,
   textOutline,
   type CircleElement,
@@ -131,7 +132,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         class="page-number"
         :x="pageNumber.el.x + pageNumber.el.w / 2"
         :y="pageNumber.el.y + pageNumber.el.h / 2"
-        :font-size="pageNumber.el.fontSize"
+        :font-size="textFontSize(pageNumber.el)"
         :fill="pageNumber.el.color"
         :stroke="pageNumber.el.style === 'none' && pageNumber.el.outline ? pageNumber.outline.color : undefined"
         :stroke-width="pageNumber.outline.width * 2"

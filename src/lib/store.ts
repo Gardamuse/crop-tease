@@ -5,6 +5,7 @@ import {
   DEFAULT_CLOSE_UPS,
   DEFAULT_NAME,
   DEFAULT_PAGE,
+  DEFAULT_TEXT_SIZE,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
   MAX_OUTLINE_WIDTH,
@@ -63,7 +64,8 @@ export interface TextElement extends ElementBase {
   h: number
   rot: number
   text: string
-  fontSize: number
+  /** this text's own size (stage units), overriding the project's (store.textSize); null for the project's */
+  fontSize: number | null
   color: string
   /** unframed text only: a thin black or white outline around the letters */
   outline: boolean
@@ -131,6 +133,8 @@ export const store = reactive({
   closeUps: { ...DEFAULT_CLOSE_UPS },
   /** the font of all text, on every page */
   textFont: 'classic' as FontId,
+  /** the size of all text that hasn't been given its own, in stage units */
+  textSize: DEFAULT_TEXT_SIZE,
   /**
    * Text shown on every page at the same spot and style, with `{n}` replaced
    * by that page's number and `{total}` by the page count. Null for none.
@@ -273,6 +277,11 @@ export const outlineStyle = computed(() => {
   const color = store.border.outlineColor
   return color ? { color, width: store.border.outlineWidth / stageSize.value.exportScale } : null
 })
+
+/** The size a text is drawn at (stage units): its own, else the project's. */
+export function textFontSize(el: TextElement): number {
+  return el.fontSize ?? store.textSize
+}
 
 /** CSS variables for the project's text font, set on the page; the classic font if it's missing (see fontVars). */
 export const textFontVars = computed(() => fontVars(store.textFont) ?? CLASSIC_VARS)
@@ -561,7 +570,7 @@ export function addText(opts: Partial<TextElement> = {}): TextElement {
     h: 90,
     rot: 0,
     text: 'Text…',
-    fontSize: 20,
+    fontSize: null,
     color: '#241b30',
     outline: true,
     font: null,
@@ -604,7 +613,7 @@ export function addPageNumber(): void {
     h: 50,
     rot: 0,
     text: '{n}',
-    fontSize: 20,
+    fontSize: null,
     color: '#ffffff',
     outline: true,
     font: null,

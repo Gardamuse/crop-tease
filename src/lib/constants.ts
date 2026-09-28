@@ -81,6 +81,8 @@ export const FONT_SIZE_STEPS = [
 ]
 export const MIN_TYPED_FONT_PX = 1
 export const MAX_TYPED_FONT_PX = 1000
+/** the project's text size (store.textSize) to begin with, in stage units */
+export const DEFAULT_TEXT_SIZE = 20
 
 export const TEXT_PALETTE = ['#241b30', '#ffffff', '#ff6fb0', '#78d2d2', '#de3c8d']
 

@@ -4,6 +4,7 @@ import { toRaw, watch } from 'vue'
 import { z } from 'zod'
 
 import {
+  DEFAULT_TEXT_SIZE,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
   MAX_OUTLINE_WIDTH,
@@ -22,7 +23,7 @@ import {
   typeForExtension,
 } from './images'
 import type { Region } from './layout'
-import { store, syncCounters, usedFonts, type ComicElement } from './store'
+import { store, syncCounters, usedFonts, type ComicElement, type TextElement } from './store'
 import { customFontFile, installProjectFont } from './textFonts'
 
 // ---------------------------------------------------------------------------
@@ -114,7 +115,8 @@ const TextSchema = z.object({
   h: z.number().positive(),
   rot: z.number(),
   text: z.string(),
-  fontSize: z.number().positive(),
+  // null follows the project's size (textSize); older projects always gave a number
+  fontSize: z.number().positive().nullable(),
   color: z.string(),
   outline: z.boolean().default(true), // added later; older projects had outlines on
   // added later; kept even if that font isn't available here (it's then drawn in the default)
@@ -166,6 +168,11 @@ const ProjectSchema = z.object({
   pageNumber: TextSchema.nullable(),
   // added later; kept even if that font isn't available here (it's then drawn in the default)
   textFont: z.string().default('classic'),
+  /**
+   * the size of text without its own, in stage units (added later; missing
+   * in older projects, whose texts at the old default size then follow it)
+   */
+  textSize: z.number().positive().optional(),
   /** every image the project uses, with its MIME type */
   images: z.array(z.object({ id: z.string(), type: z.string() })),
   /**
@@ -267,6 +274,7 @@ export function serializeProject(): ProjectDoc {
     border: { ...store.border },
     closeUps: { ...store.closeUps },
     textFont: store.textFont,
+    textSize: store.textSize,
     pages,
     currentPage: store.pageIndex,
     pageNumber: store.pageNumber && { ...toRaw(store.pageNumber) },
@@ -295,15 +303,19 @@ function applyProject(doc: ProjectDoc): void {
   store.border = { ...doc.border }
   store.closeUps = { ...doc.closeUps }
   store.textFont = doc.textFont
+  store.textSize = doc.textSize ?? DEFAULT_TEXT_SIZE
+  // before the project had a text size, a text at the default size hadn't been resized
+  const loadText = (el: z.infer<typeof TextSchema>): TextElement =>
+    doc.textSize === undefined && el.fontSize === DEFAULT_TEXT_SIZE ? { ...el, fontSize: null } : { ...el }
   store.pages = doc.pages.map((page) => ({
     id: page.id,
     layout: loadRegion(page.layout),
     elements: page.elements.map(
-      (el): ComicElement => (el.kind === 'circle' ? { ...el, frame: loadFrame(el.frame) } : { ...el }),
+      (el): ComicElement => (el.kind === 'circle' ? { ...el, frame: loadFrame(el.frame) } : loadText(el)),
     ),
   }))
   store.pageIndex = Math.min(doc.currentPage, doc.pages.length - 1)
-  store.pageNumber = doc.pageNumber && { ...doc.pageNumber }
+  store.pageNumber = doc.pageNumber && loadText(doc.pageNumber)
   store.selectedId = null
   store.selectedBarId = null
   store.splitMode = false
@@ -350,7 +362,7 @@ export async function restoreAutosave(): Promise<boolean> {
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   let timer: ReturnType<typeof setTimeout> | undefined
   watch(
-    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.pages, store.pageIndex, store.pageNumber],
+    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.textSize, store.pages, store.pageIndex, store.pageNumber],
     () => {
       if (suspendAutosave) return
       onStatus('saving')

@@ -10,15 +10,19 @@ import PixelSlider from './PixelSlider.vue'
 import UiIcon from './UiIcon.vue'
 import {
   COLOR_PRESETS,
+  FONT_SIZE_STEPS,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
   MAX_OUTLINE_WIDTH,
   MAX_PAGE_SIDE,
+  MAX_TYPED_FONT_PX,
   MIN_OUTLINE_WIDTH,
   MIN_PAGE_SIDE,
+  MIN_TYPED_FONT_PX,
   PAGE_PRESETS,
 } from '@/lib/constants'
 import type { ExportFormat } from '@/lib/exportImage'
+import { clamp } from '@/lib/math'
 import { addCustomFont, fontChoices, previewFamily, removeCustomFont, resolveFont } from '@/lib/textFonts'
 import {
   missingFonts,
@@ -27,6 +31,7 @@ import {
   setDividerWidth,
   setOutlineWidth,
   setPageSize,
+  stageSize,
   store,
 } from '@/lib/store'
 
@@ -83,6 +88,11 @@ function onDimension(axis: 'width' | 'height', e: Event) {
 const borderWidth = computed({ get: () => store.border.width, set: setBorderWidth })
 const dividerWidth = computed({ get: () => store.border.dividerWidth, set: setDividerWidth })
 const outlineWidth = computed({ get: () => store.border.outlineWidth, set: setOutlineWidth })
+// in output pixels, like each text's own size (see TextBox)
+const textSize = computed({
+  get: () => Math.round(store.textSize * stageSize.value.exportScale),
+  set: (px: number) => (store.textSize = clamp(px, MIN_TYPED_FONT_PX, MAX_TYPED_FONT_PX) / stageSize.value.exportScale),
+})
 const lineColor = computed({
   get: () => store.border.color,
   set: (c: string | null) => {
@@ -317,10 +327,20 @@ onBeforeUnmount(() => {
           <UiIcon name="chevron" class="chevron" />
           <span class="fold-title">Text</span>
           <span class="fold-summary" :class="{ warn: missingFonts.length }">
-            {{ missingFonts.length ? 'font missing' : resolveFont(store.textFont).label }}
+            {{ missingFonts.length ? 'font missing' : `${resolveFont(store.textFont).label} · ${textSize} px` }}
           </span>
         </summary>
         <div class="fold-body">
+          <div class="fields text-size">
+            <span class="field-label" title="Text you've resized on its own keeps its size">Size</span>
+            <PixelSlider
+              v-model="textSize"
+              :min="MIN_TYPED_FONT_PX"
+              :max="MAX_TYPED_FONT_PX"
+              :steps="FONT_SIZE_STEPS"
+              label="Size of all text"
+            />
+          </div>
           <p v-if="missingFonts.length" class="font-missing" role="status">
             Missing {{ missingFonts.length > 1 ? 'fonts' : 'font' }}:
             <b v-for="(name, i) in missingFonts" :key="name">{{ name }}{{ i < missingFonts.length - 1 ? ', ' : '' }}</b>.
@@ -783,6 +803,11 @@ input[type='number'] {
 }
 
 // font choices, each named in its own font
+// a little apart from the fonts below
+.text-size {
+  margin-bottom: 6px;
+}
+
 .font-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

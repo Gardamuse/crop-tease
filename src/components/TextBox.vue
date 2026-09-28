@@ -22,6 +22,7 @@ import {
   selectElement,
   stageSize,
   store,
+  textFontSize,
   textOutline,
   type TextElement,
 } from '@/lib/store'
@@ -61,7 +62,7 @@ const faceStyle = computed(() => {
   const outline = el.style === 'none' && el.outline ? textOutline(el.color) : null
   return {
     ...(el.font && fontVars(el.font)), // its own font if available, else the project's (set on the page)
-    fontSize: `${el.fontSize}px`,
+    fontSize: `${textFontSize(el)}px`, // its own size if set, else the project's
     color: el.color,
     ...(outline && { WebkitTextStroke: `${outline.width * 2}px ${outline.color}`, paintOrder: 'stroke fill' }),
   }
@@ -226,14 +227,22 @@ function onContextMenu(e: MouseEvent) {
     },
     {
       // shown in output pixels, like the border and divider widths; the
-      // slider snaps to steps, the box takes any value
+      // slider snaps to steps, the box takes any value; setting it gives the
+      // text its own size, unlinking it from the project's
       kind: 'slider',
       label: 'Size',
       min: MIN_TYPED_FONT_PX,
       max: MAX_TYPED_FONT_PX,
       steps: FONT_SIZE_STEPS,
-      value: () => Math.round(el.fontSize * stageSize.value.exportScale),
+      value: () => Math.round(textFontSize(el) * stageSize.value.exportScale),
       set: (px) => (el.fontSize = clamp(px, MIN_TYPED_FONT_PX, MAX_TYPED_FONT_PX) / stageSize.value.exportScale),
+      link: {
+        linked: () => el.fontSize === null,
+        // unlinking keeps the size it has now, as its own
+        toggle: () => (el.fontSize = el.fontSize === null ? textFontSize(el) : null),
+        linkedTitle: "Follows the project's text size (in the sidebar); move the slider to give this text its own",
+        unlinkedTitle: "Has its own size; click to follow the project's text size again",
+      },
     },
     {
       kind: 'choices',

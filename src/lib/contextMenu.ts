@@ -49,6 +49,18 @@ export interface MenuSlider extends MenuEntryBase {
   steps?: number[]
   value: () => number
   set: (value: number) => void
+  /**
+   * a link toggle beside the slider, for a value that can follow a shared
+   * one: while linked the slider is faded; setting a value should unlink it
+   * (that's up to `set`)
+   */
+  link?: {
+    linked: () => boolean
+    toggle: () => void
+    /** hover text for each state */
+    linkedTitle: string
+    unlinkedTitle: string
+  }
 }
 
 /** A labeled dropdown, for picking one of many options; stays open while used. */

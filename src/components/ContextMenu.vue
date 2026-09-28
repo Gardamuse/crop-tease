@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import PixelSlider from './PixelSlider.vue'
+import UiIcon from './UiIcon.vue'
 import { closeContextMenu, contextMenu, type MenuItem } from '@/lib/contextMenu'
 
 const EDGE_GAP = 6 // keep the menu this far inside the window
@@ -81,8 +82,20 @@ onBeforeUnmount(() => {
         <hr v-if="item.kind === 'separator'" />
         <div v-else-if="item.kind === 'slider'" class="slider-row">
           <span class="row-label">{{ item.label }}</span>
+          <button
+            v-if="item.link"
+            class="link"
+            :class="{ linked: item.link.linked() }"
+            :aria-pressed="item.link.linked()"
+            :aria-label="item.link.linked() ? item.link.linkedTitle : item.link.unlinkedTitle"
+            :title="item.link.linked() ? item.link.linkedTitle : item.link.unlinkedTitle"
+            @click="item.link.toggle()"
+          >
+            <UiIcon :name="item.link.linked() ? 'link' : 'unlink'" />
+          </button>
           <PixelSlider
             class="slider"
+            :class="{ faded: item.link?.linked() }"
             :model-value="item.value()"
             :min="item.min"
             :max="item.max"
@@ -206,6 +219,28 @@ hr {
   .slider {
     flex: 1;
     min-width: 150px;
+  }
+}
+
+// linked to a shared value: lit while linked, dim once it has its own
+.slider-row .link {
+  padding: 3px;
+  margin: 0 -4px;
+  color: $text-dim;
+
+  &.linked {
+    color: $accent-ink;
+  }
+}
+
+// a linked slider shows the shared value, faded until it's used
+.slider.faded {
+  opacity: 0.5;
+  transition: opacity 0.12s;
+
+  &:hover,
+  &:focus-within {
+    opacity: 0.8;
   }
 }
 
