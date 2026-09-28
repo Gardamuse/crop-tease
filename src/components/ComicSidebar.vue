@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
           </li>
           <li>
             <b>Photos:</b> click an empty panel or close-up, or drop an image on it. Drag to reposition
-            (Ctrl+drag in a close-up), scroll to zoom. Right-click to change it, blur it, set its levels or add a color overlay.
+            (Ctrl+drag in a close-up), scroll to zoom. Right-click to change it or add effects: blur, levels, color balance, a color overlay.
           </li>
           <li>
             <b>Close-ups and text:</b> drag to move, drag the edge to resize, right-click for options.

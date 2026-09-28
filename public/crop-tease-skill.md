@@ -354,6 +354,11 @@ optional; they only show while it has a photo, and stay if it changes):
   "inLow": 20, "inHigh": 235,  // these input tones become black and white (inLow < inHigh), beyond clipped
   "outLow": 0, "outHigh": 255  // then fitted into this output range
 },
+"colorBalance": {        // or null / missing for none; as in Krita, each range is
+                         //   [cyan..red, magenta..green, yellow..blue], each -40..40
+  "shadows": [0, 0, 10], "midtones": [5, 0, 0], "highlights": [8, 0, -5],
+  "preserveLuminosity": true   // keep each pixel's lightness, shift only its color
+},
 "overlay": {             // a color fading over the photo, or null / missing for none
   "from": "bottom",      // "top" | "bottom": the side it fades from
   "angle": 0,            // degrees clockwise the fade is turned, -90..90

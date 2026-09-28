@@ -25,7 +25,7 @@ import {
   typeForExtension,
 } from './images'
 import { resetHistory } from './history'
-import { DEFAULT_OVERLAY, MAX_BLUR, MAX_OVERLAY_ANGLE } from './photoEffects'
+import { DEFAULT_OVERLAY, MAX_BALANCE, MAX_BLUR, MAX_OVERLAY_ANGLE } from './photoEffects'
 import type { Region } from './layout'
 import { clamp } from './math'
 import { store, syncCounters, usedFonts, type ComicElement, type TextElement } from './store'
@@ -87,12 +87,23 @@ const OverlaySchema = z.object({
 })
 
 const Level = z.number().int().min(0).max(255)
+const Balance = z.number().transform((v) => Math.round(clamp(v, -MAX_BALANCE, MAX_BALANCE)))
+const BalanceRange = z.tuple([Balance, Balance, Balance])
 
 // a photo's effects (added later, so all optional)
 const PhotoEffectsSchema = {
   overlay: OverlaySchema.nullable().default(null),
   blur: z.number().min(0).max(MAX_BLUR).default(0),
   levels: z.object({ inLow: Level, inHigh: Level, outLow: Level, outHigh: Level }).nullable().default(null),
+  colorBalance: z
+    .object({
+      shadows: BalanceRange,
+      midtones: BalanceRange,
+      highlights: BalanceRange,
+      preserveLuminosity: z.boolean(),
+    })
+    .nullable()
+    .default(null),
 }
 
 const LeafSchema = z.object({
@@ -251,8 +262,8 @@ function saveFrame(f: ImageFrame | null): SavedFrame | null {
 
 function saveRegion(node: Region): SavedRegion {
   if (node.kind === 'leaf') {
-    const { id, frame, overlay, blur, levels } = toRaw(node)
-    return { kind: 'leaf', id, frame: saveFrame(frame), overlay, blur, levels }
+    const { id, frame, overlay, blur, levels, colorBalance } = toRaw(node)
+    return { kind: 'leaf', id, frame: saveFrame(frame), overlay, blur, levels, colorBalance }
   }
   return {
     kind: 'split',

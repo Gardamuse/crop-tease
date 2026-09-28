@@ -30,7 +30,8 @@ export interface MenuChoices extends MenuEntryBase {
 }
 
 export interface MenuChoice {
-  label: string
+  /** a function to keep it up to date while the menu is open */
+  label: string | (() => string)
   /** a color square instead of (or with) the label */
   swatch?: string
   title?: string
@@ -46,6 +47,11 @@ export interface MenuSlider extends MenuEntryBase {
   label: string
   /** shown after the number (default px) */
   unit?: string
+  title?: string
+  /** a CSS background for the track (e.g. a color gradient) */
+  track?: string
+  /** if given, double-clicking the slider sets this value */
+  resetValue?: number
   /** range for typed values */
   min: number
   max: number

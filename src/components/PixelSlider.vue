@@ -13,6 +13,10 @@ const props = withDefaults(
     steps?: number[]
     /** shown after the number */
     unit?: string
+    /** a CSS background for the track (e.g. a color gradient), drawn thicker */
+    track?: string
+    /** if given, double-clicking the slider sets this value */
+    resetValue?: number
   }>(),
   { min: 0, disabled: false, unit: 'px' },
 )
@@ -51,7 +55,7 @@ function onChange(e: Event) {
 </script>
 
 <template>
-  <div class="pixel-slider" :class="{ disabled }">
+  <div class="pixel-slider" :class="{ disabled, 'custom-track': track }" :style="track ? { '--track': track } : undefined">
     <input
       type="range"
       :min="steps ? 0 : min"
@@ -61,6 +65,7 @@ function onChange(e: Event) {
       :aria-valuetext="`${modelValue} ${unit}`"
       :disabled="disabled"
       @input="onSlide"
+      @dblclick="resetValue !== undefined && emit('update:modelValue', resetValue)"
     />
     <input
       type="number"
@@ -119,6 +124,56 @@ input[type='range'] {
   &::-moz-range-progress {
     height: 2px;
     background: $accent-dim;
+  }
+
+  // a colored track, e.g. a color balance axis, thick enough to read
+  .custom-track & {
+    &::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--track);
+    }
+
+    &::-moz-range-track {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--track);
+    }
+
+    &::-moz-range-progress {
+      background: none;
+    }
+
+    &::-webkit-slider-thumb {
+      margin-top: -3px;
+      background: #fff;
+      box-shadow:
+        0 0 0 2px $accent,
+        0 0 0 5px $accent-soft;
+    }
+
+    &::-moz-range-thumb {
+      background: #fff;
+      box-shadow:
+        0 0 0 2px $accent,
+        0 0 0 5px $accent-soft;
+    }
+
+    &:hover::-webkit-slider-thumb,
+    &:focus-visible::-webkit-slider-thumb {
+      box-shadow:
+        0 0 0 2px $accent,
+        0 0 0 6px $accent-soft,
+        0 0 10px $accent-dim;
+    }
+
+    &:hover::-moz-range-thumb,
+    &:focus-visible::-moz-range-thumb {
+      box-shadow:
+        0 0 0 2px $accent,
+        0 0 0 6px $accent-soft,
+        0 0 10px $accent-dim;
+    }
   }
 
   &::-webkit-slider-thumb {

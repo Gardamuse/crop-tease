@@ -106,7 +106,7 @@ export function syncCounters(): void {
 }
 
 // a photo as it comes, before any effects
-const NO_EFFECTS: PhotoEffects = { overlay: null, blur: 0, levels: null }
+const NO_EFFECTS: PhotoEffects = { overlay: null, blur: 0, levels: null, colorBalance: null }
 
 function newLeaf(frame: ImageFrame | null = null): Leaf {
   return { kind: 'leaf', id: nextId++, frame, ...NO_EFFECTS }

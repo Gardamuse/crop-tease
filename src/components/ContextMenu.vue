@@ -4,7 +4,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import PixelSlider from './PixelSlider.vue'
 import RangeSlider from './RangeSlider.vue'
 import UiIcon from './UiIcon.vue'
-import { closeContextMenu, contextMenu, type MenuItem } from '@/lib/contextMenu'
+import { closeContextMenu, contextMenu, type MenuChoice, type MenuItem } from '@/lib/contextMenu'
 
 const EDGE_GAP = 6 // keep the menu this far inside the window
 
@@ -40,6 +40,8 @@ watch(
     menu.querySelector<HTMLButtonElement>('button')?.focus()
   },
 )
+
+const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : o.label)
 
 function run(item: MenuItem) {
   closeContextMenu()
@@ -102,7 +104,7 @@ onBeforeUnmount(() => {
     <template v-for="(item, i) in contextMenu.items" :key="i">
       <template v-if="!item.visible || item.visible()">
         <hr v-if="item.kind === 'separator'" />
-        <div v-else-if="item.kind === 'slider'" class="slider-row">
+        <div v-else-if="item.kind === 'slider'" class="slider-row" :title="item.title">
           <span class="row-label">{{ item.label }}</span>
           <button
             v-if="item.link"
@@ -123,6 +125,8 @@ onBeforeUnmount(() => {
             :max="item.max"
             :steps="item.steps"
             :unit="item.unit"
+            :track="item.track"
+            :reset-value="item.resetValue"
             :label="item.label"
             @update:model-value="item.set"
           />
@@ -150,12 +154,12 @@ onBeforeUnmount(() => {
                 v-else-if="o.pickColor"
                 class="custom-color"
                 :class="{ active: o.active?.() }"
-                :title="o.title ?? o.label"
+                :title="o.title ?? labelOf(o)"
               >
                 <span class="rainbow" :style="{ background: o.active?.() ? o.pickColor.value() : undefined }" />
                 <input
                   type="color"
-                  :aria-label="o.label"
+                  :aria-label="labelOf(o)"
                   :value="o.pickColor.value()"
                   @input="o.pickColor.set(($event.target as HTMLInputElement).value)"
                 />
@@ -164,13 +168,13 @@ onBeforeUnmount(() => {
                 v-else
                 role="menuitemradio"
                 :aria-checked="o.active?.() ?? false"
-                :aria-label="o.title ?? o.label"
-                :title="o.title ?? o.label"
+                :aria-label="o.title ?? labelOf(o)"
+                :title="o.title ?? labelOf(o)"
                 :class="{ active: o.active?.(), swatch: o.swatch }"
                 :style="o.swatch ? { background: o.swatch } : undefined"
                 @click="o.pick()"
               >
-                <template v-if="!o.swatch">{{ o.label }}</template>
+                <template v-if="!o.swatch">{{ labelOf(o) }}</template>
               </button>
             </template>
           </div>
@@ -201,6 +205,10 @@ onBeforeUnmount(() => {
   position: fixed;
   z-index: 900;
   min-width: 250px;
+  // a long menu (a photo's, with its effects open) scrolls in a short window
+  max-height: calc(100vh - 12px);
+  overflow-y: auto;
+  scrollbar-width: thin;
   padding: 5px;
   border-radius: $radius;
   background: $bg-panel-alt;

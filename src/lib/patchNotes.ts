@@ -10,6 +10,7 @@ export const PATCH_NOTES: { version: string; notes: string[] }[] = [
       'Rotate the selected text with the knob above it; Shift snaps to 15°, a double-click on the knob straightens it.',
       'Speech bubble tails can sit on either edge at each corner: four more spots.',
       "Levels for a photo, like Krita's: set its input and output black and white points.",
+      "Color balance for a photo, like Krita's: shift its shadows, midtones and highlights toward red, green or blue, with or without keeping its lightness.",
       'Blur a photo, or lay a color over it fading from the top or the bottom, with its angle, size and strength: right-click the photo.',
       "Turn the page border off for a single page from its right-click menu in the page strip. That page shows no page number; if it's the first page, it's a cover and numbering starts after it.",
       'Fixed: a right-click menu that grew while open could run off the bottom of the window.',

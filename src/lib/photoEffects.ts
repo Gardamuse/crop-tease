@@ -1,3 +1,5 @@
+import { ref } from 'vue'
+
 import type { MenuEntry } from './contextMenu'
 import type { ImageFrame } from './imageFrame'
 import { clamp } from './math'
@@ -17,6 +19,8 @@ export interface PhotoEffects {
   blur: number
   /** null when levels are off (its sliders hidden); FULL_LEVELS while on but untouched */
   levels: Levels | null
+  /** null when color balance is off (its sliders hidden) */
+  colorBalance: ColorBalance | null
 }
 
 /**
@@ -47,9 +51,81 @@ function changesTones(l: Levels | null): boolean {
   return !!l && (Object.keys(FULL_LEVELS) as (keyof Levels)[]).some((k) => l[k] !== FULL_LEVELS[k])
 }
 
-/** Whether the photo needs its filter (blur, or levels that change something). */
+export type ToneRange = 'shadows' | 'midtones' | 'highlights'
+
+/**
+ * Color balance, as in Krita (and GIMP): for each tone range, how far the
+ * photo leans from cyan to red, magenta to green and yellow to blue, in
+ * -MAX_BALANCE..MAX_BALANCE (Krita's sliders run to 100), optionally keeping
+ * each pixel's lightness.
+ */
+export type ColorBalance = Record<ToneRange, [number, number, number]> & { preserveLuminosity: boolean }
+
+export const MAX_BALANCE = 40 // also in the skill doc (public/crop-tease-skill.md)
+
+export const TONE_RANGES: { value: ToneRange; label: string }[] = [
+  { value: 'shadows', label: 'Shadows' },
+  { value: 'midtones', label: 'Midtones' },
+  { value: 'highlights', label: 'Highlights' },
+]
+
+/** each slider: its label (the color it leans to), and the track from its opposite to it */
+export const BALANCE_AXES = [
+  { label: 'Red', title: 'Cyan (left) to red (right)', track: 'linear-gradient(to right, #00c8d7, #e2404a)' },
+  { label: 'Green', title: 'Magenta (left) to green (right)', track: 'linear-gradient(to right, #d23cc8, #3cb44a)' },
+  { label: 'Blue', title: 'Yellow (left) to blue (right)', track: 'linear-gradient(to right, #e8c800, #3c64dc)' },
+]
+
+export function neutralBalance(): ColorBalance {
+  return { shadows: [0, 0, 0], midtones: [0, 0, 0], highlights: [0, 0, 0], preserveLuminosity: true }
+}
+
+function changesColor(b: ColorBalance | null): boolean {
+  return !!b && TONE_RANGES.some((r) => b[r.value].some((v) => v !== 0))
+}
+
+/**
+ * How much of each range's correction a pixel of lightness l (0-1) gets:
+ * Krita's (and GIMP's) masks, which hand over between the ranges around a
+ * third and two thirds of the way up, scaled by 0.7.
+ */
+function toneWeights(l: number): Record<ToneRange, number> {
+  const a = 0.25
+  const b = 0.333
+  const ramp = (x: number) => Math.min(1, Math.max(0, x))
+  return {
+    shadows: ramp((l - b) / -a + 0.5) * 0.7,
+    midtones: ramp((l - b) / a + 0.5) * ramp((l + b - 1) / -a + 0.5) * 0.7,
+    highlights: ramp((l + b - 1) / a + 0.5) * 0.7,
+  }
+}
+
+/** how finely the shift is sampled over lightness for the filter's lookup tables */
+const BALANCE_TABLE_SIZE = 256
+
+/**
+ * The color balance as lookup tables for an SVG filter, one per channel: by
+ * a pixel's lightness, the shift to add to that channel, stored as
+ * 0.5 + shift / 2 since filter results can't go below 0. (The filter
+ * measures lightness as the channels' average; Krita uses the average of
+ * the brightest and darkest channel, which no filter step can compute. The
+ * two agree on greys and differ a little on strong colors.)
+ */
+export function balanceTables(b: ColorBalance): [string, string, string] {
+  const tables: [number[], number[], number[]] = [[], [], []]
+  for (let i = 0; i < BALANCE_TABLE_SIZE; i++) {
+    const w = toneWeights(i / (BALANCE_TABLE_SIZE - 1))
+    for (const ch of [0, 1, 2] as const) {
+      const shift = TONE_RANGES.reduce((sum, r) => sum + (w[r.value] * b[r.value][ch]) / 100, 0)
+      tables[ch].push(0.5 + shift / 2)
+    }
+  }
+  return tables.map((t) => t.map((v) => v.toFixed(4)).join(' ')) as [string, string, string]
+}
+
+/** Whether the photo needs its filter (blur, or levels or color balance that change something). */
 export function hasPhotoFilter(e: PhotoEffects): boolean {
-  return e.blur > 0 || changesTones(e.levels)
+  return e.blur > 0 || changesTones(e.levels) || changesColor(e.colorBalance)
 }
 
 export type OverlayFrom = 'top' | 'bottom'
@@ -143,7 +219,10 @@ export function blurRadius(blur: number, frame: ImageFrame): number {
   return blur / stageSize.value.exportScale / frame.scale
 }
 
-/** The right-click menu entries for a photo's blur and overlay, shown while it has a photo. */
+/** which tone range the color balance sliders show, shared by all photo menus while the app runs */
+const balanceRange = ref<ToneRange>('midtones')
+
+/** The right-click menu entries for a photo's effects, shown while it has a photo. */
 export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean): MenuEntry[] {
   const on = () => hasPhoto() && target.overlay !== null
   const set = (change: Partial<ImageOverlay>) => {
@@ -154,6 +233,7 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
   const levels = () => target.levels ?? FULL_LEVELS
   const setLevels = (change: Partial<Levels>) => (target.levels = { ...levels(), ...change })
   const levelsOn = () => hasPhoto() && target.levels !== null
+  const balanceOn = () => hasPhoto() && target.colorBalance !== null
   return [
     { kind: 'separator', visible: hasPhoto },
     {
@@ -200,6 +280,69 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean):
       minGap: 0,
       value: () => [levels().outLow, levels().outHigh],
       set: ([outLow, outHigh]) => setLevels({ outLow, outHigh }),
+    },
+    {
+      kind: 'choices',
+      label: 'Color balance',
+      visible: hasPhoto,
+      options: [
+        { label: 'Off', active: () => target.colorBalance === null, pick: () => (target.colorBalance = null) },
+        {
+          label: 'On',
+          title: "Shift the photo's shadows, midtones and highlights toward colors, as in Krita",
+          active: () => target.colorBalance !== null,
+          pick: () => (target.colorBalance ??= neutralBalance()),
+        },
+      ],
+    },
+    {
+      kind: 'choices',
+      label: 'Tones',
+      visible: balanceOn,
+      options: TONE_RANGES.map((r) => ({
+        // a dot marks the ranges that have been shifted
+        label: () => (target.colorBalance?.[r.value].some((v) => v !== 0) ? `${r.label}•` : r.label),
+        title: r.label,
+        active: () => balanceRange.value === r.value,
+        pick: () => (balanceRange.value = r.value),
+      })),
+    },
+    ...BALANCE_AXES.map(
+      (axis, ch): MenuEntry => ({
+        kind: 'slider',
+        label: axis.label,
+        title: `${axis.title}; double-click for 0`,
+        visible: balanceOn,
+        min: -MAX_BALANCE,
+        max: MAX_BALANCE,
+        unit: '',
+        track: axis.track,
+        resetValue: 0,
+        value: () => target.colorBalance?.[balanceRange.value][ch] ?? 0,
+        set: (v) => {
+          const b = target.colorBalance
+          if (b) b[balanceRange.value][ch] = Math.round(clamp(v, -MAX_BALANCE, MAX_BALANCE))
+        },
+      }),
+    ),
+    {
+      kind: 'choices',
+      label: 'Luminosity',
+      visible: balanceOn,
+      options: [
+        {
+          label: 'Keep',
+          title: "Keep each pixel's lightness, only its color shifts (Krita's Preserve Luminosity)",
+          active: () => !!target.colorBalance?.preserveLuminosity,
+          pick: () => target.colorBalance && (target.colorBalance.preserveLuminosity = true),
+        },
+        {
+          label: 'Let change',
+          title: 'The shift can also lighten or darken the photo',
+          active: () => target.colorBalance?.preserveLuminosity === false,
+          pick: () => target.colorBalance && (target.colorBalance.preserveLuminosity = false),
+        },
+      ],
     },
     {
       kind: 'choices',
