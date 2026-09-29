@@ -6,7 +6,7 @@ import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
 import { openContextMenu } from '@/lib/contextMenu'
 import { hasPhotoFilter, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
-import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
+import { firstDroppedFile, frameTransform, frameTransformInFlippedBox, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
@@ -214,14 +214,25 @@ async function useFile(file: File | undefined) {
       :style="{ inset: `${-dividerStageWidth}px`, background: store.border.color }"
     />
     <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->
-    <div class="clip" :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }">
+    <!-- A mirrored photo is shown by flipping this whole circle (the same
+         circle, flipped) rather than the photo inside it: browsers could
+         drop the circle's clip around a flipped photo at some zoom levels.
+         The overlay is flipped back, so it doesn't change. -->
+    <div
+      class="clip"
+      :class="{ flipped: el.frame?.mirror }"
+      :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }"
+    >
       <svg v-if="el.frame && hasPhotoFilter(el)" class="filter-defs" aria-hidden="true">
         <PhotoFilter :id="`photo-filter-circle-${el.id}`" :effects="el" :frame="el.frame" />
       </svg>
       <img
         v-if="el.frame"
         :src="el.frame.src"
-        :style="{ transform: frameTransform(el.frame), filter: hasPhotoFilter(el) ? `url(#photo-filter-circle-${el.id})` : undefined }"
+        :style="{
+          transform: el.frame.mirror ? frameTransformInFlippedBox(el.frame, el.d) : frameTransform(el.frame),
+          filter: hasPhotoFilter(el) ? `url(#photo-filter-circle-${el.id})` : undefined,
+        }"
         draggable="false"
       />
       <span v-else class="hint" v-bind="{ [NO_EXPORT_ATTR]: '' }">Click or drop<br />an image</span>
@@ -291,6 +302,15 @@ async function useFile(file: File | undefined) {
   // layer of its own, as it may a mirrored or filtered one, and it could
   // then show outside the circle at some zoom levels.
   clip-path: circle(50%);
+
+  // a mirrored photo (see the template)
+  &.flipped {
+    transform: scaleX(-1);
+
+    .overlay {
+      transform: scaleX(-1);
+    }
+  }
 
   img {
     position: absolute;

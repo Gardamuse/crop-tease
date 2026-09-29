@@ -1,6 +1,10 @@
 /** What changed in each release, newest first, shown from the version number. */
 export const PATCH_NOTES: { version: string; notes: string[] }[] = [
   {
+    version: '1.1.2',
+    notes: ['Fixed: in Firefox, a mirrored close-up could still show its photo outside the circle at some zoom levels.'],
+  },
+  {
     version: '1.1.1',
     notes: [
       "Mirror a photo left to right: the Mirror toggle in the photo's right-click menu.",

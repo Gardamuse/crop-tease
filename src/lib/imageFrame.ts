@@ -65,6 +65,17 @@ export function frameTransform(f: ImageFrame): string {
   return `translate(${f.tx}px, ${f.ty}px) scale(${f.scale})${flip}`
 }
 
+/**
+ * The photo's transform inside a box of width boxW that is itself flipped
+ * left to right (scaleX(-1)): unflipped, and placed so that, with the box's
+ * flip, it shows exactly where frameTransform would put the mirrored photo.
+ * Flipping the clipping box instead of the photo inside it keeps browsers
+ * from dropping the clip (Firefox did, at some zoom levels).
+ */
+export function frameTransformInFlippedBox(f: ImageFrame, boxW: number): string {
+  return `translate(${boxW - f.tx - f.natW * f.scale}px, ${f.ty}px) scale(${f.scale})`
+}
+
 /** The same as an SVG transform attribute, moved by (dx, dy) (e.g. a close-up's position). */
 export function frameSvgTransform(f: ImageFrame, dx = 0, dy = 0): string {
   const flip = f.mirror ? ` translate(${f.natW} 0) scale(-1 1)` : ''
