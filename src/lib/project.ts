@@ -69,6 +69,7 @@ const FrameSchema = z.object({
   scale: z.number().positive(),
   tx: z.number(),
   ty: z.number(),
+  mirror: z.boolean().default(false), // added later
 })
 type SavedFrame = z.infer<typeof FrameSchema>
 
@@ -263,7 +264,7 @@ export function upgradeProject(raw: unknown): ProjectDoc {
 // ---------------------------------------------------------------------------
 
 function saveFrame(f: ImageFrame | null): SavedFrame | null {
-  return f && { imageId: f.imageId, natW: f.natW, natH: f.natH, baseScale: f.baseScale, scale: f.scale, tx: f.tx, ty: f.ty }
+  return f && { imageId: f.imageId, natW: f.natW, natH: f.natH, baseScale: f.baseScale, scale: f.scale, tx: f.tx, ty: f.ty, mirror: f.mirror }
 }
 
 function saveRegion(node: Region): SavedRegion {

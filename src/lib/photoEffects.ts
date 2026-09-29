@@ -381,8 +381,13 @@ export function toneEntries(
   ]
 }
 
-/** The right-click menu entries for a photo's effects, shown while it has a photo. */
-export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean, memoryKey: string): MenuEntry[] {
+/** The right-click menu entries for a photo's effects (and its mirroring), shown while it has a photo. */
+export function photoMenuEntries(
+  target: PhotoEffects,
+  frame: () => ImageFrame | null,
+  memoryKey: string,
+): MenuEntry[] {
+  const hasPhoto = () => frame() !== null
   const on = () => hasPhoto() && target.overlay !== null
   // like levels and color balance, an overlay set to None this session comes back as it was
   const memory = `${memoryKey}:overlay`
@@ -407,6 +412,22 @@ export function photoMenuEntries(target: PhotoEffects, hasPhoto: () => boolean, 
       max: MAX_BLUR,
       value: () => target.blur,
       set: (px) => (target.blur = Math.round(clamp(px, 0, MAX_BLUR))),
+    },
+    {
+      kind: 'choices',
+      label: 'Mirror',
+      visible: hasPhoto,
+      options: [
+        {
+          label: '⇋',
+          title: 'Mirror the photo left to right',
+          active: () => !!frame()?.mirror,
+          pick: () => {
+            const f = frame()
+            if (f) f.mirror = !f.mirror
+          },
+        },
+      ],
     },
     {
       kind: 'choices',

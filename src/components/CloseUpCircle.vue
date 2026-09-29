@@ -142,7 +142,7 @@ function onContextMenu(e: MouseEvent) {
   selectElement(el.id)
   openContextMenu(e, [
     { label: el.frame ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
-    ...photoMenuEntries(el, () => !!el.frame, `photo-${el.id}`),
+    ...photoMenuEntries(el, () => el.frame, `photo-${el.id}`),
     { kind: 'separator' },
     { label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) },
     { label: 'Delete close-up', icon: '🗑', danger: true, action: () => removeElement(el.id) },
@@ -286,6 +286,11 @@ async function useFile(file: File | undefined) {
 .clip {
   inset: 0;
   overflow: hidden;
+  // Also clipped to the circle outright: the rounded corners alone (with
+  // overflow hidden) don't always cut off a photo the browser draws as a
+  // layer of its own, as it may a mirrored or filtered one, and it could
+  // then show outside the circle at some zoom levels.
+  clip-path: circle(50%);
 
   img {
     position: absolute;

@@ -372,8 +372,9 @@ export async function setPageSize(width: number, height: number): Promise<void> 
   // re-fit panel photos on every page so they still cover their reshaped panels
   for (const page of store.pages) {
     for (const panel of computeLayout(page.layout, stageSize.value).panels) {
-      const image = panel.leaf.frame && getImage(panel.leaf.frame.imageId)
-      if (image) panel.leaf.frame = await coverPanel(image, panel.bbox)
+      const old = panel.leaf.frame
+      const image = old && getImage(old.imageId)
+      if (image) panel.leaf.frame = { ...(await coverPanel(image, panel.bbox)), mirror: old.mirror }
     }
   }
 }

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import PhotoFilter from './PhotoFilter.vue'
 import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
+import { frameSvgTransform } from '@/lib/imageFrame'
 import { computeLayout } from '@/lib/layout'
 import { hasPhotoFilter, overlayGradient } from '@/lib/photoEffects'
 import { fontVars } from '@/lib/textFonts'
@@ -99,7 +100,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :href="p.leaf.frame.src"
         :width="p.leaf.frame.natW"
         :height="p.leaf.frame.natH"
-        :transform="`translate(${p.leaf.frame.tx} ${p.leaf.frame.ty}) scale(${p.leaf.frame.scale})`"
+        :transform="frameSvgTransform(p.leaf.frame)"
         :filter="hasPhotoFilter(p.leaf) ? `url(#${clipId('filter-panel', p.leaf.id)})` : undefined"
         preserveAspectRatio="none"
       />
@@ -140,16 +141,18 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
     />
     <g v-for="c in circles" :key="c.id">
       <circle :cx="c.x + c.d / 2" :cy="c.y + c.d / 2" :r="c.d / 2 + dividerStageWidth" :fill="store.border.color" />
-      <image
-        v-if="c.frame"
-        :href="c.frame.src"
-        :width="c.frame.natW"
-        :height="c.frame.natH"
-        :transform="`translate(${c.x + c.frame.tx} ${c.y + c.frame.ty}) scale(${c.frame.scale})`"
-        :clip-path="`url(#${clipId('circle', c.id)})`"
-        :filter="hasPhotoFilter(c) ? `url(#${clipId('filter-circle', c.id)})` : undefined"
-        preserveAspectRatio="none"
-      />
+      <!-- the clip on a group around the photo, so it's in page units, not the photo's own (moved, scaled, maybe mirrored) -->
+      <g v-if="c.frame" :clip-path="`url(#${clipId('circle', c.id)})`">
+        <image
+          :href="c.frame.src"
+          :width="c.frame.natW"
+          :height="c.frame.natH"
+          :transform="frameSvgTransform(c.frame, c.x, c.y)"
+          :filter="hasPhotoFilter(c) ? `url(#${clipId('filter-circle', c.id)})` : undefined"
+          preserveAspectRatio="none"
+        />
+      </g>
+      <circle v-else :cx="c.x + c.d / 2" :cy="c.y + c.d / 2" :r="c.d / 2" :fill="CLOSE_UP_PLACEHOLDER_COLOR" />
       <circle
         v-if="c.frame && c.overlay"
         :cx="c.x + c.d / 2"
@@ -157,7 +160,6 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :r="c.d / 2"
         :fill="`url(#thumb-${page.id}-overlay-circle-${c.id})`"
       />
-      <circle v-else :cx="c.x + c.d / 2" :cy="c.y + c.d / 2" :r="c.d / 2" :fill="CLOSE_UP_PLACEHOLDER_COLOR" />
     </g>
     <rect
       v-for="t in texts"

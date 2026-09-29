@@ -13,6 +13,8 @@ export interface ImageFrame {
   scale: number
   tx: number
   ty: number
+  /** flipped left to right, within the same spot (so pan and zoom work as before) */
+  mirror: boolean
 }
 
 // Zoom range relative to the cover scale. Below 1 the photo no longer fills
@@ -44,6 +46,7 @@ export async function coverFrame(image: StoredImage, boxW: number, boxH: number)
     scale: base,
     tx: (boxW - natW * base) / 2,
     ty: (boxH - natH * base) / 2,
+    mirror: false,
   }
 }
 
@@ -56,8 +59,16 @@ export function zoomFrame(f: ImageFrame, deltaY: number, cx: number, cy: number)
   f.scale = newScale
 }
 
+// a mirrored image is flipped about its own middle: x becomes natW - x
 export function frameTransform(f: ImageFrame): string {
-  return `translate(${f.tx}px, ${f.ty}px) scale(${f.scale})`
+  const flip = f.mirror ? ` translate(${f.natW}px, 0) scale(-1, 1)` : ''
+  return `translate(${f.tx}px, ${f.ty}px) scale(${f.scale})${flip}`
+}
+
+/** The same as an SVG transform attribute, moved by (dx, dy) (e.g. a close-up's position). */
+export function frameSvgTransform(f: ImageFrame, dx = 0, dy = 0): string {
+  const flip = f.mirror ? ` translate(${f.natW} 0) scale(-1 1)` : ''
+  return `translate(${dx + f.tx} ${dy + f.ty}) scale(${f.scale})${flip}`
 }
 
 export function firstDroppedFile(e: DragEvent): File | undefined {
