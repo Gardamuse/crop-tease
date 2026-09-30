@@ -37,3 +37,24 @@ export function screenCenter(el: Element): { cx: number; cy: number } {
   const r = el.getBoundingClientRect()
   return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 }
 }
+
+/**
+ * Swallows the click the browser synthesizes after the current press is
+ * released, so a press already handled (e.g. a split) doesn't also count as a
+ * click on whatever ends up under the pointer. Call it during the press; if
+ * no click comes, the next press clears it.
+ */
+export function swallowNextClick(): void {
+  const swallow = (ev: MouseEvent) => {
+    ev.stopPropagation()
+    ev.preventDefault()
+    done()
+  }
+  const done = () => {
+    window.removeEventListener('click', swallow, true)
+    window.removeEventListener('pointerdown', done, true)
+  }
+  window.addEventListener('click', swallow, true)
+  // a later press starts a fresh click, which must go through
+  setTimeout(() => window.addEventListener('pointerdown', done, true))
+}

@@ -10,7 +10,7 @@ import { contextMenu } from '@/lib/contextMenu'
 import { redo, undo } from '@/lib/history'
 import { renderStageImage, type ExportFormat, type ExportProgress } from '@/lib/exportImage'
 import type { Point } from '@/lib/layout'
-import { trackPointer } from '@/lib/pointer'
+import { swallowNextClick, trackPointer } from '@/lib/pointer'
 import { task } from '@/lib/task'
 import { prepareFonts } from '@/lib/textFonts'
 import {
@@ -167,6 +167,9 @@ function onSplitPointerDown(e: PointerEvent) {
   const plan = planSplit(at)
   if (!plan) return
   choosingSide = true
+  // the release's click would otherwise reach the panel under the pointer,
+  // which opens the image picker when empty
+  swallowNextClick()
   showPlan(plan)
   let side = plan.freshSide
   trackPointer(
