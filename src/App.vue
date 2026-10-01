@@ -17,7 +17,8 @@ import {
   openProjectZip,
   PROJECT_EXTENSION,
   PROJECT_MIME,
-  restoreAutosave,
+  restoreLastProject,
+  saveOpenProject,
   startAutosave,
 } from '@/lib/project'
 import {
@@ -39,9 +40,6 @@ const stage = useTemplateRef('stage')
 const projectInput = useTemplateRef('projectInput')
 const saveStatus = ref<SaveStatus>('loading')
 
-const REPLACE_WARNING =
-  `This replaces the current project. Save it first if you want to keep it.\n\nContinue?`
-
 function onAddCircle() {
   addCircle(firstPanelImage())
 }
@@ -51,11 +49,8 @@ function reportError(action: string, err: unknown) {
   alert(`${action} failed: ${err instanceof Error ? err.message : err}`)
 }
 
+// the open project stays in Recent projects, so nothing needs confirming
 async function onNew() {
-  const message =
-    'Start a new project? This removes all photos, dividers, close-ups and text. ' +
-    'Page size, line and close-up settings are kept.\n\nSave the current project first if you want to keep it.'
-  if (!confirm(message)) return
   try {
     await newProject(clearContent)
   } catch (err) {
@@ -71,7 +66,7 @@ async function onProjectChosen() {
   const input = projectInput.value!
   const file = input.files?.[0]
   input.value = ''
-  if (!file || !confirm(REPLACE_WARNING)) return
+  if (!file) return
   try {
     await runWithProgress('Opening project', async (report) => {
       report(0.3, 'Reading file')
@@ -210,7 +205,10 @@ async function onExportPdf() {
 }
 
 onMounted(async () => {
-  if (!(await restoreAutosave())) loadStarterPage()
+  if (!(await restoreLastProject())) {
+    loadStarterPage()
+    await saveOpenProject().catch((err) => console.error('Could not save the new project', err))
+  }
   startHistory()
   startAutosave((status) => (saveStatus.value = status))
   saveStatus.value = 'saved'

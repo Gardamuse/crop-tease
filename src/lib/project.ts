@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate'
-import { get, set } from 'idb-keyval'
-import { toRaw, watch } from 'vue'
+import { del, get, set, update } from 'idb-keyval'
+import { nextTick, reactive, ref, toRaw, watch } from 'vue'
 import { z } from 'zod'
 
 import {
@@ -30,6 +30,7 @@ import type { Region } from './layout'
 import { clamp } from './math'
 import { store, syncCounters, usedFonts, type ComicElement, type TextElement } from './store'
 import { customFontFile, installProjectFont } from './textFonts'
+import { captureThumbnail, clearThumbnailCache } from './thumbnail'
 
 // ---------------------------------------------------------------------------
 // Save format
@@ -376,52 +377,239 @@ function applyProject(doc: ProjectDoc): void {
 }
 
 // ---------------------------------------------------------------------------
-// Browser autosave
+// Projects kept in the browser
+//
+// Every project the user works on is kept in IndexedDB: its document under
+// project:<id> and a picture of its first page under thumb:<id>, listed in
+// PROJECTS_KEY (newest first) for the Recent projects view. The open one is
+// saved shortly after every change. Images are shared: each is stored once
+// (see images.ts) and deleted once no project uses it.
 // ---------------------------------------------------------------------------
 
-const AUTOSAVE_KEY = 'project'
+/** A project in the Recent projects list. */
+export interface ProjectEntry {
+  id: string
+  name: string
+  /** when it was last changed (ms since 1970) */
+  updated: number
+  pages: number
+  /** the images it uses, so unused ones can be deleted without reading every project */
+  images: string[]
+  /** identifies its content, so opening a file of an identical project goes to that one (see fingerprint) */
+  fingerprint: string
+}
+
+const PROJECTS_KEY = 'projects'
+const CURRENT_KEY = 'current-project'
+/** where the single autosaved project lived before there were several */
+const LEGACY_KEY = 'project'
 const AUTOSAVE_DELAY = 600
+/** how long after a change the first page's picture is redrawn */
+const THUMB_DELAY = 2000
+
+const docKey = (id: string) => `project:${id}`
+const thumbKey = (id: string) => `thumb:${id}`
+
+/** the open project's id */
+export const currentProjectId = ref('')
+/** the projects in this browser, newest first; filled by loadRecentProjects */
+export const recentProjects = ref<ProjectEntry[]>([])
+/** object URLs of their pictures, by project id */
+export const projectThumbs = reactive(new Map<string, string>())
 
 let suspendAutosave = false
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+let thumbTimer: ReturnType<typeof setTimeout> | undefined
 
-async function writeAutosave(): Promise<void> {
-  await set(AUTOSAVE_KEY, serializeProject())
+function newProjectId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+}
+
+// JSON with every object's keys sorted, so equal documents give equal text
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)))
+      : v,
+  )
+}
+
+// cyrb53, a quick 53-bit string hash
+function hashText(text: string): string {
+  let h1 = 0xdeadbeef
+  let h2 = 0x41c6ce57
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    h1 = Math.imul(h1 ^ c, 2654435761)
+    h2 = Math.imul(h2 ^ c, 1597334677)
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
 }
 
 /**
- * Restores the last autosaved project. Returns false when there is none (or
- * it can't be read), so the caller can set up a starter page instead.
+ * Identifies a project's content: equal for the same project whether it was
+ * just saved to a file, opened from one or kept here. Leaves out the page it
+ * was left on and the packed fonts, which only a .ct file carries.
  */
-export async function restoreAutosave(): Promise<boolean> {
-  try {
-    const raw = await get(AUTOSAVE_KEY)
-    if (raw === undefined) return false
-    const doc = upgradeProject(raw)
-    for (const { id } of doc.images) {
-      const blob = await get<Blob>(storedImageKey(id))
-      if (blob) await addImage(blob, id, false)
-    }
-    applyProject(doc)
-    await pruneStoredImages(usedImageIds(doc))
-    return true
-  } catch (err) {
-    console.error('Could not restore the autosaved project', err)
-    return false
+function fingerprint(doc: ProjectDoc): string {
+  // through the schema, so both sides have the same defaults and no extra fields
+  const parsed = ProjectSchema.safeParse(doc)
+  const { currentPage: _page, fonts: _fonts, ...content } = parsed.success ? parsed.data : doc
+  return hashText(stableJson(content))
+}
+
+function entryFor(id: string, doc: ProjectDoc): ProjectEntry {
+  return {
+    id,
+    name: doc.name,
+    updated: Date.now(),
+    pages: doc.pages.length,
+    images: doc.images.map((i) => i.id),
+    fingerprint: fingerprint(doc),
   }
+}
+
+async function readEntries(): Promise<ProjectEntry[]> {
+  return (await get<ProjectEntry[]>(PROJECTS_KEY)) ?? []
+}
+
+/** Writes a project and puts it at the top of the list. */
+async function storeProject(id: string, doc: ProjectDoc): Promise<void> {
+  const entry = entryFor(id, doc)
+  await set(docKey(id), doc)
+  await update<ProjectEntry[]>(PROJECTS_KEY, (list = []) => [entry, ...list.filter((e) => e.id !== id)])
+  const i = recentProjects.value.findIndex((e) => e.id === id)
+  if (i >= 0) recentProjects.value.splice(i, 1)
+  recentProjects.value.unshift(entry)
+}
+
+/** Saves the open project now, with its picture if `withThumb`. */
+async function saveCurrent(withThumb = false): Promise<void> {
+  clearTimeout(saveTimer)
+  saveTimer = undefined
+  await storeProject(currentProjectId.value, serializeProject())
+  if (withThumb) await saveThumbnail()
+  else scheduleThumbnail()
+}
+
+function scheduleThumbnail(): void {
+  clearTimeout(thumbTimer)
+  thumbTimer = setTimeout(() => void saveThumbnail(), THUMB_DELAY)
+}
+
+async function saveThumbnail(): Promise<void> {
+  clearTimeout(thumbTimer)
+  thumbTimer = undefined
+  const id = currentProjectId.value
+  try {
+    const blob = await captureThumbnail()
+    if (!blob || id !== currentProjectId.value) return
+    await set(thumbKey(id), blob)
+    showThumb(id, blob)
+  } catch (err) {
+    console.error('Could not draw the project picture', err) // the list shows a blank instead
+  }
+}
+
+function showThumb(id: string, blob: Blob | undefined): void {
+  const old = projectThumbs.get(id)
+  if (old) URL.revokeObjectURL(old)
+  if (blob) projectThumbs.set(id, URL.createObjectURL(blob))
+  else projectThumbs.delete(id)
+}
+
+/** Saves whatever is waiting to be saved (the open project and its picture) straight away. */
+export async function flushProject(): Promise<void> {
+  if (saveTimer !== undefined) await saveCurrent(true)
+  else if (thumbTimer !== undefined) await saveThumbnail()
+}
+
+/** Reads the list of projects and their pictures for the Recent projects view. */
+export async function loadRecentProjects(): Promise<void> {
+  const entries = await readEntries()
+  recentProjects.value = entries
+  for (const { id } of entries) {
+    if (!projectThumbs.has(id)) showThumb(id, await get<Blob>(thumbKey(id)))
+  }
+}
+
+/** Deletes stored images no project uses any more. */
+async function pruneImages(): Promise<void> {
+  const used = new Set((await readEntries()).flatMap((e) => e.images))
+  for (const id of usedImageIds(serializeProject())) used.add(id)
+  await pruneStoredImages(used)
+}
+
+/** Moves the single project saved before there were several into the list. */
+async function migrateLegacyProject(): Promise<void> {
+  const raw = await get(LEGACY_KEY)
+  if (raw === undefined) return
+  try {
+    const id = newProjectId()
+    await storeProject(id, upgradeProject(raw))
+    await set(CURRENT_KEY, id)
+  } catch (err) {
+    console.error('Could not move the autosaved project into the list', err)
+  }
+  await del(LEGACY_KEY)
+}
+
+/** Reads a stored project and makes it the open one. */
+async function loadStoredProject(id: string): Promise<void> {
+  const raw = await get(docKey(id))
+  if (raw === undefined) throw new ProjectFileError("This project isn't in the browser any more.")
+  const doc = upgradeProject(raw)
+  clearImages()
+  for (const { id: imageId } of doc.images) {
+    const blob = await get<Blob>(storedImageKey(imageId))
+    if (blob) await addImage(blob, imageId, false)
+  }
+  applyProject(doc)
+  currentProjectId.value = id
+}
+
+/**
+ * Opens the project that was open last. Returns false when there is none (or
+ * it can't be read); the caller then sets up a starter page, which becomes a
+ * new project.
+ */
+export async function restoreLastProject(): Promise<boolean> {
+  try {
+    await migrateLegacyProject()
+    const id = await get<string>(CURRENT_KEY)
+    if (id !== undefined) {
+      await loadStoredProject(id)
+      await pruneImages()
+      scheduleThumbnail() // one drawn by an older version, or none
+      return true
+    }
+  } catch (err) {
+    console.error('Could not restore the last project', err)
+  }
+  currentProjectId.value = newProjectId()
+  await set(CURRENT_KEY, currentProjectId.value)
+  return false
+}
+
+/** Saves the open project straight away, e.g. a new starter page nobody has changed yet. */
+export async function saveOpenProject(): Promise<void> {
+  await nextTick() // the page bar draws the first page for its picture
+  await saveCurrent(true)
 }
 
 /** Saves the project to the browser shortly after every change. */
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
-  let timer: ReturnType<typeof setTimeout> | undefined
   watch(
     () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.textSize, store.photoFilters, store.pages, store.pageIndex, store.pageNumber],
     () => {
       if (suspendAutosave) return
       onStatus('saving')
-      clearTimeout(timer)
-      timer = setTimeout(async () => {
+      clearTimeout(saveTimer)
+      saveTimer = setTimeout(async () => {
         try {
-          await writeAutosave()
+          await saveCurrent()
           onStatus('saved')
         } catch (err) {
           console.error('Autosave failed', err)
@@ -431,26 +619,69 @@ export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') =
     },
     { deep: true },
   )
+  // leaving the tab: save what's pending while there's still time
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void flushProject()
+  })
 }
 
-/** Swaps in a different project and saves it straight away, dropping the old one's images. */
-async function replaceProject(load: () => void | Promise<void>): Promise<void> {
+/**
+ * Makes a different project the open one: saves the one open now, runs
+ * `load` (which fills the store and sets currentProjectId), then saves the
+ * new one straight away.
+ */
+async function switchProject(load: () => Promise<void>): Promise<void> {
+  await flushProject()
   suspendAutosave = true
   try {
     await load()
     resetHistory() // undo can't reach back into the previous project
-    await writeAutosave()
-    await pruneStoredImages(usedImageIds(serializeProject()))
+    clearThumbnailCache()
+    await set(CURRENT_KEY, currentProjectId.value)
+    await nextTick() // let the page bar draw the new first page for its picture
+    await saveCurrent(true)
+    await pruneImages()
   } finally {
     suspendAutosave = false
   }
 }
 
+/** Starts a new project, keeping the open one in the list. `reset` empties the store. */
 export async function newProject(reset: () => void): Promise<void> {
-  await replaceProject(() => {
+  await switchProject(async () => {
     clearImages()
     reset()
+    currentProjectId.value = newProjectId()
   })
+}
+
+/** Opens a project from the Recent projects list. */
+export async function openStoredProject(id: string): Promise<void> {
+  if (id === currentProjectId.value) return
+  await switchProject(() => loadStoredProject(id))
+}
+
+/**
+ * Deletes a project from the browser. Deleting the open one opens the next
+ * most recent instead, or a new project made with `reset` if it was the last.
+ */
+export async function deleteStoredProject(id: string, reset: () => void): Promise<void> {
+  if (id === currentProjectId.value) {
+    clearTimeout(saveTimer) // its pending changes go with it
+    saveTimer = undefined
+    clearTimeout(thumbTimer)
+    thumbTimer = undefined
+    const next = (await readEntries()).find((e) => e.id !== id)
+    // still listed while switching, so switching doesn't save it again
+    if (next) await switchProject(() => loadStoredProject(next.id))
+    else await newProject(reset)
+  }
+  await del(docKey(id))
+  await del(thumbKey(id))
+  await update<ProjectEntry[]>(PROJECTS_KEY, (list = []) => list.filter((e) => e.id !== id))
+  recentProjects.value = recentProjects.value.filter((e) => e.id !== id)
+  showThumb(id, undefined)
+  await pruneImages()
 }
 
 // ---------------------------------------------------------------------------
@@ -486,7 +717,11 @@ export async function buildProjectZip(onProgress?: (fraction: number) => void): 
   return new Blob([zipped as BlobPart], { type: 'application/zip' })
 }
 
-/** Opens a saved .ct file, upgrading it if it's from an older version, and makes it the current project. */
+/**
+ * Opens a saved .ct file, upgrading it if it's from an older version, and
+ * makes it the open project: a new one in the list, or the listed project
+ * with identical content if there is one.
+ */
 export async function openProjectZip(file: Blob): Promise<void> {
   let entries: Record<string, Uint8Array>
   try {
@@ -517,7 +752,14 @@ export async function openProjectZip(file: Blob): Promise<void> {
     if (data) await installProjectFont(name, data.slice().buffer)
   }
 
-  await replaceProject(async () => {
+  const fp = fingerprint(doc)
+  const same = (await readEntries()).find((e) => e.fingerprint === fp)
+  if (same) {
+    await openStoredProject(same.id)
+    return
+  }
+
+  await switchProject(async () => {
     clearImages()
     for (const { id, type } of doc.images) {
       const found = byId.get(id)
@@ -526,5 +768,6 @@ export async function openProjectZip(file: Blob): Promise<void> {
       await addImage(new Blob([found.data as BlobPart], { type: blobType }), id)
     }
     applyProject(doc)
+    currentProjectId.value = newProjectId()
   })
 }

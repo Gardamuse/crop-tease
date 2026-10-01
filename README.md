@@ -11,9 +11,10 @@ share its page size and line settings; pages can be reordered, duplicated and
 exported together, and an optional page number (`{n}` / `{total}`) appears on
 every page.
 
-Everything runs in the browser; nothing is uploaded. The current project
-(images included) is autosaved to IndexedDB and reopened on the next visit,
-and can be saved to or opened from a `.ct` project file.
+Everything runs in the browser; nothing is uploaded. Every project (images
+included) is autosaved to IndexedDB, listed under Recent projects and the last
+one reopened on the next visit; any can be saved to or opened from a `.ct`
+project file.
 
 ## Scripts
 
@@ -59,8 +60,11 @@ fonts and the save dialog work as on the web.
     its ends anchored to the border or an earlier bar) and the polygon geometry
     that turns it into panel clip paths
   - `imageFrame.ts`: cover-fit, pan and zoom for an image inside a box
-  - `project.ts`: the versioned save format, autosave, and `.ct` save/open
-  - `images.ts`: the project's images, keyed by content hash and mirrored to IndexedDB
+  - `project.ts`: the versioned save format, the projects kept in the browser
+    (autosave, Recent projects) and `.ct` save/open
+  - `images.ts`: the project's images, keyed by content hash and mirrored to
+    IndexedDB, where projects share them
+  - `thumbnail.ts`: the first-page picture shown in Recent projects
   - `task.ts` / `saveFile.ts`: progress dialog and the "Save as" picker (with download fallback)
   - `store.ts`: reactive app state and actions: settings, pages (each with its
     own layout and elements; `store.layout` / `store.elements` always refer to

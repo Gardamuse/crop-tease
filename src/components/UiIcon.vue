@@ -4,6 +4,8 @@ const PATHS = {
   new: 'M6 3h8l4 4v14H6z M14 3v4h4 M12 11v6 M9 14h6',
   open: 'M3 7V5h7l2 2h9v12H3z M3 10h18',
   save: 'M5 3h11l3 3v15H5z M8 3v5h7V3 M8 21v-7h8v7',
+  recent: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 7v5l3 2',
+  trash: 'M4 7h16 M10 11v6 M14 11v6 M6 7l1 13h10l1-13 M9 7V4h6v3',
   export: 'M12 4v11 M7 10l5 5 5-5 M5 20h14',
   split: 'M4 4h16v16H4z M14 4l-4 16',
   closeUp: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z',

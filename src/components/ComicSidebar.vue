@@ -8,6 +8,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, wa
 import ColorChoices from './ColorChoices.vue'
 import MenuEntries from './MenuEntries.vue'
 import PixelSlider from './PixelSlider.vue'
+import RecentProjects from './RecentProjects.vue'
 import UiIcon from './UiIcon.vue'
 import {
   COLOR_PRESETS,
@@ -41,7 +42,7 @@ const props = defineProps<{
   saveStatus: SaveStatus
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   new: []
   open: []
   saveProject: []
@@ -169,6 +170,15 @@ async function onRemoveFont(name: string) {
   await removeCustomFont(name)
 }
 
+// The Recent projects view, shown in place of the sidebar's controls.
+const recentOpen = ref(false)
+
+function fromRecent(action: 'new' | 'open') {
+  recentOpen.value = false
+  if (action === 'new') emit('new')
+  else emit('open')
+}
+
 // The How-to card, opened from the ? button.
 const helpOpen = ref(false)
 // the app and its save format described for AI agents (public/crop-tease-skill.md)
@@ -227,7 +237,21 @@ onBeforeUnmount(() => {
         <span class="status-dot" :class="saveStatus" />
         <input v-model="store.name" type="text" placeholder="comic" spellcheck="false" aria-label="Project name" />
       </label>
-      <button class="icon-button" title="New project" aria-label="New project" @click="$emit('new')">
+      <button
+        class="icon-button"
+        title="Recent projects"
+        aria-label="Recent projects"
+        :aria-expanded="recentOpen"
+        @click="recentOpen = true"
+      >
+        <UiIcon name="recent" />
+      </button>
+      <button
+        class="icon-button"
+        title="New project (this one stays in Recent projects)"
+        aria-label="New project"
+        @click="$emit('new')"
+      >
         <UiIcon name="new" />
       </button>
       <button class="icon-button" title="Open a saved .ct project" aria-label="Open project" @click="$emit('open')">
@@ -473,6 +497,8 @@ onBeforeUnmount(() => {
       </div>
     </footer>
 
+    <RecentProjects v-if="recentOpen" @close="recentOpen = false" @new="fromRecent('new')" @open="fromRecent('open')" />
+
     <Transition name="pop">
       <div v-if="helpOpen" ref="help" class="help-card" role="dialog" aria-label="How to">
         <header>
@@ -480,6 +506,10 @@ onBeforeUnmount(() => {
           <button class="icon-button" aria-label="Close" @click="helpOpen = false"><UiIcon name="close" /></button>
         </header>
         <ul>
+          <li>
+            <b>Projects:</b> each is kept in this browser as you work; the clock button lists them to switch
+            between or delete. Save (.ct) keeps a copy on your computer.
+          </li>
           <li>
             <b>Pages:</b> the strip beside the page switches and adds them (＋); drag one to reorder. Its
             <b>···</b> or a right-click duplicates, moves or deletes it.
