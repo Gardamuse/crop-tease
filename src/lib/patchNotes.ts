@@ -1,6 +1,16 @@
 /** What changed in each release, newest first, shown from the version number. */
 export const PATCH_NOTES: { version: string; notes: string[] }[] = [
   {
+    version: '1.2.0-beta.1',
+    notes: [
+      'Recent projects, from the clock button beside the project name: every project is kept in the browser, with a picture of its first page. Click one to open it, or delete it with its trash button.',
+      'New project no longer replaces the open project; it stays in Recent projects.',
+      'Opening a .ct file adds it to Recent projects, or opens the listed one if it has the same content.',
+      'Your last autosaved project moves into Recent projects automatically.',
+      'Fixed: splitting a panel could open the image picker when releasing the mouse.',
+    ],
+  },
+  {
     version: '1.1.2',
     notes: ['Fixed: in Firefox, a mirrored close-up could still show its photo outside the circle at some zoom levels.'],
   },
