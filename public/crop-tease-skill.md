@@ -84,8 +84,8 @@ pixels.
   },
   "textFont": "classic",         // font of all text (see Fonts)
   "textSize": 20,                // size of text without its own fontSize, stage units
-  "photoFilters": {              // optional: levels and color balance for every photo without its own
-    "levels": null, "colorBalance": null   // same shapes as a photo's (see Blur and color overlay), or null
+  "photoFilters": {              // optional: levels, color balance and color splash for every photo without its own
+    "levels": null, "colorBalance": null, "colorSplash": null   // same shapes as a photo's (see Blur and color overlay), or null
   },
   "pages": [ /* at least one page, see Pages */ ],
   "currentPage": 0,              // index of the page shown when opened
@@ -366,6 +366,13 @@ optional; they only show while it has a photo, and stay if it changes):
                          //   [cyan..red, magenta..green, yellow..blue], each -40..40
   "shadows": [0, 0, 10], "midtones": [5, 0, 0], "highlights": [8, 0, -5],
   "preserveLuminosity": true   // keep each pixel's lightness, shift only its color
+},
+"colorSplash": {         // or null / missing to use the project's photoFilters: the photo turned gray
+                         //   except for one range of hues on the color wheel
+  "hue": 0,              // the kept colors' hue, 0..359 degrees (0 red, 60 yellow, 120 green, 240 blue)
+  "width": 60,           // how wide a range of hues around it is kept, 10..300 degrees
+  "softness": 50,        // how gradually the kept range fades into gray at its edges, 0..100 %
+  "desaturate": 100      // how gray everything else gets, 0..100 %
 },
 "overlay": {             // a color fading over the photo, or null / missing for none
   "from": "bottom",      // "top" | "bottom": the side it fades from

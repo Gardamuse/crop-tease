@@ -6,9 +6,10 @@ import type { ImageFrame } from './imageFrame'
 import { clamp } from './math'
 import { stageSize, store } from './store'
 
-// Effects on a panel's or close-up's photo: a blur, levels, and a color
-// laid over it fading out from the top or bottom, turned by `angle`. They
-// belong to the panel or close-up, so they stay when the photo is changed.
+// Effects on a panel's or close-up's photo: a blur, levels, color balance,
+// a color splash, and a color laid over it fading out from the top or
+// bottom, turned by `angle`. They belong to the panel or close-up, so they
+// stay when the photo is changed.
 
 /** the strongest blur, in output pixels */
 export const MAX_BLUR = 50 // also in the skill doc (public/crop-tease-skill.md)
@@ -22,6 +23,8 @@ export interface PhotoEffects {
   levels: Levels | null
   /** null to follow the project's (store.photoFilters) */
   colorBalance: ColorBalance | null
+  /** null to follow the project's (store.photoFilters) */
+  colorSplash: ColorSplash | null
 }
 
 /**
@@ -124,19 +127,94 @@ export function balanceTables(b: ColorBalance): [string, string, string] {
   return tables.map((t) => t.map((v) => v.toFixed(4)).join(' ')) as [string, string, string]
 }
 
-/** A photo's effects as drawn: its own levels and color balance, or else the project's. */
+/**
+ * Color splash: the photo turned gray (by `desaturate` %) except for the
+ * colors within `width` degrees around `hue` on the color wheel, whose edges
+ * fade over `softness` % of the range's half-width.
+ */
+export interface ColorSplash {
+  /** the kept colors' hue, 0..359 degrees (0 red, 120 green, 240 blue) */
+  hue: number
+  /** how wide a range of hues is kept, MIN..MAX_SPLASH_WIDTH degrees */
+  width: number
+  /** how gradually the kept range fades into gray at its edges, 0..100 % */
+  softness: number
+  /** how gray the rest of the photo gets, 0..100 % */
+  desaturate: number
+}
+
+export const MIN_SPLASH_WIDTH = 10
+export const MAX_SPLASH_WIDTH = 300 // also in the skill doc (public/crop-tease-skill.md)
+
+export function defaultSplash(): ColorSplash {
+  return { hue: 0, width: 60, softness: 50, desaturate: 100 }
+}
+
+/** the slider track for picking the hue: the color wheel unrolled */
+export const HUE_TRACK = `linear-gradient(to right, ${[0, 60, 120, 180, 240, 300, 360].map((h) => `hsl(${h} 90% 50%)`).join(', ')})`
+
+/** how colorful (0..1, a pure color being 1) a pixel must be to be kept fully; duller ones are kept less */
+const SPLASH_FULL_CHROMA = 0.25
+
+/**
+ * The splash as two color matrices for an SVG filter. A pixel's color is
+ * placed on a color wheel: a = r - (g + b) / 2 and b = (g - b) * sqrt(3) / 2,
+ * which puts red at 0, green at 120 and blue at 240 degrees, its distance
+ * from the center (its chroma) being how colorful it is. The first matrix
+ * turns the wheel so the kept hue points along a, storing a (as 0.5 + a / 2,
+ * as filter results can't go below 0) in red and b's positive and negative
+ * parts in green and blue, so the second can use |b|. For a pixel of chroma
+ * C at angle t from the kept hue, a sin(w) - |b| cos(w) = C sin(w - |t|),
+ * positive within w degrees of the kept hue. The second matrix scales that
+ * into the pixel's mask (alpha), which for a pixel of SPLASH_FULL_CHROMA
+ * fades from 1 to 0 over the softness's worth of degrees centered on the
+ * range's edge (half the width from the kept hue).
+ */
+export function splashMatrices(s: ColorSplash): { turn: string; mask: string } {
+  const rad = (deg: number) => (deg * Math.PI) / 180
+  const h = rad(s.hue)
+  const half = rad(clamp(s.width, MIN_SPLASH_WIDTH, MAX_SPLASH_WIDTH) / 2)
+  const fade = clamp(rad((s.softness / 100) * (s.width / 2)), rad(0.5), Math.PI / 2)
+  // the fade straddles the edge, so the range looks as wide at any softness
+  const w = Math.min(half + fade / 2, Math.PI)
+  const r3 = Math.sqrt(3) / 2
+  const cos = Math.cos(h)
+  const sin = Math.sin(h)
+  // the wheel turned by -hue: along = a cos + b sin, across = -a sin + b cos
+  const along = [cos, -cos / 2 + r3 * sin, -cos / 2 - r3 * sin]
+  const across = [-sin, sin / 2 + r3 * cos, sin / 2 - r3 * cos]
+  const turn = [
+    [...along.map((k) => k / 2), 0, 0.5],
+    [...across, 0, 0],
+    [...across.map((k) => -k), 0, 0],
+    [0, 0, 0, 1, 0],
+  ]
+  // alpha = gain (sin(w) (2R - 1) - cos(w) (G + B))
+  const gain = 1 / (SPLASH_FULL_CHROMA * Math.sin(fade))
+  const mask = [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [2 * Math.sin(w) * gain, -Math.cos(w) * gain, -Math.cos(w) * gain, 0, -Math.sin(w) * gain],
+  ]
+  const values = (m: number[][]) => m.map((row) => row.map((v) => +v.toFixed(5)).join(' ')).join('  ')
+  return { turn: values(turn), mask: values(mask) }
+}
+
+/** A photo's effects as drawn: its own levels, color balance and color splash, or else the project's. */
 export function effectiveEffects(e: PhotoEffects): PhotoEffects {
   return {
     ...e,
     levels: e.levels ?? store.photoFilters.levels,
     colorBalance: e.colorBalance ?? store.photoFilters.colorBalance,
+    colorSplash: e.colorSplash ?? store.photoFilters.colorSplash,
   }
 }
 
-/** Whether the photo needs its filter (blur, or levels or color balance that change something). */
+/** Whether the photo needs its filter (blur, or levels, color balance or a color splash that change something). */
 export function hasPhotoFilter(e: PhotoEffects): boolean {
-  const { blur, levels, colorBalance } = effectiveEffects(e)
-  return blur > 0 || changesTones(levels) || changesColor(colorBalance)
+  const { blur, levels, colorBalance, colorSplash } = effectiveEffects(e)
+  return blur > 0 || changesTones(levels) || changesColor(colorBalance) || (colorSplash?.desaturate ?? 0) > 0
 }
 
 export type OverlayFrom = 'top' | 'bottom'
@@ -226,8 +304,8 @@ export function blurRadius(blur: number, frame: ImageFrame): number {
 /** which tone range the color balance sliders show, shared by all photo menus while the app runs */
 const balanceRange = ref<ToneRange>('midtones')
 
-/** The settings levels and color balance can come from: a photo's own, or the project's (for all photos). */
-export type ToneFilters = Pick<PhotoEffects, 'levels' | 'colorBalance'>
+/** The settings levels, color balance and color splash can come from: a photo's own, or the project's (for all photos). */
+export type ToneFilters = Pick<PhotoEffects, 'levels' | 'colorBalance' | 'colorSplash'>
 
 /**
  * Levels, color balance and overlays that were switched off (to Off or
@@ -258,6 +336,10 @@ export function toneEntries(
   const setLevels = (change: Partial<Levels>) => (target.levels = { ...levels(), ...change })
   const levelsOn = () => shown() && target.levels !== null
   const balanceOn = () => shown() && target.colorBalance !== null
+  const splashOn = () => shown() && target.colorSplash !== null
+  const setSplash = (change: Partial<ColorSplash>) => {
+    if (target.colorSplash) Object.assign(target.colorSplash, change)
+  }
   // the row's two choices: off (following the project's, for a photo) or set here
   function switchOptions<K extends keyof ToneFilters>(field: K, start: () => NonNullable<ToneFilters[K]>, what: string) {
     const local = mode === 'local'
@@ -377,6 +459,61 @@ export function toneEntries(
           pick: () => target.colorBalance && (target.colorBalance.preserveLuminosity = false),
         },
       ],
+    },
+    {
+      kind: 'choices',
+      label: 'Color splash',
+      visible: shown,
+      options: switchOptions(
+        'colorSplash',
+        () => store.photoFilters.colorSplash ?? defaultSplash(),
+        'gray except for one range of colors',
+      ),
+    },
+    {
+      kind: 'slider',
+      label: 'Hue',
+      title: 'The color kept',
+      visible: splashOn,
+      min: 0,
+      max: 359,
+      unit: '°',
+      track: HUE_TRACK,
+      value: () => target.colorSplash?.hue ?? 0,
+      set: (deg) => setSplash({ hue: Math.round(((deg % 360) + 360) % 360) }),
+    },
+    {
+      kind: 'slider',
+      label: 'Width',
+      title: 'How wide a range of hues around it is kept',
+      visible: splashOn,
+      min: MIN_SPLASH_WIDTH,
+      max: MAX_SPLASH_WIDTH,
+      unit: '°',
+      value: () => target.colorSplash?.width ?? 0,
+      set: (deg) => setSplash({ width: Math.round(clamp(deg, MIN_SPLASH_WIDTH, MAX_SPLASH_WIDTH)) }),
+    },
+    {
+      kind: 'slider',
+      label: 'Softness',
+      title: 'How gradually the kept colors fade into gray at the edges of the range',
+      visible: splashOn,
+      min: 0,
+      max: 100,
+      unit: '%',
+      value: () => target.colorSplash?.softness ?? 0,
+      set: (pct) => setSplash({ softness: Math.round(clamp(pct, 0, 100)) }),
+    },
+    {
+      kind: 'slider',
+      label: 'Gray',
+      title: 'How gray the other colors get',
+      visible: splashOn,
+      min: 0,
+      max: 100,
+      unit: '%',
+      value: () => target.colorSplash?.desaturate ?? 0,
+      set: (pct) => setSplash({ desaturate: Math.round(clamp(pct, 0, 100)) }),
     },
   ]
 }

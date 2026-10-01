@@ -108,6 +108,9 @@ onBeforeUnmount(() => {
   // a long menu (a photo's, with its effects open) scrolls in a short window
   max-height: calc(100vh - 12px);
   overflow-y: auto;
+  overflow-x: hidden;
+  // the scrollbar gets its own room rather than squeezing the rows into a sideways scroll
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   padding: 5px;
   border-radius: $radius;

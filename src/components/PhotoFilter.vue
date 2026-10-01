@@ -2,10 +2,17 @@
 import { computed } from 'vue'
 
 import type { ImageFrame } from '@/lib/imageFrame'
-import { balanceTables, blurRadius, effectiveEffects, levelsTransfers, type PhotoEffects } from '@/lib/photoEffects'
+import {
+  balanceTables,
+  blurRadius,
+  effectiveEffects,
+  levelsTransfers,
+  splashMatrices,
+  type PhotoEffects,
+} from '@/lib/photoEffects'
 
-// The SVG filter for a photo's blur, levels and color balance, applied in
-// that order, for use inside an <svg>. Its region is the photo itself: the
+// The SVG filter for a photo's blur, levels, color balance and color
+// splash, applied in that order, for use inside an <svg>. Its region is the photo itself: the
 // blur repeats the edge pixels outward, so the photo's edges stay solid
 // instead of fading.
 const props = defineProps<{
@@ -26,9 +33,17 @@ const balance = computed(() => {
   return b && { tables: balanceTables(b), preserveLuminosity: b.preserveLuminosity }
 })
 
+const splash = computed(() => {
+  const s = effects.value.colorSplash
+  return s && s.desaturate > 0 ? { ...splashMatrices(s), saturation: String(1 - s.desaturate / 100) } : null
+})
+
 // which result each stage starts from
 const afterBlur = computed(() => (effects.value.blur ? 'blurred' : 'SourceGraphic'))
 const afterLevels = computed(() => (transfers.value.length ? 'leveled' : afterBlur.value))
+const afterBalance = computed(() =>
+  balance.value ? (balance.value.preserveLuminosity ? 'balanced-kept' : 'balanced') : afterLevels.value,
+)
 </script>
 
 <template>
@@ -82,8 +97,26 @@ const afterLevels = computed(() => (transfers.value.length ? 'leveled' : afterBl
           k4="0.5"
           result="lost"
         />
-        <feComposite in="balanced" in2="lost" operator="arithmetic" k1="0" k2="1" k3="2" k4="-1" />
+        <feComposite
+          in="balanced"
+          in2="lost"
+          operator="arithmetic"
+          k1="0"
+          k2="1"
+          k3="2"
+          k4="-1"
+          result="balanced-kept"
+        />
       </template>
+    </template>
+    <template v-if="splash">
+      <!-- how much of each pixel's color is kept (alpha), see splashMatrices -->
+      <feColorMatrix :in="afterBalance" type="matrix" :values="splash.turn" result="splash-wheel" />
+      <feColorMatrix in="splash-wheel" type="matrix" :values="splash.mask" result="splash-mask" />
+      <feColorMatrix :in="afterBalance" type="saturate" :values="splash.saturation" result="splash-gray" />
+      <!-- the kept color over the gray -->
+      <feComposite :in="afterBalance" in2="splash-mask" operator="in" result="splash-kept" />
+      <feComposite in="splash-kept" in2="splash-gray" operator="over" />
     </template>
   </filter>
 </template>

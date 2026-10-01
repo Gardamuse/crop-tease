@@ -19,7 +19,7 @@ import {
 } from './constants'
 import type { ExportFormat } from './exportImage'
 import { coverFrame, type ImageFrame } from './imageFrame'
-import type { ColorBalance, Levels, PhotoEffects } from './photoEffects'
+import type { ColorBalance, ColorSplash, Levels, PhotoEffects } from './photoEffects'
 import { getImage, type StoredImage } from './images'
 import {
   anchorAt,
@@ -107,7 +107,7 @@ export function syncCounters(): void {
 }
 
 // a photo as it comes, before any effects
-const NO_EFFECTS: PhotoEffects = { overlay: null, blur: 0, levels: null, colorBalance: null }
+const NO_EFFECTS: PhotoEffects = { overlay: null, blur: 0, levels: null, colorBalance: null, colorSplash: null }
 
 function newLeaf(frame: ImageFrame | null = null): Leaf {
   return { kind: 'leaf', id: nextId++, frame, fill: null, ...NO_EFFECTS }
@@ -144,11 +144,15 @@ export const store = reactive({
   /** the size of all text that hasn't been given its own, in stage units */
   textSize: DEFAULT_TEXT_SIZE,
   /**
-   * levels and color balance for every photo without its own; null for
-   * none. Always this one object (loading replaces its contents), as the
-   * sidebar's controls hold on to it.
+   * levels, color balance and color splash for every photo without its
+   * own; null for none. Always this one object (loading replaces its
+   * contents), as the sidebar's controls hold on to it.
    */
-  photoFilters: { levels: null as Levels | null, colorBalance: null as ColorBalance | null },
+  photoFilters: {
+    levels: null as Levels | null,
+    colorBalance: null as ColorBalance | null,
+    colorSplash: null as ColorSplash | null,
+  },
   /**
    * Text shown on every page at the same spot and style, with `{n}` replaced
    * by that page's number and `{total}` by the page count. Null for none.

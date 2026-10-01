@@ -25,7 +25,14 @@ import {
   typeForExtension,
 } from './images'
 import { resetHistory } from './history'
-import { DEFAULT_OVERLAY, MAX_BALANCE, MAX_BLUR, MAX_OVERLAY_ANGLE } from './photoEffects'
+import {
+  DEFAULT_OVERLAY,
+  MAX_BALANCE,
+  MAX_BLUR,
+  MAX_OVERLAY_ANGLE,
+  MAX_SPLASH_WIDTH,
+  MIN_SPLASH_WIDTH,
+} from './photoEffects'
 import type { Region } from './layout'
 import { clamp } from './math'
 import { store, syncCounters, usedFonts, type ComicElement, type TextElement } from './store'
@@ -101,11 +108,19 @@ const ColorBalanceSchema = z.object({
   preserveLuminosity: z.boolean(),
 })
 
+const ColorSplashSchema = z.object({
+  hue: z.number().transform((h) => ((Math.round(h) % 360) + 360) % 360),
+  width: z.number().transform((w) => clamp(w, MIN_SPLASH_WIDTH, MAX_SPLASH_WIDTH)),
+  softness: z.number().min(0).max(100),
+  desaturate: z.number().min(0).max(100),
+})
+
 const PhotoEffectsSchema = {
   overlay: OverlaySchema.nullable().default(null),
   blur: z.number().min(0).max(MAX_BLUR).default(0),
   levels: LevelsSchema.nullable().default(null),
   colorBalance: ColorBalanceSchema.nullable().default(null),
+  colorSplash: ColorSplashSchema.nullable().default(null), // added later
 }
 
 const LeafSchema = z.object({
@@ -215,10 +230,14 @@ const ProjectSchema = z.object({
    * in older projects, whose texts at the old default size then follow it)
    */
   textSize: z.number().positive().optional(),
-  /** levels and color balance for every photo without its own (added later) */
+  /** levels, color balance and color splash for every photo without its own (added later) */
   photoFilters: z
-    .object({ levels: LevelsSchema.nullable(), colorBalance: ColorBalanceSchema.nullable() })
-    .default({ levels: null, colorBalance: null }),
+    .object({
+      levels: LevelsSchema.nullable(),
+      colorBalance: ColorBalanceSchema.nullable(),
+      colorSplash: ColorSplashSchema.nullable().default(null), // added later
+    })
+    .default({ levels: null, colorBalance: null, colorSplash: null }),
   /** every image the project uses, with its MIME type */
   images: z.array(z.object({ id: z.string(), type: z.string() })),
   /**
@@ -270,8 +289,8 @@ function saveFrame(f: ImageFrame | null): SavedFrame | null {
 
 function saveRegion(node: Region): SavedRegion {
   if (node.kind === 'leaf') {
-    const { id, frame, fill, overlay, blur, levels, colorBalance } = toRaw(node)
-    return { kind: 'leaf', id, frame: saveFrame(frame), fill, overlay, blur, levels, colorBalance }
+    const { id, frame, fill, overlay, blur, levels, colorBalance, colorSplash } = toRaw(node)
+    return { kind: 'leaf', id, frame: saveFrame(frame), fill, overlay, blur, levels, colorBalance, colorSplash }
   }
   return {
     kind: 'split',

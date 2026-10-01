@@ -1,6 +1,13 @@
 /** What changed in each release, newest first, shown from the version number. */
 export const PATCH_NOTES: { version: string; notes: string[] }[] = [
   {
+    version: '1.2.0-beta.2',
+    notes: [
+      "Color splash: turn a photo gray except for one range of colors, with its Hue, Width, Softness and how Gray the rest gets. Right-click the photo, or set it for all photos in the Filters section.",
+      'Fixed: a right-click menu tall enough to scroll also scrolled sideways.',
+    ],
+  },
+  {
     version: '1.2.0-beta.1',
     notes: [
       'Recent projects, from the clock button beside the project name: every project is kept in the browser, with a picture of its first page. Click one to open it, or delete it with its trash button.',
