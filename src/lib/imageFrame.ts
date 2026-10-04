@@ -19,9 +19,6 @@ export interface ImageFrame {
   rotation: number
 }
 
-/** Shift+sliding the rotation snaps to steps of this many degrees, as rotating text does */
-export const ROTATE_SNAP = 15
-
 // Zoom range relative to the cover scale. Below 1 the photo no longer fills
 // its area and the background shows around it.
 const MIN_ZOOM = 0.1

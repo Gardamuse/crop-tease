@@ -2,8 +2,8 @@ import { ref } from 'vue'
 
 import { SWATCH_COLORS } from './constants'
 import type { MenuChoice, MenuEntry } from './contextMenu'
-import { ROTATE_SNAP, rotateFrame, type ImageFrame } from './imageFrame'
-import { clamp, turnDegrees } from './math'
+import { rotateFrame, type ImageFrame } from './imageFrame'
+import { clamp, ROTATE_SNAP, turnDegrees } from './math'
 import { stageSize, store } from './store'
 
 // Effects on a panel's or close-up's photo: a blur, levels, color balance,
@@ -350,9 +350,6 @@ export function toneEntries(
   }
   const levels = () => own('levels') ?? FULL_LEVELS
   const setLevels = (change: Partial<Levels>) => (target.levels = { ...levels(), ...change })
-  const levelsOn = () => shown() && own('levels') !== null
-  const balanceOn = () => shown() && own('colorBalance') !== null
-  const splashOn = () => shown() && own('colorSplash') !== null
   const setSplash = (change: Partial<ColorSplash>) => {
     const splash = own('colorSplash')
     if (splash) Object.assign(splash, change)
@@ -398,156 +395,173 @@ export function toneEntries(
   }
   return [
     {
-      kind: 'choices',
+      kind: 'group',
       label: 'Levels',
+      fold: true,
       visible: shown,
+      on: () => own('levels') !== null,
+      summary: () => {
+        const l = levels()
+        return `in ${l.inLow}–${l.inHigh} · out ${l.outLow}–${l.outHigh}`
+      },
       options: switchOptions(
         'levels',
         () => store.photoFilters.levels ?? FULL_LEVELS,
         'black and white points, as in Krita',
       ),
+      entries: [
+        {
+          kind: 'range',
+          label: 'Input',
+          title: 'The tones that become black and white; those beyond are clipped',
+          min: 0,
+          max: 255,
+          minGap: 1,
+          value: () => [levels().inLow, levels().inHigh],
+          set: ([inLow, inHigh]) => setLevels({ inLow, inHigh }),
+        },
+        {
+          kind: 'range',
+          label: 'Output',
+          title: 'The darkest and lightest tones the photo is fitted into',
+          min: 0,
+          max: 255,
+          minGap: 0,
+          value: () => [levels().outLow, levels().outHigh],
+          set: ([outLow, outHigh]) => setLevels({ outLow, outHigh }),
+        },
+      ],
     },
     {
-      kind: 'range',
-      label: 'Input',
-      title: 'The tones that become black and white; those beyond are clipped',
-      visible: levelsOn,
-      min: 0,
-      max: 255,
-      minGap: 1,
-      value: () => [levels().inLow, levels().inHigh],
-      set: ([inLow, inHigh]) => setLevels({ inLow, inHigh }),
-    },
-    {
-      kind: 'range',
-      label: 'Output',
-      title: 'The darkest and lightest tones the photo is fitted into',
-      visible: levelsOn,
-      min: 0,
-      max: 255,
-      minGap: 0,
-      value: () => [levels().outLow, levels().outHigh],
-      set: ([outLow, outHigh]) => setLevels({ outLow, outHigh }),
-    },
-    {
-      kind: 'choices',
+      kind: 'group',
       label: 'Color balance',
+      fold: true,
       visible: shown,
+      on: () => own('colorBalance') !== null,
+      summary: () => {
+        const b = own('colorBalance')
+        const signed = (v: number) => (v > 0 ? `+${v}` : String(v))
+        const shifted = TONE_RANGES.filter((r) => b?.[r.value].some((v) => v !== 0))
+        return shifted.map((r) => `${r.label.toLowerCase()} ${b![r.value].map(signed).join(' ')}`).join(' · ') || 'no shift yet'
+      },
       options: switchOptions(
         'colorBalance',
         () => store.photoFilters.colorBalance ?? neutralBalance(),
         'color shifts for shadows, midtones and highlights, as in Krita',
       ),
-    },
-    {
-      kind: 'choices',
-      label: 'Tones',
-      visible: balanceOn,
-      options: TONE_RANGES.map((r) => ({
-        // a dot marks the ranges that have been shifted
-        label: () => (own('colorBalance')?.[r.value].some((v) => v !== 0) ? `${r.label}•` : r.label),
-        title: r.label,
-        active: () => balanceRange.value === r.value,
-        pick: () => (balanceRange.value = r.value),
-      })),
-    },
-    ...BALANCE_AXES.map(
-      (axis, ch): MenuEntry => ({
-        kind: 'slider',
-        label: axis.label,
-        title: `${axis.title}; double-click for 0`,
-        visible: balanceOn,
-        min: -MAX_BALANCE,
-        max: MAX_BALANCE,
-        unit: '',
-        track: axis.track,
-        resetValue: 0,
-        value: () => own('colorBalance')?.[balanceRange.value][ch] ?? 0,
-        set: (v) => {
-          const b = own('colorBalance')
-          if (b) b[balanceRange.value][ch] = Math.round(clamp(v, -MAX_BALANCE, MAX_BALANCE))
-        },
-      }),
-    ),
-    {
-      kind: 'choices',
-      label: 'Luminosity',
-      visible: balanceOn,
-      options: [
+      entries: [
         {
-          label: 'Keep',
-          title: "Keep each pixel's lightness, only its color shifts (Krita's Preserve Luminosity)",
-          active: () => !!own('colorBalance')?.preserveLuminosity,
-          pick: () => {
-            const b = own('colorBalance')
-            if (b) b.preserveLuminosity = true
-          },
+          kind: 'choices',
+          label: 'Tones',
+          options: TONE_RANGES.map((r) => ({
+            // a dot marks the ranges that have been shifted
+            label: () => (own('colorBalance')?.[r.value].some((v) => v !== 0) ? `${r.label}•` : r.label),
+            title: r.label,
+            active: () => balanceRange.value === r.value,
+            pick: () => (balanceRange.value = r.value),
+          })),
         },
+        ...BALANCE_AXES.map(
+          (axis, ch): MenuEntry => ({
+            kind: 'slider',
+            label: axis.label,
+            title: `${axis.title}; double-click for 0`,
+            min: -MAX_BALANCE,
+            max: MAX_BALANCE,
+            unit: '',
+            track: axis.track,
+            resetValue: 0,
+            value: () => own('colorBalance')?.[balanceRange.value][ch] ?? 0,
+            set: (v) => {
+              const b = own('colorBalance')
+              if (b) b[balanceRange.value][ch] = Math.round(clamp(v, -MAX_BALANCE, MAX_BALANCE))
+            },
+          }),
+        ),
         {
-          label: 'Let change',
-          title: 'The shift can also lighten or darken the photo',
-          active: () => own('colorBalance')?.preserveLuminosity === false,
-          pick: () => {
-            const b = own('colorBalance')
-            if (b) b.preserveLuminosity = false
-          },
+          kind: 'choices',
+          label: 'Luminosity',
+          options: [
+            {
+              label: 'Keep',
+              title: "Keep each pixel's lightness, only its color shifts (Krita's Preserve Luminosity)",
+              active: () => !!own('colorBalance')?.preserveLuminosity,
+              pick: () => {
+                const b = own('colorBalance')
+                if (b) b.preserveLuminosity = true
+              },
+            },
+            {
+              label: 'Let change',
+              title: 'The shift can also lighten or darken the photo',
+              active: () => own('colorBalance')?.preserveLuminosity === false,
+              pick: () => {
+                const b = own('colorBalance')
+                if (b) b.preserveLuminosity = false
+              },
+            },
+          ],
         },
       ],
     },
     {
-      kind: 'choices',
+      kind: 'group',
       label: 'Color splash',
+      fold: true,
       visible: shown,
+      on: () => own('colorSplash') !== null,
+      summary: () => {
+        const c = own('colorSplash')
+        return c ? `hue ${c.hue}° · ${c.width}° wide · ${c.desaturate}% gray` : ''
+      },
       options: switchOptions(
         'colorSplash',
         () => store.photoFilters.colorSplash ?? defaultSplash(),
         'gray except for one range of colors',
       ),
-    },
-    {
-      kind: 'slider',
-      label: 'Hue',
-      title: 'The color kept',
-      visible: splashOn,
-      min: 0,
-      max: 359,
-      unit: '°',
-      track: HUE_TRACK,
-      value: () => own('colorSplash')?.hue ?? 0,
-      set: (deg) => setSplash({ hue: Math.round(((deg % 360) + 360) % 360) }),
-    },
-    {
-      kind: 'slider',
-      label: 'Width',
-      title: 'How wide a range of hues around it is kept',
-      visible: splashOn,
-      min: MIN_SPLASH_WIDTH,
-      max: MAX_SPLASH_WIDTH,
-      unit: '°',
-      value: () => own('colorSplash')?.width ?? 0,
-      set: (deg) => setSplash({ width: Math.round(clamp(deg, MIN_SPLASH_WIDTH, MAX_SPLASH_WIDTH)) }),
-    },
-    {
-      kind: 'slider',
-      label: 'Softness',
-      title: 'How gradually the kept colors fade into gray at the edges of the range',
-      visible: splashOn,
-      min: 0,
-      max: 100,
-      unit: '%',
-      value: () => own('colorSplash')?.softness ?? 0,
-      set: (pct) => setSplash({ softness: Math.round(clamp(pct, 0, 100)) }),
-    },
-    {
-      kind: 'slider',
-      label: 'Gray',
-      title: 'How gray the other colors get',
-      visible: splashOn,
-      min: 0,
-      max: 100,
-      unit: '%',
-      value: () => own('colorSplash')?.desaturate ?? 0,
-      set: (pct) => setSplash({ desaturate: Math.round(clamp(pct, 0, 100)) }),
+      entries: [
+        {
+          kind: 'slider',
+          label: 'Hue',
+          title: 'The color kept',
+          min: 0,
+          max: 359,
+          unit: '°',
+          track: HUE_TRACK,
+          value: () => own('colorSplash')?.hue ?? 0,
+          set: (deg) => setSplash({ hue: Math.round(((deg % 360) + 360) % 360) }),
+        },
+        {
+          kind: 'slider',
+          label: 'Width',
+          title: 'How wide a range of hues around it is kept',
+          min: MIN_SPLASH_WIDTH,
+          max: MAX_SPLASH_WIDTH,
+          unit: '°',
+          value: () => own('colorSplash')?.width ?? 0,
+          set: (deg) => setSplash({ width: Math.round(clamp(deg, MIN_SPLASH_WIDTH, MAX_SPLASH_WIDTH)) }),
+        },
+        {
+          kind: 'slider',
+          label: 'Softness',
+          title: 'How gradually the kept colors fade into gray at the edges of the range',
+          min: 0,
+          max: 100,
+          unit: '%',
+          value: () => own('colorSplash')?.softness ?? 0,
+          set: (pct) => setSplash({ softness: Math.round(clamp(pct, 0, 100)) }),
+        },
+        {
+          kind: 'slider',
+          label: 'Gray',
+          title: 'How gray the other colors get',
+          min: 0,
+          max: 100,
+          unit: '%',
+          value: () => own('colorSplash')?.desaturate ?? 0,
+          set: (pct) => setSplash({ desaturate: Math.round(clamp(pct, 0, 100)) }),
+        },
+      ],
     },
   ]
 }
@@ -563,7 +577,6 @@ export function photoMenuEntries(
   memoryKey: string,
 ): MenuEntry[] {
   const hasPhoto = () => frame() !== null
-  const on = () => hasPhoto() && target.overlay !== null
   // like levels and color balance, an overlay set to None this session comes back as it was
   const memory = `${memoryKey}:overlay`
   const set = (change: Partial<ImageOverlay>) => {
@@ -580,51 +593,59 @@ export function photoMenuEntries(
   return [
     { kind: 'separator', visible: hasPhoto },
     {
-      kind: 'slider',
-      label: 'Blur',
+      kind: 'group',
+      label: 'Photo',
       visible: hasPhoto,
-      min: 0,
-      max: MAX_BLUR,
-      value: () => target.blur,
-      set: (px) => (target.blur = Math.round(clamp(px, 0, MAX_BLUR))),
-    },
-    {
-      kind: 'choices',
-      label: 'Mirror',
-      visible: hasPhoto,
-      options: [
+      entries: [
         {
-          label: '⇋',
-          title: 'Mirror the photo left to right',
-          active: () => !!frame()?.mirror,
-          pick: () => {
+          kind: 'slider',
+          label: 'Blur',
+          min: 0,
+          max: MAX_BLUR,
+          value: () => target.blur,
+          set: (px) => (target.blur = Math.round(clamp(px, 0, MAX_BLUR))),
+        },
+        {
+          kind: 'slider',
+          label: 'Rotation',
+          title: `Turn the photo; Shift snaps to ${ROTATE_SNAP}°, double-click for 0`,
+          min: -180,
+          max: 180,
+          unit: '°',
+          resetValue: 0,
+          resetTitle: 'Reset rotation',
+          shiftSnap: ROTATE_SNAP,
+          value: () => Math.round(frame()?.rotation ?? 0),
+          set: (deg) => {
             const f = frame()
-            if (f) f.mirror = !f.mirror
+            if (f) rotateFrame(f, turnDegrees(Math.round(deg)), ...middle())
           },
+        },
+        {
+          kind: 'choices',
+          label: 'Mirror',
+          options: [false, true].map((mirror) => ({
+            label: mirror ? 'On' : 'Off',
+            title: mirror ? 'Flip the photo left to right' : undefined,
+            active: () => !!frame()?.mirror === mirror,
+            pick: () => {
+              const f = frame()
+              if (f) f.mirror = mirror
+            },
+          })),
         },
       ],
     },
     {
-      kind: 'slider',
-      label: 'Rotation',
-      title: `Turn the photo; Shift snaps to ${ROTATE_SNAP}°, double-click for 0`,
-      visible: hasPhoto,
-      min: -180,
-      max: 180,
-      unit: '°',
-      resetValue: 0,
-      resetTitle: 'Reset rotation',
-      shiftSnap: ROTATE_SNAP,
-      value: () => Math.round(frame()?.rotation ?? 0),
-      set: (deg) => {
-        const f = frame()
-        if (f) rotateFrame(f, turnDegrees(Math.round(deg)), ...middle())
-      },
-    },
-    {
-      kind: 'choices',
+      kind: 'group',
       label: 'Overlay',
+      fold: true,
       visible: hasPhoto,
+      on: () => target.overlay !== null,
+      summary: () => {
+        const o = target.overlay
+        return o ? `${o.from} · ${Math.round(o.angle)}° · size ${o.size}% · strength ${o.strength}%` : ''
+      },
       options: [
         { label: 'None', active: () => target.overlay === null, pick: setNone },
         ...OVERLAY_FROM.map((f) => ({
@@ -634,59 +655,57 @@ export function photoMenuEntries(
           pick: () => set({ from: f.value }),
         })),
       ],
-    },
-    {
-      kind: 'slider',
-      label: 'Rotate',
-      visible: on,
-      min: -MAX_OVERLAY_ANGLE,
-      max: MAX_OVERLAY_ANGLE,
-      steps: OVERLAY_ANGLE_STEPS,
-      unit: '°',
-      value: () => Math.round(target.overlay?.angle ?? 0),
-      set: (deg) => set({ angle: clamp(deg, -MAX_OVERLAY_ANGLE, MAX_OVERLAY_ANGLE) }),
-    },
-    {
-      kind: 'slider',
-      label: 'Size',
-      visible: on,
-      min: 5,
-      max: 100,
-      unit: '%',
-      value: () => Math.round(target.overlay?.size ?? DEFAULT_OVERLAY.size),
-      set: (pct) => set({ size: clamp(pct, 5, 100) }),
-    },
-    {
-      kind: 'slider',
-      label: 'Strength',
-      visible: on,
-      min: 5,
-      max: 100,
-      unit: '%',
-      value: () => Math.round(target.overlay?.strength ?? DEFAULT_OVERLAY.strength),
-      set: (pct) => set({ strength: clamp(pct, 5, 100) }),
-    },
-    {
-      kind: 'choices',
-      label: 'Color',
-      visible: on,
-      options: [
-        ...SWATCH_COLORS.map((c) => ({
-          label: c.label,
-          swatch: c.color,
-          active: () => target.overlay?.color.toLowerCase() === c.color,
-          pick: () => set({ color: c.color }),
-        })),
+      entries: [
         {
-          label: 'Custom color',
-          active: () => on() && !isPreset(),
-          pick: () => {},
-          pickColor: { value: () => target.overlay?.color ?? '#000000', set: (color: string) => set({ color }) },
+          kind: 'slider',
+          label: 'Angle',
+          title: 'Turn the fade',
+          min: -MAX_OVERLAY_ANGLE,
+          max: MAX_OVERLAY_ANGLE,
+          steps: OVERLAY_ANGLE_STEPS,
+          unit: '°',
+          value: () => Math.round(target.overlay?.angle ?? 0),
+          set: (deg) => set({ angle: clamp(deg, -MAX_OVERLAY_ANGLE, MAX_OVERLAY_ANGLE) }),
+        },
+        {
+          kind: 'slider',
+          label: 'Size',
+          min: 5,
+          max: 100,
+          unit: '%',
+          value: () => Math.round(target.overlay?.size ?? DEFAULT_OVERLAY.size),
+          set: (pct) => set({ size: clamp(pct, 5, 100) }),
+        },
+        {
+          kind: 'slider',
+          label: 'Strength',
+          min: 5,
+          max: 100,
+          unit: '%',
+          value: () => Math.round(target.overlay?.strength ?? DEFAULT_OVERLAY.strength),
+          set: (pct) => set({ strength: clamp(pct, 5, 100) }),
+        },
+        {
+          kind: 'choices',
+          label: 'Color',
+          options: [
+            ...SWATCH_COLORS.map((c) => ({
+              label: c.label,
+              swatch: c.color,
+              active: () => target.overlay?.color.toLowerCase() === c.color,
+              pick: () => set({ color: c.color }),
+            })),
+            {
+              label: 'Custom color',
+              active: () => target.overlay !== null && !isPreset(),
+              pick: () => {},
+              pickColor: { value: () => target.overlay?.color ?? '#000000', set: (color: string) => set({ color }) },
+            },
+          ],
         },
       ],
     },
     // last, as they can come from the project's settings
-    { kind: 'separator', visible: hasPhoto },
     ...toneEntries(target, 'local', hasPhoto, memoryKey),
   ]
 }

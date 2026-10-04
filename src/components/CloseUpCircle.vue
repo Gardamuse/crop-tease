@@ -141,11 +141,17 @@ function onClick() {
 function onContextMenu(e: MouseEvent) {
   selectElement(el.id)
   openContextMenu(e, [
-    { label: el.frame ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
+    {
+      kind: 'actions',
+      items: [
+        { label: el.frame ? 'Change image…' : 'Set image…', icon: 'image', action: () => fileInput.value?.click() },
+        { label: 'Remove image', icon: 'close', danger: true, visible: () => !!el.frame, action: () => (el.frame = null) },
+      ],
+    },
     ...photoMenuEntries(el, () => el.frame, () => [el.d / 2, el.d / 2], `photo-${el.id}`),
     { kind: 'separator' },
-    { label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) },
-    { label: 'Delete close-up', icon: '🗑', danger: true, action: () => removeElement(el.id) },
+    { label: 'Duplicate', icon: 'duplicate', action: () => duplicateElement(el.id) },
+    { label: 'Delete close-up', icon: 'trash', danger: true, action: () => removeElement(el.id) },
   ])
 }
 

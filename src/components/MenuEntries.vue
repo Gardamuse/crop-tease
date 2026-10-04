@@ -1,21 +1,40 @@
 <script setup lang="ts">
-import CustomColorSwatch from './CustomColorSwatch.vue'
+import { ref, watch } from 'vue'
+
+import MenuChoiceButtons from './MenuChoiceButtons.vue'
 import PixelSlider from './PixelSlider.vue'
 import RangeSlider from './RangeSlider.vue'
 import UiIcon from './UiIcon.vue'
-import type { MenuChoice, MenuEntry, MenuItem } from '@/lib/contextMenu'
+import type { MenuEntry, MenuGroup, MenuItem } from '@/lib/contextMenu'
 
-// The rows of a menu (items, choices, sliders, ranges, dropdowns,
+// The rows of a menu (items, choices, sliders, ranges, dropdowns, groups,
 // separators), as in the right-click menu; also used in the sidebar for
 // settings that share their controls with it.
-defineProps<{ items: MenuEntry[] }>()
+const props = defineProps<{ items: MenuEntry[] }>()
 
 const emit = defineEmits<{
   /** a plain item was clicked */
   run: [item: MenuItem]
 }>()
 
-const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : o.label)
+/** the folding group open among these rows, by label */
+const openGroup = ref<string | null>(null)
+watch(
+  () => props.items,
+  () => (openGroup.value = null),
+)
+
+const isOn = (g: MenuGroup) => !g.on || g.on()
+const isOpen = (g: MenuGroup) => isOn(g) && (!g.fold || openGroup.value === g.label)
+
+function toggle(g: MenuGroup) {
+  openGroup.value = openGroup.value === g.label ? null : g.label
+}
+
+// switching a folding group on opens it, folding the one that was open
+function onSwitched(g: MenuGroup) {
+  if (g.fold && isOn(g)) openGroup.value = g.label
+}
 </script>
 
 <template>
@@ -23,6 +42,42 @@ const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : 
     <template v-for="(item, i) in items" :key="i">
       <template v-if="!item.visible || item.visible()">
         <hr v-if="item.kind === 'separator'" />
+        <section v-else-if="item.kind === 'group'" class="group" :class="{ fold: item.fold, open: isOpen(item) }">
+          <div class="group-head">
+            <button
+              v-if="item.fold"
+              class="group-title"
+              :disabled="!isOn(item)"
+              :aria-expanded="isOpen(item)"
+              @click="toggle(item)"
+            >
+              {{ item.label }}<UiIcon name="chevron" class="chevron" />
+            </button>
+            <span v-else class="group-title">{{ item.label }}</span>
+            <MenuChoiceButtons
+              v-if="item.options"
+              :options="item.options"
+              :label="item.label"
+              @picked="onSwitched(item)"
+            />
+          </div>
+          <MenuEntries v-if="isOpen(item)" class="group-rows" :items="item.entries" @run="emit('run', $event)" />
+          <button v-else-if="isOn(item) && item.summary" class="group-summary" @click="toggle(item)">
+            {{ item.summary() }}
+          </button>
+        </section>
+        <div v-else-if="item.kind === 'actions'" class="actions-row">
+          <template v-for="(a, j) in item.items" :key="j">
+            <button
+              v-if="!a.visible || a.visible()"
+              role="menuitem"
+              :class="{ danger: a.danger }"
+              @click="emit('run', a)"
+            >
+              <UiIcon v-if="a.icon" :name="a.icon" class="icon" />{{ a.label }}
+            </button>
+          </template>
+        </div>
         <div v-else-if="item.kind === 'slider'" class="slider-row" :title="item.title">
           <span class="row-label">{{ item.label }}</span>
           <button
@@ -50,6 +105,7 @@ const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : 
             :label="item.label"
             @update:model-value="item.set"
           />
+          <!-- a slot on every slider row, so the number boxes line up -->
           <button
             v-if="item.resetTitle && item.resetValue !== undefined"
             class="reset"
@@ -58,8 +114,9 @@ const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : 
             :title="item.resetTitle"
             @click="item.set(item.resetValue)"
           >
-            ⟲
+            <UiIcon name="reset" />
           </button>
+          <span v-else class="reset" />
         </div>
         <div v-else-if="item.kind === 'range'" class="range-row" :title="item.title">
           <RangeSlider
@@ -71,37 +128,9 @@ const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : 
             @update:model-value="item.set"
           />
         </div>
-        <div v-else-if="item.kind === 'choices'" class="choices-row" role="group" :aria-label="item.label">
+        <div v-else-if="item.kind === 'choices'" class="choices-row">
           <span class="row-label">{{ item.label }}</span>
-          <div
-            class="choices"
-            :class="{ grid: item.columns }"
-            :style="item.columns ? { gridTemplateColumns: `repeat(${item.columns}, auto)` } : undefined"
-          >
-            <template v-for="(o, j) in item.options" :key="j">
-              <span v-if="!o" class="spacer" />
-              <CustomColorSwatch
-                v-else-if="o.pickColor"
-                class="custom-color"
-                :model-value="o.pickColor.value()"
-                :active="o.active?.() ?? false"
-                :label="o.title ?? labelOf(o)"
-                @update:model-value="o.pickColor.set"
-              />
-              <button
-                v-else
-                role="menuitemradio"
-                :aria-checked="o.active?.() ?? false"
-                :aria-label="o.title ?? labelOf(o)"
-                :title="o.title ?? labelOf(o)"
-                :class="{ active: o.active?.(), swatch: o.swatch }"
-                :style="o.swatch ? { background: o.swatch } : undefined"
-                @click="o.pick()"
-              >
-                <template v-if="!o.swatch">{{ labelOf(o) }}</template>
-              </button>
-            </template>
-          </div>
+          <MenuChoiceButtons :options="item.options" :label="item.label" :columns="item.columns" />
         </div>
         <label v-else-if="item.kind === 'select'" class="choices-row">
           <span class="row-label">{{ item.label }}</span>
@@ -116,8 +145,8 @@ const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : 
             </option>
           </select>
         </label>
-        <button v-else role="menuitem" :class="{ danger: item.danger }" @click="emit('run', item)">
-          <span class="icon">{{ item.icon }}</span>{{ item.label }}
+        <button v-else role="menuitem" class="item" :class="{ danger: item.danger }" @click="emit('run', item)">
+          <UiIcon v-if="item.icon" :name="item.icon" class="icon" /><span v-else class="icon" />{{ item.label }}
         </button>
       </template>
     </template>
@@ -196,10 +225,11 @@ hr {
 
 // sets the slider back, e.g. a rotation to 0; dim while it's already there
 .slider-row .reset {
-  padding: 0 3px;
-  margin: 0 -4px;
-  font-size: 0.95rem;
-  line-height: 1;
+  flex: none;
+  width: 18px;
+  padding: 0;
+  margin-left: -6px;
+  justify-content: center;
   color: $text-dim;
 
   &:not(:disabled):hover {
@@ -224,9 +254,9 @@ hr {
   }
 }
 
-// label and values above, the bar across the row's full width below
+// label and values above, the bar below; its boxes end where the sliders' do (before their unit and reset slots)
 .range-row {
-  padding: 4px 6px 6px 10px;
+  padding: 4px 56px 6px 10px;
 }
 
 .choices-row {
@@ -249,66 +279,94 @@ hr {
   @include micro-label;
 }
 
-.choices {
-  display: flex;
-  gap: 3px;
+.icon {
+  width: 1.15em;
+  color: $text-dim;
+}
 
-  &.grid {
-    display: grid;
-  }
+.danger .icon {
+  color: inherit;
+}
+
+// side by side, each taking an equal share
+.actions-row {
+  display: flex;
+  gap: 2px;
 
   button {
-    padding: 4px 8px;
-    font-size: 0.76rem;
-    border: 1px solid $line;
-    justify-content: center;
+    flex: 1;
+  }
+}
 
-    &.active {
-      border-color: $accent;
-      color: $accent-ink;
-      background: $accent-soft;
-    }
+// a group: its heading (with its switch), then its rows indented along an accent rail
+.group {
+  padding: 2px 0;
+}
 
-    &.swatch {
-      width: 22px;
-      height: 22px;
-      padding: 0;
-      border: 1px solid rgba($shade, 0.25);
-      border-radius: 50%;
+.group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  padding: 2px 6px 2px 10px;
+}
 
-      &.active {
-        box-shadow:
-          0 0 0 2px $bg-panel-alt,
-          0 0 0 3px $accent,
-          0 0 10px $accent-dim;
-      }
-    }
+.group-title {
+  @include micro-label;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  margin-left: -6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: $text-main;
+
+  .chevron {
+    width: 0.95em;
+    height: 0.95em;
+    color: $text-dim;
+    transition: transform 0.15s ease;
   }
 
-  // a swatch like the others (a rainbow until a custom color is chosen), opening the color picker
-  .custom-color {
-    flex: none;
-    width: 22px;
-    height: 22px;
-    border: 1px solid rgba($shade, 0.25);
-    border-radius: 50%;
+  &:disabled {
+    color: $text-dim;
+    font-weight: 400;
+    cursor: default;
+    background: none;
 
-    &:hover,
-    &:focus-visible {
-      background: none;
-    }
-
-    &.active {
-      box-shadow:
-        0 0 0 2px $bg-panel-alt,
-        0 0 0 3px $accent,
-        0 0 10px $accent-dim;
+    .chevron {
+      opacity: 0;
     }
   }
 }
 
-.icon {
-  width: 1.2em;
-  text-align: center;
+.group.open .chevron {
+  transform: rotate(90deg);
+}
+
+.group-rows,
+.group-summary {
+  margin: 0 0 2px 12px;
+  border-left: 1px solid $line-accent;
+}
+
+.group-rows {
+  padding-bottom: 2px;
+}
+
+// a folded group's settings on one line; opens it
+.group-summary {
+  width: calc(100% - 12px);
+  padding: 2px 10px 5px;
+  border-radius: 0;
+  font-size: 0.7rem;
+  color: $text-dim;
+
+  &:hover,
+  &:focus-visible {
+    color: $text-main;
+  }
 }
 </style>

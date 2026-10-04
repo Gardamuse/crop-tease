@@ -68,10 +68,13 @@ function onContextMenu(e: MouseEvent) {
   deselectAll()
   const leafId = props.panel.leaf.id
   openContextMenu(e, [
-    { label: frame.value ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
-    ...(frame.value
-      ? [{ label: 'Remove image', icon: '🗑', danger: true, action: () => clearPanelImage(leafId) }]
-      : []),
+    {
+      kind: 'actions',
+      items: [
+        { label: frame.value ? 'Change image…' : 'Set image…', icon: 'image', action: () => fileInput.value?.click() },
+        { label: 'Remove image', icon: 'close', danger: true, visible: () => !!frame.value, action: () => clearPanelImage(leafId) },
+      ],
+    },
     ...fillEntries(),
     ...photoMenuEntries(
       props.panel.leaf,

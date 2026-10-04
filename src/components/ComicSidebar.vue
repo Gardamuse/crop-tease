@@ -865,6 +865,7 @@ input[type='number'] {
   margin: 0 -6px 0 -10px;
 
   :deep(.row-label),
+  :deep(.group-title),
   :deep(.range-slider .label) {
     font-family: inherit;
     font-size: 0.8rem;
@@ -874,7 +875,8 @@ input[type='number'] {
   }
 
   // the narrower sidebar: a row of choices too wide for it moves below its label
-  :deep(.choices-row) {
+  :deep(.choices-row),
+  :deep(.group-head) {
     flex-wrap: wrap;
     row-gap: 6px;
   }

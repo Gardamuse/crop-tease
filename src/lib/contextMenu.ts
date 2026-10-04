@@ -1,5 +1,7 @@
 import { reactive } from 'vue'
 
+import type { IconName } from '@/components/UiIcon.vue'
+
 interface MenuEntryBase {
   /** shown only while this returns true; re-checked live while the menu is open */
   visible?: () => boolean
@@ -9,7 +11,7 @@ interface MenuEntryBase {
 export interface MenuItem extends MenuEntryBase {
   kind?: 'item'
   label: string
-  icon?: string
+  icon?: IconName
   /** styled as destructive */
   danger?: boolean
   action: () => void
@@ -106,7 +108,42 @@ export interface MenuSeparator extends MenuEntryBase {
   kind: 'separator'
 }
 
-export type MenuEntry = MenuItem | MenuChoices | MenuSlider | MenuRange | MenuSelect | MenuSeparator
+/** Plain entries side by side on one row, e.g. Change image and Remove image. */
+export interface MenuActions extends MenuEntryBase {
+  kind: 'actions'
+  items: MenuItem[]
+}
+
+/**
+ * A titled group of rows, indented under its heading, e.g. an effect with
+ * its settings. The heading can carry the group's switch (e.g. None / Local
+ * / Global); its rows show only while it's on. A folding group's rows show
+ * only while it's open: one folding group in a menu is open at a time,
+ * opened by clicking its heading or switching it on, and the others, if on,
+ * show their summary instead.
+ */
+export interface MenuGroup extends MenuEntryBase {
+  kind: 'group'
+  label: string
+  /** the group's switch, on the right of its heading */
+  options?: MenuChoice[]
+  /** whether its rows apply (e.g. the effect is on); always if not given */
+  on?: () => boolean
+  fold?: boolean
+  /** a folded group's settings on one line */
+  summary?: () => string
+  entries: MenuEntry[]
+}
+
+export type MenuEntry =
+  | MenuItem
+  | MenuActions
+  | MenuGroup
+  | MenuChoices
+  | MenuSlider
+  | MenuRange
+  | MenuSelect
+  | MenuSeparator
 
 /** The single right-click menu shared by the whole app. */
 export const contextMenu = reactive({

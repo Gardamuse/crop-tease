@@ -50,7 +50,7 @@ const selectedBar = computed(() => bars.value.find((b) => b.id === store.selecte
 
 function onBarContextMenu(e: MouseEvent, id: number) {
   selectBar(id)
-  openContextMenu(e, [{ label: 'Delete divider', icon: '🗑', danger: true, action: () => removeBar(id) }])
+  openContextMenu(e, [{ label: 'Delete divider', icon: 'trash', danger: true, action: () => removeBar(id) }])
 }
 
 /** Pointer position in stage coordinates. */

@@ -92,7 +92,7 @@ function onChange(e: Event) {
       :aria-label="unit === 'px' ? `${label} in pixels` : label"
       @change="onChange"
     />
-    <span>{{ unit }}</span>
+    <span class="unit">{{ unit }}</span>
   </div>
 </template>
 
@@ -112,6 +112,12 @@ function onChange(e: Event) {
     @include field;
     width: 54px;
     padding: 5px 6px;
+  }
+
+  // a fixed width, so the number boxes of rows with different units line up
+  .unit {
+    flex: none;
+    min-width: 1.4em;
   }
 }
 

@@ -14,24 +14,24 @@ function confirmRemove(index: number) {
 
 function onTabMenu(e: MouseEvent, index: number) {
   openContextMenu(e, [
-    { label: 'Duplicate page', icon: '⧉', action: () => duplicatePage(index) },
-    { label: 'Move up', icon: '↑', visible: () => index > 0, action: () => movePage(index, index - 1) },
+    { label: 'Duplicate page', icon: 'duplicate', action: () => duplicatePage(index) },
+    { label: 'Move up', icon: 'up', visible: () => index > 0, action: () => movePage(index, index - 1) },
     {
       label: 'Move down',
-      icon: '↓',
+      icon: 'down',
       visible: () => index < store.pages.length - 1,
       action: () => movePage(index, index + 1),
     },
     {
       label: store.pages[index]?.border ? 'Hide border on this page' : 'Show border on this page',
-      icon: '▢',
+      icon: 'border',
       visible: () => store.border.width > 0,
       action: () => togglePageBorder(index),
     },
     { kind: 'separator' },
     {
       label: 'Add page after',
-      icon: '＋',
+      icon: 'plus',
       action: () => {
         switchPage(index)
         addPage()
@@ -39,7 +39,7 @@ function onTabMenu(e: MouseEvent, index: number) {
     },
     {
       label: 'Delete page',
-      icon: '🗑',
+      icon: 'trash',
       danger: true,
       visible: () => store.pages.length > 1,
       action: () => confirmRemove(index),

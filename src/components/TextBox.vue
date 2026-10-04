@@ -13,7 +13,7 @@ import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import UiIcon from './UiIcon.vue'
 import { screenCenter, trackPointer } from '@/lib/pointer'
-import { clamp } from '@/lib/math'
+import { clamp, ROTATE_SNAP, turnDegrees } from '@/lib/math'
 import { fontChoices, fontVars, isMissing, previewFamily, resolveFont } from '@/lib/textFonts'
 import {
   pageNumberText,
@@ -51,8 +51,6 @@ const TAIL_GRID: (TailPosition | null)[] = [
   'left', null, null, null, 'right',
   'left-bottom', 'bottom-left', 'bottom', 'bottom-right', 'right-bottom',
 ]
-// Shift+rotating snaps to steps of this many degrees
-const ROTATE_SNAP = 15
 // how far (screen px) inside and outside the box edge a press grabs the edge
 const EDGE_SLOP = 7
 // resize cursors by direction, starting east, going clockwise (y down)
@@ -188,7 +186,7 @@ function rotate(e: PointerEvent) {
   trackPointer(e, (_dx, _dy, ev) => {
     const rot = startRot + angle(ev) - startAngle
     const snapped = ev.shiftKey ? Math.round(rot / ROTATE_SNAP) * ROTATE_SNAP : rot
-    el.rot = ((((snapped + 180) % 360) + 360) % 360) - 180 // kept in -180..180
+    el.rot = turnDegrees(snapped)
   })
 }
 
@@ -308,6 +306,19 @@ function onContextMenu(e: MouseEvent) {
       },
     },
     {
+      kind: 'slider',
+      label: 'Rotation',
+      title: `Turn the text (or drag the knob above it); Shift snaps to ${ROTATE_SNAP}°, double-click for 0`,
+      min: -180,
+      max: 180,
+      unit: '°',
+      resetValue: 0,
+      resetTitle: 'Reset rotation',
+      shiftSnap: ROTATE_SNAP,
+      value: () => Math.round(el.rot),
+      set: (deg) => (el.rot = turnDegrees(deg)),
+    },
+    {
       kind: 'choices',
       label: 'Color',
       options: [
@@ -354,15 +365,14 @@ function onContextMenu(e: MouseEvent) {
     { kind: 'separator' },
     {
       label: isPageNumber.value ? 'Edit text ({n} = page number)' : 'Edit text',
-      icon: '✎',
+      icon: 'edit',
       action: startEdit,
     },
   ]
-  if (!isPageNumber.value) entries.push({ label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) })
-  if (Math.abs(el.rot) > 0.01) entries.push({ label: 'Reset rotation', icon: '⟲', action: () => (el.rot = 0) })
+  if (!isPageNumber.value) entries.push({ label: 'Duplicate', icon: 'duplicate', action: () => duplicateElement(el.id) })
   entries.push({
     label: isPageNumber.value ? 'Remove page numbers' : 'Delete text',
-    icon: '🗑',
+    icon: 'trash',
     danger: true,
     action: () => removeElement(el.id),
   })
