@@ -90,9 +90,9 @@ onBeforeUnmount(() => {
   z-index: 50;
   right: 10px;
   bottom: 30px;
-  width: 340px;
+  width: 400px;
   max-width: calc(100% - 20px);
-  max-height: min(520px, calc(100% - 44px));
+  max-height: min(640px, calc(100% - 44px));
   display: flex;
   flex-direction: column;
   border-radius: $radius;
