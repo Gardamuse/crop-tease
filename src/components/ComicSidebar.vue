@@ -367,6 +367,7 @@ onBeforeUnmount(() => {
           <UiIcon name="chevron" class="chevron" />
           <span class="fold-title">Text</span>
           <span class="fold-summary" :class="{ warn: missingFonts.length }">
+            <span v-if="!missingFonts.length" class="mini-swatch" :style="{ background: store.textColor }" />
             {{ missingFonts.length ? 'font missing' : `${resolveFont(store.textFont).label} · ${textSize} px` }}
           </span>
         </summary>
@@ -379,6 +380,13 @@ onBeforeUnmount(() => {
               :max="MAX_TYPED_FONT_PX"
               :steps="FONT_SIZE_STEPS"
               label="Size of all text"
+            />
+            <span class="field-label" title="Text you've given a color of its own keeps it">Color</span>
+            <ColorChoices
+              :model-value="store.textColor"
+              own-key="text"
+              label="Color of all text"
+              @update:model-value="store.textColor = $event ?? store.textColor"
             />
           </div>
           <p v-if="missingFonts.length" class="font-missing" role="status">

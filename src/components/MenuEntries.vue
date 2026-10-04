@@ -136,7 +136,19 @@ function onSwitched(g: MenuGroup) {
         </div>
         <div v-else-if="item.kind === 'color'" class="choices-row">
           <span class="row-label">{{ item.label }}</span>
+          <button
+            v-if="item.link"
+            class="link"
+            :class="{ linked: item.link.linked() }"
+            :aria-pressed="item.link.linked()"
+            :aria-label="item.link.linked() ? item.link.linkedTitle : item.link.unlinkedTitle"
+            :title="item.link.linked() ? item.link.linkedTitle : item.link.unlinkedTitle"
+            @click="item.link.toggle()"
+          >
+            <UiIcon :name="item.link.linked() ? 'link' : 'unlink'" />
+          </button>
           <ColorChoices
+            :class="{ faded: item.link?.linked() }"
             :model-value="item.value()"
             :label="item.label"
             :own-key="item.ownKey"
@@ -220,7 +232,8 @@ hr {
 }
 
 // linked to a shared value: lit while linked, dim once it has its own
-.slider-row .link {
+.slider-row .link,
+.choices-row .link {
   padding: 3px;
   margin: 0 -4px;
   color: $text-dim;
@@ -250,8 +263,9 @@ hr {
   }
 }
 
-// a linked slider shows the shared value, faded until it's used
-.slider.faded {
+// a linked slider or color row shows the shared value, faded until it's used
+.slider.faded,
+.color-choices.faded {
   opacity: 0.5;
   transition: opacity 0.12s;
 

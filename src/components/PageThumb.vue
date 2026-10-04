@@ -16,6 +16,7 @@ import {
   pageShowsNumber,
   stageSize,
   store,
+  textColor,
   textFontSize,
   textFontVars,
   textOutline,
@@ -40,7 +41,7 @@ const texts = computed(() => page.elements.filter((e): e is TextElement => e.kin
 
 const pageNumber = computed(() => {
   const pn = store.pageNumber
-  return pn && pageShowsNumber(index) && { el: pn, text: pageNumberText(pn.text, index), outline: textOutline(pn.color) }
+  return pn && pageShowsNumber(index) && { el: pn, text: pageNumberText(pn.text, index), outline: textOutline(textColor(pn)) }
 })
 
 // the photos' color overlays, each as an SVG gradient over its panel's or close-up's box
@@ -195,7 +196,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
         :x="pageNumber.el.x + pageNumber.el.w / 2"
         :y="pageNumber.el.y + pageNumber.el.h / 2"
         :font-size="textFontSize(pageNumber.el)"
-        :fill="pageNumber.el.color"
+        :fill="textColor(pageNumber.el)"
         :stroke="pageNumber.el.style === 'none' && pageNumber.el.outline ? pageNumber.outline.color : undefined"
         :stroke-width="pageNumber.outline.width * 2"
         :style="pageNumber.el.font ? fontVars(pageNumber.el.font) : undefined"

@@ -100,7 +100,7 @@ export interface MenuSelect extends MenuEntryBase {
   set: (value: string) => void
 }
 
-/** A labeled color row (see ColorChoices): ink and white, the project's colors, and the color picker. */
+/** A labeled color row (see ColorChoices): black and white, the project's colors, and the color picker. */
 export interface MenuColor extends MenuEntryBase {
   kind: 'color'
   label: string
@@ -113,6 +113,8 @@ export interface MenuColor extends MenuEntryBase {
   startColor?: () => string
   value: () => string | null
   set: (color: string | null) => void
+  /** a link toggle beside the row, for a color that can follow a shared one (as on MenuSlider) */
+  link?: MenuSlider['link']
 }
 
 export interface MenuSeparator extends MenuEntryBase {

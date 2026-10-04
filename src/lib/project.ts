@@ -4,6 +4,7 @@ import { nextTick, reactive, ref, toRaw, watch } from 'vue'
 import { z } from 'zod'
 
 import {
+  BLACK,
   DEFAULT_TEXT_SIZE,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
@@ -179,7 +180,8 @@ const TextSchema = z.object({
   text: z.string(),
   // null follows the project's size (textSize); older projects always gave a number
   fontSize: z.number().positive().nullable(),
-  color: z.string(),
+  // null follows the project's color (textColor); older projects always gave one
+  color: z.string().nullable(),
   outline: z.boolean().default(true), // added later; older projects had outlines on
   // added later; kept even if that font isn't available here (it's then drawn in the default)
   font: z.string().nullable().default(null),
@@ -238,6 +240,8 @@ const ProjectSchema = z.object({
    * in older projects, whose texts at the old default size then follow it)
    */
   textSize: z.number().positive().optional(),
+  /** the color of text without its own (added later) */
+  textColor: z.string().regex(/^#[0-9a-f]{6}$/i).default(BLACK),
   /** levels, color balance and color splash for every photo without its own (added later) */
   photoFilters: z
     .object({
@@ -352,6 +356,7 @@ export function serializeProject(): ProjectDoc {
     closeUps: { ...store.closeUps },
     textFont: store.textFont,
     textSize: store.textSize,
+    textColor: store.textColor,
     photoFilters: toRaw(store.photoFilters),
     pages,
     currentPage: store.pageIndex,
@@ -382,6 +387,7 @@ function applyProject(doc: ProjectDoc): void {
   store.closeUps = { ...doc.closeUps }
   store.textFont = doc.textFont
   store.textSize = doc.textSize ?? DEFAULT_TEXT_SIZE
+  store.textColor = doc.textColor
   Object.assign(store.photoFilters, doc.photoFilters) // the same object: the sidebar's controls hold it
   // before the project had a text size, a text at the default size hadn't been resized
   const loadText = (el: z.infer<typeof TextSchema>): TextElement =>
@@ -629,7 +635,7 @@ export async function saveOpenProject(): Promise<void> {
 /** Saves the project to the browser shortly after every change. */
 export function startAutosave(onStatus: (status: 'saving' | 'saved' | 'error') => void): void {
   watch(
-    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.textSize, store.photoFilters, store.pages, store.pageIndex, store.pageNumber],
+    () => [store.name, store.pageSize, store.exportFormat, store.border, store.closeUps, store.textFont, store.textSize, store.textColor, store.photoFilters, store.pages, store.pageIndex, store.pageNumber],
     () => {
       if (suspendAutosave) return
       onStatus('saving')

@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
 import type { MenuChoice, MenuEntry } from './contextMenu'
-import { INK } from './constants'
+import { BLACK } from './constants'
 import { rotateFrame, type ImageFrame } from './imageFrame'
 import { clamp, ROTATE_SNAP, turnDegrees } from './math'
 import { stageSize, store } from './store'
@@ -582,7 +582,7 @@ export function photoMenuEntries(
   // like levels and color balance, an overlay set to None this session comes back as it was
   const memory = `${memoryKey}:overlay`
   const set = (change: Partial<ImageOverlay>) => {
-    const fresh: ImageOverlay = { from: 'top', angle: 0, color: INK, ...DEFAULT_OVERLAY }
+    const fresh: ImageOverlay = { from: 'top', angle: 0, color: BLACK, ...DEFAULT_OVERLAY }
     const start = target.overlay ?? (switchedOff.get(memory) as ImageOverlay | undefined) ?? fresh
     target.overlay = { ...copy(start), ...change }
   }
@@ -690,8 +690,8 @@ export function photoMenuEntries(
           kind: 'color',
           label: 'Color',
           ownKey: `overlay:${id}`,
-          value: () => target.overlay?.color ?? INK,
-          set: (color) => set({ color: color ?? INK }),
+          value: () => target.overlay?.color ?? BLACK,
+          set: (color) => set({ color: color ?? BLACK }),
         },
       ],
     },

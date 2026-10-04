@@ -84,6 +84,7 @@ pixels.
   },
   "textFont": "classic",         // font of all text (see Fonts)
   "textSize": 20,                // size of text without its own fontSize, stage units
+  "textColor": "#000000",        // optional: color of text without its own color (default black)
   "photoFilters": {              // optional: levels, color balance and color splash for every photo without its own
     "levels": null, "colorBalance": null, "colorSplash": null   // same shapes as a photo's (see Blur and color overlay), or null
   },
@@ -244,7 +245,7 @@ around the outside of the diameter.
   "text": "Line one\nline two", // plain text; \n for line breaks
   "fontSize": null,      // null = the project's textSize, or this text's own size in stage units
                          //   (output px = size * exportScale)
-  "color": "#241b30",    // text color, any CSS color (hex recommended)
+  "color": null,         // null = the project's textColor, or this text's own (any CSS color, hex recommended)
   "outline": true,       // style "none" only: thin black/white outline for contrast
   "font": null,          // null = the project's textFont, or a font id for this text alone
   "z": 12
@@ -271,9 +272,9 @@ Text that doesn't fit is cut off at the box edge, so size boxes generously:
 roughly, one line is `1.25 * fontSize` tall, and a character is about
 `0.55 * fontSize` wide in the classic font. Add the padding and the border.
 
-New text is ink (`#241b30`, a dark purple). The app's color rows offer ink and white,
-then the colors the project already uses most, so reusing a few colors keeps
-them at hand.
+New text follows the project's `textColor` (black to begin with). The app's
+color rows offer black and white, then the colors the project already uses
+most, so reusing a few colors keeps them at hand.
 
 ### Page numbers
 
@@ -417,7 +418,7 @@ def border(t):
 
 def text(x, y, w, h, s, style="speech", tail="bottom-left", size=None, z=12, **kw):
     return {"id": nid(), "kind": "text", "style": style, "tail": tail, "x": x, "y": y, "w": w, "h": h,
-            "rot": 0, "text": s, "fontSize": size, "color": "#241b30", "outline": True, "font": None,
+            "rot": 0, "text": s, "fontSize": size, "color": None, "outline": True, "font": None,
             "z": z, **kw}
 
 def two_rows():

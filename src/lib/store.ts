@@ -6,7 +6,7 @@ import {
   DEFAULT_NAME,
   DEFAULT_PAGE,
   DEFAULT_TEXT_SIZE,
-  INK,
+  BLACK,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
   MAX_OUTLINE_WIDTH,
@@ -71,7 +71,8 @@ export interface TextElement extends ElementBase {
   text: string
   /** this text's own size (stage units), overriding the project's (store.textSize); null for the project's */
   fontSize: number | null
-  color: string
+  /** this text's own color, overriding the project's (store.textColor); null for the project's */
+  color: string | null
   /** unframed text only: a thin black or white outline around the letters */
   outline: boolean
   /** this text's own font, overriding the project's (store.textFont); null for the project's */
@@ -145,6 +146,8 @@ export const store = reactive({
   textFont: 'classic' as FontId,
   /** the size of all text that hasn't been given its own, in stage units */
   textSize: DEFAULT_TEXT_SIZE,
+  /** the color of all text that hasn't been given its own */
+  textColor: BLACK as string,
   /**
    * levels, color balance and color splash for every photo without its
    * own; null for none. Always this one object (loading replaces its
@@ -320,6 +323,11 @@ export const outlineStyle = computed(() => {
 /** The size a text is drawn at (stage units): its own, else the project's. */
 export function textFontSize(el: TextElement): number {
   return el.fontSize ?? store.textSize
+}
+
+/** The color a text is drawn in: its own, else the project's. */
+export function textColor(el: TextElement): string {
+  return el.color ?? store.textColor
 }
 
 /** CSS variables for the project's text font, set on the page; the classic font if it's missing (see fontVars). */
@@ -660,7 +668,7 @@ export function addText(opts: Partial<TextElement> = {}): TextElement {
     rot: 0,
     text: 'Text…',
     fontSize: null,
-    color: INK,
+    color: null,
     outline: true,
     font: null,
     ...opts,

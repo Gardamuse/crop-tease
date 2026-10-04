@@ -22,6 +22,9 @@ export const PAGE_PRESETS = [
 
 export const EXPORT_QUALITY = 0.92
 
+/** the first color in every color row, and the color text, overlays and outlines start in */
+export const BLACK = '#000000'
+
 // The page border, divider and outline widths are in output pixels, so they
 // stay the same when the page size changes. The divider width covers the
 // split bars and the close-up rings; the color is shared by all three. The
@@ -30,7 +33,7 @@ export const DEFAULT_BORDER = {
   width: 40,
   dividerWidth: 20,
   color: '#ffffff',
-  outlineColor: '#000000' as string | null,
+  outlineColor: BLACK as string | null,
   outlineWidth: 2,
 }
 export const MAX_BORDER_WIDTH = 200
@@ -48,9 +51,6 @@ export const DEFAULT_CLOSE_UPS = {
 export const PANEL_PLACEHOLDER_COLORS = ['#f4b6d2', '#a9dede', '#cbbcf2', '#fbeaa0', '#b9e5bf', '#f7c3a3']
 
 export const CLOSE_UP_PLACEHOLDER_COLOR = '#ffd9a8'
-
-/** the app's dark purple, the first color in every color row and new text's and overlays' color */
-export const INK = '#241b30'
 
 export type TextStyle = 'none' | 'speech' | 'square'
 export const TEXT_STYLES: { value: TextStyle; label: string }[] = [

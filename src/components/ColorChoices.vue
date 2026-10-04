@@ -2,11 +2,11 @@
 import { computed } from 'vue'
 
 import CustomColorSwatch from './CustomColorSwatch.vue'
-import { INK } from '@/lib/constants'
+import { BLACK } from '@/lib/constants'
 import { BASE_COLORS, PROJECT_COLOR_SLOTS, projectColors } from '@/lib/projectColors'
 
 // Every color row, in the sidebar and in menus: optionally a no-color
-// choice (None, or Auto for a placeholder color), ink and white, slots
+// choice (None, or Auto for a placeholder color), black and white, slots
 // for the colors used most elsewhere in the project (empty ones held as
 // faint rings), and a swatch that opens the color picker, showing the
 // color in use when it's none of the others.
@@ -19,7 +19,7 @@ const props = defineProps<{
   none?: 'none' | 'auto'
   /** hover text for the null choice */
   noneTitle?: string
-  /** where the picker starts while the value is null (default ink) */
+  /** where the picker starts while the value is null (default black) */
   startColor?: string
   /** without a null choice, keep its room, so the swatches line up with a row that has one */
   alignNone?: boolean
@@ -91,7 +91,7 @@ const isCustom = computed(
     <span class="divider" aria-hidden="true" />
     <CustomColorSwatch
       class="dot"
-      :model-value="modelValue ?? startColor ?? INK"
+      :model-value="modelValue ?? startColor ?? BLACK"
       :active="isCustom"
       label="Pick a color"
       @update:model-value="emit('update:modelValue', $event)"
@@ -109,7 +109,7 @@ $dot: 20px;
   gap: 4px;
 }
 
-// the project's colors, between ink and white and the picker
+// the project's colors, between black and white and the picker
 .slots {
   display: flex;
   gap: 4px;

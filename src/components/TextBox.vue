@@ -1,9 +1,14 @@
+<script lang="ts">
+/** texts' own colors put aside by linking them to the project's, by text id; kept while the app runs */
+const setAsideColors = new Map<number, string>()
+</script>
+
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import {
   FONT_SIZE_STEPS,
-  INK,
+  BLACK,
   MAX_TYPED_FONT_PX,
   MIN_TYPED_FONT_PX,
   TEXT_STYLES,
@@ -22,6 +27,7 @@ import {
   selectElement,
   stageSize,
   store,
+  textColor,
   textFontSize,
   textOutline,
   type TextElement,
@@ -70,11 +76,11 @@ const cursor = ref<string>()
 // behind the fill, so only its outer half shows: doubling the width gives
 // an outline of the intended thickness.
 const faceStyle = computed(() => {
-  const outline = el.style === 'none' && el.outline ? textOutline(el.color) : null
+  const outline = el.style === 'none' && el.outline ? textOutline(textColor(el)) : null
   return {
     ...(el.font && fontVars(el.font)), // its own font if available, else the project's (set on the page)
     fontSize: `${textFontSize(el)}px`, // its own size if set, else the project's
-    color: el.color,
+    color: textColor(el),
     ...(outline && { WebkitTextStroke: `${outline.width * 2}px ${outline.color}`, paintOrder: 'stroke fill' }),
   }
 })
@@ -319,11 +325,25 @@ function onContextMenu(e: MouseEvent) {
       set: (deg) => (el.rot = turnDegrees(deg)),
     },
     {
+      // picking a color gives the text its own, unlinking it from the project's
       kind: 'color',
       label: 'Color',
       ownKey: `text:${el.id}`,
-      value: () => el.color,
-      set: (color) => (el.color = color ?? INK),
+      value: () => textColor(el),
+      set: (color) => (el.color = color ?? BLACK),
+      link: {
+        linked: () => el.color === null,
+        // linking puts its own color aside; unlinking brings that back, else keeps the color it shows now
+        toggle: () => {
+          if (el.color === null) el.color = setAsideColors.get(el.id) ?? textColor(el)
+          else {
+            setAsideColors.set(el.id, el.color)
+            el.color = null
+          }
+        },
+        linkedTitle: "Follows the project's text color (in the sidebar); pick a color to give this text its own",
+        unlinkedTitle: "Has its own color; click to follow the project's text color again",
+      },
     },
     {
       kind: 'select',
