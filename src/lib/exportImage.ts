@@ -155,8 +155,8 @@ export async function renderStageImage(
   return image
 }
 
-/** Packs exported images into one zip (stored as-is: they're already compressed). */
-export async function zipImages(files: { name: string; blob: Blob }[]): Promise<Blob> {
+/** Packs exported files (page images, a PDF) into one zip, stored as-is: they're already compressed. */
+export async function zipFiles(files: { name: string; blob: Blob }[]): Promise<Blob> {
   const entries: Zippable = {}
   for (const { name, blob } of files) entries[name] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }]
   return new Blob([zipSync(entries) as BlobPart], { type: 'application/zip' })

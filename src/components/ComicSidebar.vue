@@ -50,10 +50,13 @@ const emit = defineEmits<{
   addPageNumber: []
   exportAll: []
   exportPdf: []
+  exportBundle: []
   export: []
 }>()
 
 const FORMATS: ExportFormat[] = ['webp', 'jpg']
+const formatName = computed(() => store.exportFormat.toUpperCase())
+const pageCount = computed(() => (store.pages.length === 1 ? '1 page' : `${store.pages.length} pages`))
 
 // the web version links back to the app's page on the site; the desktop
 // builds (served from app://, see electron/main.js) have nowhere to go back to
@@ -469,8 +472,14 @@ onBeforeUnmount(() => {
     </div>
 
     <footer class="sidebar-footer">
+      <div class="export-head">
+        <span class="export-title">Export</span>
+        <span class="export-size" title="The size of exported images, set in the Page section">
+          {{ store.pageSize.width }}×{{ store.pageSize.height }} px
+        </span>
+      </div>
       <div class="export-main">
-        <div class="segmented" role="radiogroup" aria-label="Image format">
+        <div class="segmented" role="radiogroup" aria-label="Image format" title="The format of exported images (a PDF holds JPEGs)">
           <button
             v-for="f in FORMATS"
             :key="f"
@@ -484,22 +493,37 @@ onBeforeUnmount(() => {
         </div>
         <button
           class="primary"
-          :title="`Save the current page as a ${store.exportFormat.toUpperCase()} image`"
+          :title="`Save the current page as a ${formatName} image`"
           @click="$emit('export')"
         >
           <UiIcon name="export" />Export {{ store.pages.length > 1 ? `page ${store.pageIndex + 1}` : 'image' }}
         </button>
       </div>
+      <!-- the other exports, each saying what it makes -->
       <div class="export-more">
         <button
           v-if="store.pages.length > 1"
-          :title="`All ${store.pages.length} pages as ${store.exportFormat.toUpperCase()} images in one zip`"
+          class="export-tile"
+          :title="`All ${pageCount} as ${formatName} images, in one zip`"
           @click="$emit('exportAll')"
         >
-          All pages .zip
+          <UiIcon name="pages" />
+          <span class="tile-name">All pages</span>
+          <span class="tile-sub">{{ store.pages.length }} {{ formatName }} · zip</span>
         </button>
-        <button title="All pages in one PDF, a page each" @click="$emit('exportPdf')">
-          PDF{{ store.pages.length > 1 ? ` · ${store.pages.length} pages` : '' }}
+        <button class="export-tile" :title="`${pageCount} in one PDF, a page each`" @click="$emit('exportPdf')">
+          <UiIcon name="pdf" />
+          <span class="tile-name">PDF</span>
+          <span class="tile-sub">{{ pageCount }}</span>
+        </button>
+        <button
+          class="export-tile"
+          :title="`${store.pages.length > 1 ? `All ${pageCount}` : 'The page'} as ${formatName} images, and the PDF, in one zip`"
+          @click="$emit('exportBundle')"
+        >
+          <UiIcon name="bundle" />
+          <span class="tile-name">Images + PDF</span>
+          <span class="tile-sub">zip</span>
         </button>
       </div>
     </footer>
@@ -1081,19 +1105,65 @@ input[type='number'] {
   }
 }
 
+// a micro heading, and the size exports come out at
+.export-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+
+  .export-title {
+    @include micro-label;
+    color: $text-main;
+    font-weight: 700;
+  }
+
+  .export-size {
+    @include micro-label;
+    letter-spacing: 0.5px;
+    text-transform: none;
+  }
+}
+
+// equal tiles: an icon, what it makes, and what's inside
 .export-more {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+}
 
-  button {
-    flex: 1;
-    padding: 6px 8px;
-    font-size: 0.74rem;
-    background: none;
+.export-tile {
+  @include ghost-button;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px 7px;
+  background: $bg-panel-alt;
+
+  .ui-icon {
+    margin-bottom: 2px;
     color: $text-dim;
+    transition: color 0.2s ease;
+  }
 
-    &:hover:not(:disabled) {
-      color: $text-main;
+  .tile-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .tile-sub {
+    font-size: 0.62rem;
+    color: $text-dim;
+    white-space: nowrap;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: $line-accent;
+
+    .ui-icon {
+      color: $accent-ink;
     }
   }
 }

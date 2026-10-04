@@ -17,6 +17,8 @@ export const PATCH_NOTES: { version: string; notes: string[] }[] = [
       'Color rows now offer black and white, then up to six colors used elsewhere in the project, then the color picker.',
       'The color picker has H, S and L sliders for fine-tuning a color.',
       'Added a Color for all text in the Text section; a text given its own color keeps it, and the link icon in its menu joins it back.',
+      'Added Images + PDF to the export section, which saves the page images and the PDF together in one zip.',
+      'The export section shows the image size, and each export says what it makes.',
       'Added Color splash, which turns a photo gray except for one color (right-click the photo, or the Filters section for all photos).',
       "Levels, Color balance and Color splash in a photo's right-click menu can now be set to None, which turns off the Filters section's for that photo.",
       'Fixed: splitting a panel could open the image picker.',
