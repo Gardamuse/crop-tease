@@ -76,11 +76,16 @@ export function resolveFont(id: FontId): ResolvedFont {
   return { id, label: unknownLabel(id), family: null, url: null, custom: id.startsWith(CUSTOM_PREFIX), missing: true }
 }
 
-/** Every font that can be picked: the bundled ones, then the user's. */
-export const fontChoices = computed(() => [
-  ...(Object.keys(TEXT_FONTS) as BuiltinFontId[]).map(resolveFont),
-  ...customFonts.list.map((f) => resolveFont(customFontId(f.name))),
-])
+/** Every font that can be picked: Classic, then the bundled ones and the user's together, by name. */
+export const fontChoices = computed(() => {
+  const [classic, ...others] = [
+    ...(Object.keys(TEXT_FONTS) as BuiltinFontId[]).map(resolveFont),
+    ...customFonts.list.map((f) => resolveFont(customFontId(f.name))),
+  ]
+  // the user's fonts among the bundled ones, by name
+  others.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }))
+  return [classic!, ...others]
+})
 
 /** Whether a font is known to be unavailable (false while the user's fonts are still loading). */
 export function isMissing(id: FontId): boolean {
