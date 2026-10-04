@@ -17,7 +17,9 @@ or a release is built or deployed (`npm version`, `npm run deploy`,
    change: new features, changed behavior and fixes ("Fixed: ..."). Leave out
    internal changes users can't see (refactors, build and deploy tweaks).
 3. Write each note as one short plain sentence, from the user's side, naming
-   the controls and keys as the app shows them.
+   the controls and keys as the app shows them. A smaller change that belongs
+   to a larger one goes under it as a sub-item (`{ text, sub: [...] }`),
+   shown indented; one level only.
 
 Bump the version with `npm version <version> --no-git-tag-version`, which
 updates both `package.json` and `package-lock.json`. If you're asked to

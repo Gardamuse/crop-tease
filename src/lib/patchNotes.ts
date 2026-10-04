@@ -1,27 +1,57 @@
+/**
+ * One change; or a larger one with smaller related changes (sub), shown
+ * indented under it.
+ */
+export type PatchNote = string | { text: string; sub: string[] }
+
 /** What changed in each release, newest first, shown from the version number. */
-export const PATCH_NOTES: { version: string; notes: string[] }[] = [
+export const PATCH_NOTES: { version: string; notes: PatchNote[] }[] = [
   {
     version: '1.2.0',
     notes: [
-      'Added Recent projects (the clock button), which keeps every project you work on so you can open it again later.',
-      'New project no longer replaces the open project; it stays in Recent projects.',
-      'Opening a .ct file that is already in Recent projects now opens that one instead of a copy.',
-      'Your autosaved project is now in Recent projects.',
+      {
+        text: 'Added Recent projects (the clock button), which keeps every project you work on so you can open it again later.',
+        sub: [
+          'New project no longer replaces the open project; it stays in Recent projects.',
+          'Opening a .ct file that is already in Recent projects now opens that one instead of a copy.',
+          'Your autosaved project is now in Recent projects.',
+        ],
+      },
       'Added Color splash, which turns a photo gray except for one color (right-click the photo, or the Filters section for all photos).',
       "Levels, Color balance and Color splash in a photo's right-click menu can now be set to None, which ignores the Filters section for that photo.",
       'Added a Rotation slider to the right-click menu of photos and text; Shift snaps to 15°.',
-      'Added a Color for all text in the Text section, which text follows until you give it its own.',
-      'New text is now black instead of dark purple.',
-      'Color rows now offer black, white and up to six colors used elsewhere in the project, plus the color picker.',
-      'The color picker has H, S and L sliders for fine-tuning a color.',
+      {
+        text: 'Added a Color for all text in the Text section, which text follows until you give it its own.',
+        sub: [
+          'New text is now black instead of dark purple.',
+        ],
+      },
+      {
+        text: 'Color rows now offer black, white and up to six colors used elsewhere in the project, plus the color picker.',
+        sub: [
+          'The color picker has H, S and L sliders for fine-tuning a color.',
+        ],
+      },
       'Dividers can now have their own width (right-click one and choose Local).',
-      'Added Images + PDF to the export section, which saves the page images and the PDF together in one zip.',
-      'The export section shows the image size, and each export says what it makes.',
-      'Photo effects in the right-click menu and the Filters section now fold under their headings, showing their settings on one line until opened.',
-      'The Font dropdown in the text right-click menu now shows each font in its own typeface.',
-      'Fonts are now listed by name, after Classic, in the Text section and the Font dropdown.',
+      {
+        text: 'Added Images + PDF to the export section, which saves the page images and the PDF together in one zip.',
+        sub: [
+          'The export section shows the image size, and each export says what it makes.',
+        ],
+      },
+      {
+        text: 'Photo effects in the right-click menu and the Filters section now fold under their headings, showing their settings on one line until opened.',
+        sub: [
+          "The overlay's Rotate slider is now called Angle.",
+        ],
+      },
       "Added Remove image to a close-up's right-click menu.",
-      "The overlay's Rotate slider is now called Angle.",
+      {
+        text: 'The Font dropdown in the text right-click menu now shows each font in its own typeface.',
+        sub: [
+          'Fonts are now listed by name, after Classic, in the Text section and the Font dropdown.',
+        ],
+      },
       'Fixed: splitting a panel could open the image picker.',
       'Fixed: a right-click menu tall enough to scroll also scrolled sideways.',
       'Fixed: scrolling inside a right-click menu closed it.',

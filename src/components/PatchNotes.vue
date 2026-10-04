@@ -2,13 +2,22 @@
 import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 
 import UiIcon from './UiIcon.vue'
-import { PATCH_NOTES } from '@/lib/patchNotes'
+import { PATCH_NOTES, type PatchNote } from '@/lib/patchNotes'
 
 // The version number in the workspace corner; clicking it opens the patch notes.
 defineProps<{ version: string }>()
 
 // notes for fixes start with this; it's shown as a small tag
 const FIXED = 'Fixed: '
+
+/** a note's text, split into whether it's a fix and the rest */
+function parts(text: string): { fixed: boolean; text: string } {
+  const fixed = text.startsWith(FIXED)
+  return { fixed, text: fixed ? text.slice(FIXED.length) : text }
+}
+
+const textOf = (note: PatchNote) => (typeof note === 'string' ? note : note.text)
+const subOf = (note: PatchNote) => (typeof note === 'string' ? [] : note.sub)
 
 const open = ref(false)
 const cardEl = useTemplateRef('card')
@@ -54,9 +63,14 @@ onBeforeUnmount(() => {
         <section v-for="release in PATCH_NOTES" :key="release.version">
           <h3>{{ release.version }}</h3>
           <ul>
-            <li v-for="note in release.notes" :key="note">
-              <template v-if="note.startsWith(FIXED)"><span class="tag">Fixed</span>{{ note.slice(FIXED.length) }}</template>
-              <template v-else>{{ note }}</template>
+            <li v-for="note in release.notes" :key="textOf(note)">
+              <span v-if="parts(textOf(note)).fixed" class="tag">Fixed</span>{{ parts(textOf(note)).text }}
+              <!-- smaller related changes, indented under it -->
+              <ul v-if="subOf(note).length" class="sub">
+                <li v-for="sub in subOf(note)" :key="sub">
+                  <span v-if="parts(sub).fixed" class="tag">Fixed</span>{{ parts(sub).text }}
+                </li>
+              </ul>
             </li>
           </ul>
         </section>
@@ -70,11 +84,11 @@ onBeforeUnmount(() => {
   position: absolute;
   right: 6px;
   bottom: 3px;
-  padding: 3px 4px;
+  padding: 4px 6px;
   border: none;
   background: none;
   font-family: $font-mono;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.05em;
   color: $dark-dim;
   opacity: 0.7;
@@ -95,10 +109,10 @@ onBeforeUnmount(() => {
   position: absolute;
   z-index: 50;
   right: 10px;
-  bottom: 30px;
-  width: 400px;
+  bottom: 36px;
+  width: 460px;
   max-width: calc(100% - 20px);
-  max-height: min(640px, calc(100% - 44px));
+  max-height: min(720px, calc(100% - 50px));
   display: flex;
   flex-direction: column;
   border-radius: $radius;
@@ -107,7 +121,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 12px 32px rgba($shade, 0.35);
   // the app's mono, at full contrast and a size that reads easily
   font-family: $font-mono;
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   line-height: 1.4;
   color: $text-main;
 
@@ -160,7 +174,7 @@ onBeforeUnmount(() => {
   h3 {
     margin: 0 0 8px;
     font-family: $font-heading;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: $accent-ink;
   }
@@ -180,6 +194,23 @@ onBeforeUnmount(() => {
 
   li::marker {
     color: $accent;
+  }
+
+  // closer to their note than notes are to each other, in a lighter voice
+  ul.sub {
+    margin-top: 6px;
+    padding-left: 16px;
+    gap: 5px;
+    font-size: 0.85rem;
+    color: rgba($text-main, 0.82);
+
+    li {
+      list-style: '– ';
+    }
+
+    li::marker {
+      color: $text-dim;
+    }
   }
 
   // "Fixed", before a fix's note
