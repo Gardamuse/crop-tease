@@ -19,11 +19,21 @@ export interface PhotoEffects {
   overlay: ImageOverlay | null
   /** blur radius in output pixels; 0 for none */
   blur: number
-  /** null to follow the project's (store.photoFilters); FULL_LEVELS while its own but untouched */
+  /** null to follow the project's (store.photoFilters), NONE for none; FULL_LEVELS while its own but untouched */
+  levels: Levels | typeof NONE | null
+  /** null to follow the project's (store.photoFilters), NONE for none */
+  colorBalance: ColorBalance | typeof NONE | null
+  /** null to follow the project's (store.photoFilters), NONE for none */
+  colorSplash: ColorSplash | typeof NONE | null
+}
+
+/** a photo's levels, color balance or color splash switched off, whatever the project's */
+export const NONE = 'none'
+
+/** A photo's effects as drawn: the project's levels, color balance and color splash filled in. */
+export interface DrawnEffects extends Omit<PhotoEffects, 'levels' | 'colorBalance' | 'colorSplash'> {
   levels: Levels | null
-  /** null to follow the project's (store.photoFilters) */
   colorBalance: ColorBalance | null
-  /** null to follow the project's (store.photoFilters) */
   colorSplash: ColorSplash | null
 }
 
@@ -202,12 +212,13 @@ export function splashMatrices(s: ColorSplash): { turn: string; mask: string } {
 }
 
 /** A photo's effects as drawn: its own levels, color balance and color splash, or else the project's. */
-export function effectiveEffects(e: PhotoEffects): PhotoEffects {
+export function effectiveEffects(e: PhotoEffects): DrawnEffects {
+  const own = <T>(value: T | typeof NONE | null, global: T | null) => (value === NONE ? null : (value ?? global))
   return {
     ...e,
-    levels: e.levels ?? store.photoFilters.levels,
-    colorBalance: e.colorBalance ?? store.photoFilters.colorBalance,
-    colorSplash: e.colorSplash ?? store.photoFilters.colorSplash,
+    levels: own(e.levels, store.photoFilters.levels),
+    colorBalance: own(e.colorBalance, store.photoFilters.colorBalance),
+    colorSplash: own(e.colorSplash, store.photoFilters.colorSplash),
   }
 }
 
@@ -309,7 +320,7 @@ export type ToneFilters = Pick<PhotoEffects, 'levels' | 'colorBalance' | 'colorS
 
 /**
  * Levels, color balance and overlays that were switched off (to Off or
- * None, or a photo's to Global), by whose they were (memoryKey) and which:
+ * None, or a photo's to Global or None), by whose they were (memoryKey) and which:
  * switching back on brings them back. Kept only while the app runs, never
  * saved.
  */
@@ -320,10 +331,10 @@ const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
 /**
  * The menu entries for levels and color balance. The project's ('global')
- * switch each Off and On; a photo's ('local') switch between following the
- * project's (Global) and having its own (Local). Switched back on, they're
- * as they were when switched off this session, else a photo's start from
- * the project's. memoryKey tells whose they are ('global', or the photo's
+ * switch each Off and On; a photo's ('local') switch between none at all
+ * (None), having its own (Local) and following the project's (Global).
+ * Switched back on, they're as they were when switched off this session,
+ * else a photo's start from the project's. memoryKey tells whose they are ('global', or the photo's
  * panel or close-up id), as the settings objects change on undo.
  */
 export function toneEntries(
@@ -332,40 +343,57 @@ export function toneEntries(
   shown: () => boolean,
   memoryKey: string,
 ): MenuEntry[] {
-  const levels = () => target.levels ?? FULL_LEVELS
-  const setLevels = (change: Partial<Levels>) => (target.levels = { ...levels(), ...change })
-  const levelsOn = () => shown() && target.levels !== null
-  const balanceOn = () => shown() && target.colorBalance !== null
-  const splashOn = () => shown() && target.colorSplash !== null
-  const setSplash = (change: Partial<ColorSplash>) => {
-    if (target.colorSplash) Object.assign(target.colorSplash, change)
+  // the settings set here, or null while off or following the project's
+  const own = <K extends keyof ToneFilters>(field: K) => {
+    const value = target[field]
+    return value === NONE ? null : (value as Exclude<ToneFilters[K], typeof NONE>)
   }
-  // the row's two choices: off (following the project's, for a photo) or set here
-  function switchOptions<K extends keyof ToneFilters>(field: K, start: () => NonNullable<ToneFilters[K]>, what: string) {
+  const levels = () => own('levels') ?? FULL_LEVELS
+  const setLevels = (change: Partial<Levels>) => (target.levels = { ...levels(), ...change })
+  const levelsOn = () => shown() && own('levels') !== null
+  const balanceOn = () => shown() && own('colorBalance') !== null
+  const splashOn = () => shown() && own('colorSplash') !== null
+  const setSplash = (change: Partial<ColorSplash>) => {
+    const splash = own('colorSplash')
+    if (splash) Object.assign(splash, change)
+  }
+  // the row's choices: off (following the project's, or none, for a photo) or set here
+  function switchOptions<K extends keyof ToneFilters>(
+    field: K,
+    start: () => NonNullable<Exclude<ToneFilters[K], typeof NONE>>,
+    what: string,
+  ) {
     const local = mode === 'local'
     const memory = `${memoryKey}:${field}`
     const What = `${what[0]!.toUpperCase()}${what.slice(1)}`
-    const options: MenuChoice[] = [
-      {
-        label: local ? 'Global' : 'Off',
-        title: local ? "Follow the project's (in the sidebar's Filters section)" : undefined,
-        active: () => target[field] === null,
-        pick: () => {
-          if (target[field] === null) return
-          switchedOff.set(memory, copy(target[field]))
-          target[field] = null
-        },
+    // switching off to null or NONE puts the photo's own aside
+    const switchOff = (value: null | typeof NONE) => {
+      if (target[field] === value) return
+      if (own(field) !== null) switchedOff.set(memory, copy(target[field]))
+      target[field] = value as ToneFilters[K]
+    }
+    const off: MenuChoice = {
+      label: local ? 'Global' : 'Off',
+      title: local ? "Follow the project's (in the sidebar's Filters section)" : undefined,
+      active: () => target[field] === null,
+      pick: () => switchOff(null),
+    }
+    const on: MenuChoice = {
+      label: local ? 'Local' : 'On',
+      title: local ? `${What}, for this photo only` : `${What}, for all photos without a local one`,
+      active: () => own(field) !== null,
+      pick: () => {
+        if (own(field) !== null) return
+        target[field] = copy((switchedOff.get(memory) as ToneFilters[K] | undefined) ?? start())
       },
-      {
-        label: local ? 'Local' : 'On',
-        title: local ? `${What}, for this photo only` : `${What}, for all photos without a local one`,
-        active: () => target[field] !== null,
-        pick: () => {
-          if (target[field] !== null) return
-          target[field] = copy((switchedOff.get(memory) as ToneFilters[K] | undefined) ?? start())
-        },
-      },
-    ]
+    }
+    const none: MenuChoice = {
+      label: 'None',
+      title: "Off for this photo, whatever the project's",
+      active: () => target[field] === NONE,
+      pick: () => switchOff(NONE),
+    }
+    const options = local ? [none, on, off] : [off, on]
     return options
   }
   return [
@@ -417,7 +445,7 @@ export function toneEntries(
       visible: balanceOn,
       options: TONE_RANGES.map((r) => ({
         // a dot marks the ranges that have been shifted
-        label: () => (target.colorBalance?.[r.value].some((v) => v !== 0) ? `${r.label}•` : r.label),
+        label: () => (own('colorBalance')?.[r.value].some((v) => v !== 0) ? `${r.label}•` : r.label),
         title: r.label,
         active: () => balanceRange.value === r.value,
         pick: () => (balanceRange.value = r.value),
@@ -434,9 +462,9 @@ export function toneEntries(
         unit: '',
         track: axis.track,
         resetValue: 0,
-        value: () => target.colorBalance?.[balanceRange.value][ch] ?? 0,
+        value: () => own('colorBalance')?.[balanceRange.value][ch] ?? 0,
         set: (v) => {
-          const b = target.colorBalance
+          const b = own('colorBalance')
           if (b) b[balanceRange.value][ch] = Math.round(clamp(v, -MAX_BALANCE, MAX_BALANCE))
         },
       }),
@@ -449,14 +477,20 @@ export function toneEntries(
         {
           label: 'Keep',
           title: "Keep each pixel's lightness, only its color shifts (Krita's Preserve Luminosity)",
-          active: () => !!target.colorBalance?.preserveLuminosity,
-          pick: () => target.colorBalance && (target.colorBalance.preserveLuminosity = true),
+          active: () => !!own('colorBalance')?.preserveLuminosity,
+          pick: () => {
+            const b = own('colorBalance')
+            if (b) b.preserveLuminosity = true
+          },
         },
         {
           label: 'Let change',
           title: 'The shift can also lighten or darken the photo',
-          active: () => target.colorBalance?.preserveLuminosity === false,
-          pick: () => target.colorBalance && (target.colorBalance.preserveLuminosity = false),
+          active: () => own('colorBalance')?.preserveLuminosity === false,
+          pick: () => {
+            const b = own('colorBalance')
+            if (b) b.preserveLuminosity = false
+          },
         },
       ],
     },
@@ -479,7 +513,7 @@ export function toneEntries(
       max: 359,
       unit: '°',
       track: HUE_TRACK,
-      value: () => target.colorSplash?.hue ?? 0,
+      value: () => own('colorSplash')?.hue ?? 0,
       set: (deg) => setSplash({ hue: Math.round(((deg % 360) + 360) % 360) }),
     },
     {
@@ -490,7 +524,7 @@ export function toneEntries(
       min: MIN_SPLASH_WIDTH,
       max: MAX_SPLASH_WIDTH,
       unit: '°',
-      value: () => target.colorSplash?.width ?? 0,
+      value: () => own('colorSplash')?.width ?? 0,
       set: (deg) => setSplash({ width: Math.round(clamp(deg, MIN_SPLASH_WIDTH, MAX_SPLASH_WIDTH)) }),
     },
     {
@@ -501,7 +535,7 @@ export function toneEntries(
       min: 0,
       max: 100,
       unit: '%',
-      value: () => target.colorSplash?.softness ?? 0,
+      value: () => own('colorSplash')?.softness ?? 0,
       set: (pct) => setSplash({ softness: Math.round(clamp(pct, 0, 100)) }),
     },
     {
@@ -512,7 +546,7 @@ export function toneEntries(
       min: 0,
       max: 100,
       unit: '%',
-      value: () => target.colorSplash?.desaturate ?? 0,
+      value: () => own('colorSplash')?.desaturate ?? 0,
       set: (pct) => setSplash({ desaturate: Math.round(clamp(pct, 0, 100)) }),
     },
   ]

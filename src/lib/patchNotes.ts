@@ -1,6 +1,12 @@
 /** What changed in each release, newest first, shown from the version number. */
 export const PATCH_NOTES: { version: string; notes: string[] }[] = [
   {
+    version: '1.2.0-beta.3',
+    notes: [
+      "Levels, Color balance and Color splash in a photo's right-click menu have a new None choice, which turns that filter off for the photo even when the Filters section sets one for all photos. The choices now read None, Local, Global.",
+    ],
+  },
+  {
     version: '1.2.0-beta.2',
     notes: [
       "Color splash: turn a photo gray except for one range of colors, with its Hue, Width, Softness and how Gray the rest gets. Right-click the photo, or set it for all photos in the Filters section.",

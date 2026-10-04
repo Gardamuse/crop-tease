@@ -358,16 +358,16 @@ optional; they only show while it has a photo, and stay if it changes):
 
 ```jsonc
 "blur": 8,               // blur radius in output pixels, 0..50 (0 or missing: none)
-"levels": {              // or null / missing to use the project's photoFilters; all 0..255, per channel
+"levels": {              // or null / missing to use the project's photoFilters, "none" for none; all 0..255, per channel
   "inLow": 20, "inHigh": 235,  // these input tones become black and white (inLow < inHigh), beyond clipped
   "outLow": 0, "outHigh": 255  // then fitted into this output range
 },
-"colorBalance": {        // or null / missing to use the project's photoFilters; as in Krita, each range is
+"colorBalance": {        // or null / missing to use the project's photoFilters, "none" for none; as in Krita, each range is
                          //   [cyan..red, magenta..green, yellow..blue], each -40..40
   "shadows": [0, 0, 10], "midtones": [5, 0, 0], "highlights": [8, 0, -5],
   "preserveLuminosity": true   // keep each pixel's lightness, shift only its color
 },
-"colorSplash": {         // or null / missing to use the project's photoFilters: the photo turned gray
+"colorSplash": {         // or null / missing to use the project's photoFilters, "none" for none: the photo turned gray
                          //   except for one range of hues on the color wheel
   "hue": 0,              // the kept colors' hue, 0..359 degrees (0 red, 60 yellow, 120 green, 240 blue)
   "width": 60,           // how wide a range of hues around it is kept, 10..300 degrees

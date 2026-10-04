@@ -32,6 +32,7 @@ import {
   MAX_OVERLAY_ANGLE,
   MAX_SPLASH_WIDTH,
   MIN_SPLASH_WIDTH,
+  NONE,
 } from './photoEffects'
 import type { Region } from './layout'
 import { clamp } from './math'
@@ -118,9 +119,10 @@ const ColorSplashSchema = z.object({
 const PhotoEffectsSchema = {
   overlay: OverlaySchema.nullable().default(null),
   blur: z.number().min(0).max(MAX_BLUR).default(0),
-  levels: LevelsSchema.nullable().default(null),
-  colorBalance: ColorBalanceSchema.nullable().default(null),
-  colorSplash: ColorSplashSchema.nullable().default(null), // added later
+  // NONE (a photo's switched off) added later
+  levels: z.union([LevelsSchema, z.literal(NONE)]).nullable().default(null),
+  colorBalance: z.union([ColorBalanceSchema, z.literal(NONE)]).nullable().default(null),
+  colorSplash: z.union([ColorSplashSchema, z.literal(NONE)]).nullable().default(null), // added later
 }
 
 const LeafSchema = z.object({
