@@ -1,27 +1,17 @@
 /** What changed in each release, newest first, shown from the version number. */
 export const PATCH_NOTES: { version: string; notes: string[] }[] = [
   {
-    version: '1.2.0-beta.3',
+    version: '1.2.0',
     notes: [
-      "Levels, Color balance and Color splash in a photo's right-click menu have a new None choice, which turns that filter off for the photo even when the Filters section sets one for all photos. The choices now read None, Local, Global.",
-      "Rotate a photo with the Rotation slider in its right-click menu; Shift snaps to 15°, and the ⟲ button or a double-click on the slider straightens it.",
-    ],
-  },
-  {
-    version: '1.2.0-beta.2',
-    notes: [
-      "Color splash: turn a photo gray except for one range of colors, with its Hue, Width, Softness and how Gray the rest gets. Right-click the photo, or set it for all photos in the Filters section.",
-      'Fixed: a right-click menu tall enough to scroll also scrolled sideways.',
-    ],
-  },
-  {
-    version: '1.2.0-beta.1',
-    notes: [
-      'Recent projects, from the clock button beside the project name: every project is kept in the browser, with a picture of its first page. Click one to open it, or delete it with its trash button.',
+      'Added Recent projects (the clock button), which keeps every project you work on so you can open it again later.',
       'New project no longer replaces the open project; it stays in Recent projects.',
-      'Opening a .ct file adds it to Recent projects, or opens the listed one if it has the same content.',
-      'Your last autosaved project moves into Recent projects automatically.',
-      'Fixed: splitting a panel could open the image picker when releasing the mouse.',
+      'Opening a .ct file that is already in Recent projects now opens that one instead of a copy.',
+      'Your autosaved project is now in Recent projects.',
+      "Added a Rotation slider to a photo's right-click menu; Shift snaps to 15°.",
+      'Added Color splash, which turns a photo gray except for one color (right-click the photo, or the Filters section for all photos).',
+      "Levels, Color balance and Color splash in a photo's right-click menu can now be set to None, which turns off the Filters section's for that photo.",
+      'Fixed: splitting a panel could open the image picker.',
+      'Fixed: a right-click menu tall enough to scroll also scrolled sideways.',
     ],
   },
   {
