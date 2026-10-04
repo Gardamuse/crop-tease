@@ -7,6 +7,9 @@ import { PATCH_NOTES } from '@/lib/patchNotes'
 // The version number in the workspace corner; clicking it opens the patch notes.
 defineProps<{ version: string }>()
 
+// notes for fixes start with this; it's shown as a small tag
+const FIXED = 'Fixed: '
+
 const open = ref(false)
 const cardEl = useTemplateRef('card')
 const tagEl = useTemplateRef('tag')
@@ -51,7 +54,10 @@ onBeforeUnmount(() => {
         <section v-for="release in PATCH_NOTES" :key="release.version">
           <h3>{{ release.version }}</h3>
           <ul>
-            <li v-for="note in release.notes" :key="note">{{ note }}</li>
+            <li v-for="note in release.notes" :key="note">
+              <template v-if="note.startsWith(FIXED)"><span class="tag">Fixed</span>{{ note.slice(FIXED.length) }}</template>
+              <template v-else>{{ note }}</template>
+            </li>
           </ul>
         </section>
       </div>
@@ -99,9 +105,11 @@ onBeforeUnmount(() => {
   background: $bg-panel-alt;
   border: 1px solid $line;
   box-shadow: 0 12px 32px rgba($shade, 0.35);
-  font-size: 0.78rem;
-  line-height: 1.5;
-  color: $text-dim;
+  // the app's mono, at full contrast and a size that reads easily
+  font-family: $font-mono;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: $text-main;
 
   header {
     display: flex;
@@ -144,27 +152,47 @@ onBeforeUnmount(() => {
   scrollbar-color: $line transparent;
 
   section + section {
-    margin-top: 14px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid $line;
   }
 
   h3 {
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     font-family: $font-heading;
     font-size: 0.95rem;
     font-weight: 800;
     color: $accent-ink;
   }
 
+  // clearly more room between notes than between a note's lines, so each reads as one block
   ul {
     margin: 0;
-    padding-left: 16px;
+    padding-left: 18px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 12px;
+  }
+
+  li {
+    padding-left: 2px;
   }
 
   li::marker {
-    color: $accent-ink;
+    color: $accent;
+  }
+
+  // "Fixed", before a fix's note
+  .tag {
+    @include micro-label;
+    display: inline-block;
+    margin-right: 6px;
+    padding: 0 5px;
+    border-radius: 2px;
+    background: $bg-sunken;
+    font-size: 0.62rem;
+    line-height: 1.6;
+    vertical-align: 1px;
   }
 }
 
