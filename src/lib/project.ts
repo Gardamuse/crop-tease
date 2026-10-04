@@ -35,7 +35,7 @@ import {
   NONE,
 } from './photoEffects'
 import type { Region } from './layout'
-import { clamp } from './math'
+import { clamp, turnDegrees } from './math'
 import { store, syncCounters, usedFonts, type ComicElement, type TextElement } from './store'
 import { customFontFile, installProjectFont } from './textFonts'
 import { captureThumbnail, clearThumbnailCache } from './thumbnail'
@@ -79,6 +79,7 @@ const FrameSchema = z.object({
   tx: z.number(),
   ty: z.number(),
   mirror: z.boolean().default(false), // added later
+  rotation: z.number().transform(turnDegrees).default(0), // added later
 })
 type SavedFrame = z.infer<typeof FrameSchema>
 
@@ -286,7 +287,7 @@ export function upgradeProject(raw: unknown): ProjectDoc {
 // ---------------------------------------------------------------------------
 
 function saveFrame(f: ImageFrame | null): SavedFrame | null {
-  return f && { imageId: f.imageId, natW: f.natW, natH: f.natH, baseScale: f.baseScale, scale: f.scale, tx: f.tx, ty: f.ty, mirror: f.mirror }
+  return f && { imageId: f.imageId, natW: f.natW, natH: f.natH, baseScale: f.baseScale, scale: f.scale, tx: f.tx, ty: f.ty, mirror: f.mirror, rotation: f.rotation }
 }
 
 function saveRegion(node: Region): SavedRegion {

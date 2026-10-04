@@ -2,8 +2,8 @@ import { ref } from 'vue'
 
 import { SWATCH_COLORS } from './constants'
 import type { MenuChoice, MenuEntry } from './contextMenu'
-import type { ImageFrame } from './imageFrame'
-import { clamp } from './math'
+import { ROTATE_SNAP, rotateFrame, type ImageFrame } from './imageFrame'
+import { clamp, turnDegrees } from './math'
 import { stageSize, store } from './store'
 
 // Effects on a panel's or close-up's photo: a blur, levels, color balance,
@@ -552,10 +552,14 @@ export function toneEntries(
   ]
 }
 
-/** The right-click menu entries for a photo's effects (and its mirroring), shown while it has a photo. */
+/**
+ * The right-click menu entries for a photo's effects (and its mirroring and
+ * rotation, about `middle`, its box's middle), shown while it has a photo.
+ */
 export function photoMenuEntries(
   target: PhotoEffects,
   frame: () => ImageFrame | null,
+  middle: () => [number, number],
   memoryKey: string,
 ): MenuEntry[] {
   const hasPhoto = () => frame() !== null
@@ -599,6 +603,23 @@ export function photoMenuEntries(
           },
         },
       ],
+    },
+    {
+      kind: 'slider',
+      label: 'Rotation',
+      title: `Turn the photo; Shift snaps to ${ROTATE_SNAP}°, double-click for 0`,
+      visible: hasPhoto,
+      min: -180,
+      max: 180,
+      unit: '°',
+      resetValue: 0,
+      resetTitle: 'Reset rotation',
+      shiftSnap: ROTATE_SNAP,
+      value: () => Math.round(frame()?.rotation ?? 0),
+      set: (deg) => {
+        const f = frame()
+        if (f) rotateFrame(f, turnDegrees(Math.round(deg)), ...middle())
+      },
     },
     {
       kind: 'choices',

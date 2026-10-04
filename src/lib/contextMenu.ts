@@ -52,6 +52,10 @@ export interface MenuSlider extends MenuEntryBase {
   track?: string
   /** if given, double-clicking the slider sets this value */
   resetValue?: number
+  /** with resetValue: a button beside the slider that sets it, with this hover text */
+  resetTitle?: string
+  /** if given, sliding with Shift held snaps to multiples of this */
+  shiftSnap?: number
   /** range for typed values */
   min: number
   max: number

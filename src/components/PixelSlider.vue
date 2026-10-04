@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 
 // A slider paired with a number box, both editing the same pixel value.
 const props = withDefaults(
@@ -17,6 +17,8 @@ const props = withDefaults(
     track?: string
     /** if given, double-clicking the slider sets this value */
     resetValue?: number
+    /** if given, sliding with Shift held snaps to multiples of this */
+    shiftSnap?: number
   }>(),
   { min: 0, disabled: false, unit: 'px' },
 )
@@ -36,9 +38,23 @@ const stepIndex = computed(() => {
   return best
 })
 
+// whether Shift is held, from the latest key or pointer event (a slider's
+// input event doesn't say)
+let shift = false
+const trackShift = (e: KeyboardEvent | PointerEvent) => (shift = e.shiftKey)
+const SHIFT_EVENTS = ['keydown', 'keyup', 'pointerdown', 'pointermove'] as const
+onMounted(() => {
+  if (props.shiftSnap) for (const type of SHIFT_EVENTS) window.addEventListener(type, trackShift, true)
+})
+onBeforeUnmount(() => {
+  for (const type of SHIFT_EVENTS) window.removeEventListener(type, trackShift, true)
+})
+
 function onSlide(e: Event) {
   const value = Number((e.target as HTMLInputElement).value)
-  emit('update:modelValue', props.steps ? props.steps[value]! : value)
+  const snap = props.shiftSnap
+  if (snap && shift) emit('update:modelValue', Math.round(value / snap) * snap)
+  else emit('update:modelValue', props.steps ? props.steps[value]! : value)
 }
 
 function onInput(e: Event) {

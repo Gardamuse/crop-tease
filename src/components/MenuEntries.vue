@@ -46,9 +46,20 @@ const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : 
             :unit="item.unit"
             :track="item.track"
             :reset-value="item.resetValue"
+            :shift-snap="item.shiftSnap"
             :label="item.label"
             @update:model-value="item.set"
           />
+          <button
+            v-if="item.resetTitle && item.resetValue !== undefined"
+            class="reset"
+            :disabled="item.value() === item.resetValue"
+            :aria-label="item.resetTitle"
+            :title="item.resetTitle"
+            @click="item.set(item.resetValue)"
+          >
+            ⟲
+          </button>
         </div>
         <div v-else-if="item.kind === 'range'" class="range-row" :title="item.title">
           <RangeSlider
@@ -180,6 +191,25 @@ hr {
 
   &.linked {
     color: $accent-ink;
+  }
+}
+
+// sets the slider back, e.g. a rotation to 0; dim while it's already there
+.slider-row .reset {
+  padding: 0 3px;
+  margin: 0 -4px;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: $text-dim;
+
+  &:not(:disabled):hover {
+    color: $accent-ink;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    background: none;
+    cursor: default;
   }
 }
 

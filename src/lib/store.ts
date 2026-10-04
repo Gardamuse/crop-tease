@@ -378,7 +378,7 @@ export async function setPageSize(width: number, height: number): Promise<void> 
     for (const panel of computeLayout(page.layout, stageSize.value).panels) {
       const old = panel.leaf.frame
       const image = old && getImage(old.imageId)
-      if (image) panel.leaf.frame = { ...(await coverPanel(image, panel.bbox)), mirror: old.mirror }
+      if (image) panel.leaf.frame = { ...(await coverPanel(image, panel.bbox)), mirror: old.mirror, rotation: old.rotation }
     }
   }
 }

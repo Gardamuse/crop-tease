@@ -73,7 +73,12 @@ function onContextMenu(e: MouseEvent) {
       ? [{ label: 'Remove image', icon: '🗑', danger: true, action: () => clearPanelImage(leafId) }]
       : []),
     ...fillEntries(),
-    ...photoMenuEntries(props.panel.leaf, () => frame.value, `photo-${props.panel.leaf.id}`),
+    ...photoMenuEntries(
+      props.panel.leaf,
+      () => frame.value,
+      () => [props.panel.bbox.x + props.panel.bbox.w / 2, props.panel.bbox.y + props.panel.bbox.h / 2],
+      `photo-${props.panel.leaf.id}`,
+    ),
   ])
 }
 

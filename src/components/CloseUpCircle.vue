@@ -6,7 +6,7 @@ import { CLOSE_UP_PLACEHOLDER_COLOR } from '@/lib/constants'
 import { openContextMenu } from '@/lib/contextMenu'
 import { hasPhotoFilter, overlayBackground, photoMenuEntries } from '@/lib/photoEffects'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
-import { firstDroppedFile, frameTransform, frameTransformInFlippedBox, zoomFrame } from '@/lib/imageFrame'
+import { firstDroppedFile, frameTransformInRoundBox, roundBoxTransform, roundBoxUndo, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
 import { clamp } from '@/lib/math'
 import { screenCenter, trackPointer } from '@/lib/pointer'
@@ -142,7 +142,7 @@ function onContextMenu(e: MouseEvent) {
   selectElement(el.id)
   openContextMenu(e, [
     { label: el.frame ? 'Change image…' : 'Set image…', icon: '🖼', action: () => fileInput.value?.click() },
-    ...photoMenuEntries(el, () => el.frame, `photo-${el.id}`),
+    ...photoMenuEntries(el, () => el.frame, () => [el.d / 2, el.d / 2], `photo-${el.id}`),
     { kind: 'separator' },
     { label: 'Duplicate', icon: '⧉', action: () => duplicateElement(el.id) },
     { label: 'Delete close-up', icon: '🗑', danger: true, action: () => removeElement(el.id) },
@@ -214,14 +214,17 @@ async function useFile(file: File | undefined) {
       :style="{ inset: `${-dividerStageWidth}px`, background: store.border.color }"
     />
     <!-- the placeholder fill only when empty: behind a photo it would bleed through the clipped edge -->
-    <!-- A mirrored photo is shown by flipping this whole circle (the same
-         circle, flipped) rather than the photo inside it: browsers could
-         drop the circle's clip around a flipped photo at some zoom levels.
-         The overlay is flipped back, so it doesn't change. -->
+    <!-- A mirrored or turned photo is shown by flipping and turning this
+         whole circle (the same circle) rather than the photo inside it:
+         browsers could drop the circle's clip around a flipped or turned
+         photo at some zoom levels. The overlay is turned back, so it
+         doesn't change. -->
     <div
       class="clip"
-      :class="{ flipped: el.frame?.mirror }"
-      :style="{ background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR }"
+      :style="{
+        background: el.frame ? undefined : CLOSE_UP_PLACEHOLDER_COLOR,
+        transform: el.frame ? roundBoxTransform(el.frame) : undefined,
+      }"
     >
       <svg v-if="el.frame && hasPhotoFilter(el)" class="filter-defs" aria-hidden="true">
         <PhotoFilter :id="`photo-filter-circle-${el.id}`" :effects="el" :frame="el.frame" />
@@ -230,13 +233,17 @@ async function useFile(file: File | undefined) {
         v-if="el.frame"
         :src="el.frame.src"
         :style="{
-          transform: el.frame.mirror ? frameTransformInFlippedBox(el.frame, el.d) : frameTransform(el.frame),
+          transform: frameTransformInRoundBox(el.frame, el.d, el.d),
           filter: hasPhotoFilter(el) ? `url(#photo-filter-circle-${el.id})` : undefined,
         }"
         draggable="false"
       />
       <span v-else class="hint" v-bind="{ [NO_EXPORT_ATTR]: '' }">Click or drop<br />an image</span>
-      <div v-if="el.frame && el.overlay" class="overlay" :style="{ background: overlayBackground(el.overlay) }" />
+      <div
+        v-if="el.frame && el.overlay"
+        class="overlay"
+        :style="{ background: overlayBackground(el.overlay), transform: roundBoxUndo(el.frame) }"
+      />
     </div>
     <!-- inner outline drawn over the photo's edge; the ring disc below it is opaque, so no gap -->
     <div
@@ -302,15 +309,6 @@ async function useFile(file: File | undefined) {
   // layer of its own, as it may a mirrored or filtered one, and it could
   // then show outside the circle at some zoom levels.
   clip-path: circle(50%);
-
-  // a mirrored photo (see the template)
-  &.flipped {
-    transform: scaleX(-1);
-
-    .overlay {
-      transform: scaleX(-1);
-    }
-  }
 
   img {
     position: absolute;

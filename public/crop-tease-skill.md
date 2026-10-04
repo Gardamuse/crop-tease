@@ -325,8 +325,9 @@ Only fill `frame` when you have the actual image files to pack into the
   "natW": 3000, "natH": 2000,  // the image's pixel size
   "baseScale": 0.41,     // the "cover" scale for its box; zoom is limited to 0.1x..5x of this
   "scale": 0.41,         // current scale (image pixels -> stage units)
-  "tx": -265, "ty": 0,   // where the image's top-left corner lands
-  "mirror": false        // optional: true flips the image left to right, in the same spot
+  "tx": -265, "ty": 0,   // where the image's top-left corner lands (before rotation)
+  "mirror": false,       // optional: true flips the image left to right, in the same spot
+  "rotation": 0          // optional: degrees clockwise the image is turned about its own middle, -180..180
 }
 ```
 

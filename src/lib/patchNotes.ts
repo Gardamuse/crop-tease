@@ -4,6 +4,7 @@ export const PATCH_NOTES: { version: string; notes: string[] }[] = [
     version: '1.2.0-beta.3',
     notes: [
       "Levels, Color balance and Color splash in a photo's right-click menu have a new None choice, which turns that filter off for the photo even when the Filters section sets one for all photos. The choices now read None, Local, Global.",
+      "Rotate a photo with the Rotation slider in its right-click menu; Shift snaps to 15°, and the ⟲ button or a double-click on the slider straightens it.",
     ],
   },
   {
