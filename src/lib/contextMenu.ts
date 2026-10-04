@@ -34,13 +34,9 @@ export interface MenuChoices extends MenuEntryBase {
 export interface MenuChoice {
   /** a function to keep it up to date while the menu is open */
   label: string | (() => string)
-  /** a color square instead of (or with) the label */
-  swatch?: string
   title?: string
   active?: () => boolean
   pick: () => void
-  /** makes this a custom-color swatch that opens the color picker */
-  pickColor?: { value: () => string; set: (color: string) => void }
 }
 
 /** A labeled slider + number box (in px, or `unit`) that stays open while used. */
@@ -104,6 +100,21 @@ export interface MenuSelect extends MenuEntryBase {
   set: (value: string) => void
 }
 
+/** A labeled color row (see ColorChoices): ink and white, the project's colors, and the color picker. */
+export interface MenuColor extends MenuEntryBase {
+  kind: 'color'
+  label: string
+  /** which setting this is (see projectColors), so its own color isn't counted */
+  ownKey: string
+  /** a choice for null: 'none' or 'auto' (a placeholder color) */
+  none?: 'none' | 'auto'
+  noneTitle?: string
+  /** where the picker starts while the value is null */
+  startColor?: () => string
+  value: () => string | null
+  set: (color: string | null) => void
+}
+
 export interface MenuSeparator extends MenuEntryBase {
   kind: 'separator'
 }
@@ -143,6 +154,7 @@ export type MenuEntry =
   | MenuSlider
   | MenuRange
   | MenuSelect
+  | MenuColor
   | MenuSeparator
 
 /**

@@ -11,7 +11,6 @@ import PixelSlider from './PixelSlider.vue'
 import RecentProjects from './RecentProjects.vue'
 import UiIcon from './UiIcon.vue'
 import {
-  COLOR_PRESETS,
   FONT_SIZE_STEPS,
   MAX_BORDER_WIDTH,
   MAX_DIVIDER_WIDTH,
@@ -346,10 +345,10 @@ onBeforeUnmount(() => {
           <PixelSlider v-model="dividerWidth" :max="MAX_DIVIDER_WIDTH" label="Divider thickness" />
 
           <span class="field-label" title="Applies to the border and dividers">Color</span>
-          <ColorChoices v-model="lineColor" :presets="COLOR_PRESETS" label="Line color" />
+          <ColorChoices v-model="lineColor" own-key="border" align-none label="Line color" />
 
           <span class="field-label" title="A line along both sides of the border and dividers">Outline</span>
-          <ColorChoices v-model="store.border.outlineColor" :presets="COLOR_PRESETS" allow-none label="Outline color" />
+          <ColorChoices v-model="store.border.outlineColor" own-key="outline" none="none" label="Outline color" />
 
           <template v-if="store.border.outlineColor">
             <span />

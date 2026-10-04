@@ -43,23 +43,14 @@ export const DEFAULT_CLOSE_UPS = {
   /** clip close-ups at the inner edge of the page border instead of drawing over it */
   withinBorder: false,
 }
-export const COLOR_PRESETS = [
-  { label: 'Black', color: '#000000' },
-  { label: 'White', color: '#ffffff' },
-]
 
 // flat fills shown where no image has been set yet; panels cycle through the list
 export const PANEL_PLACEHOLDER_COLORS = ['#f4b6d2', '#a9dede', '#cbbcf2', '#fbeaa0', '#b9e5bf', '#f7c3a3']
 
-/** the preset colors offered for overlays and empty panels (a custom one can be picked too) */
-export const SWATCH_COLORS = [
-  { label: 'Black', color: '#000000' },
-  { label: 'White', color: '#ffffff' },
-  { label: 'Wine', color: '#7b2649' },
-  { label: 'Pink', color: '#ff6fb0' },
-  { label: 'Teal', color: '#78d2d2' },
-]
 export const CLOSE_UP_PLACEHOLDER_COLOR = '#ffd9a8'
+
+/** the app's dark purple, the first color in every color row and new text's and overlays' color */
+export const INK = '#241b30'
 
 export type TextStyle = 'none' | 'speech' | 'square'
 export const TEXT_STYLES: { value: TextStyle; label: string }[] = [
@@ -113,8 +104,6 @@ export const MIN_TYPED_FONT_PX = 1
 export const MAX_TYPED_FONT_PX = 1000
 /** the project's text size (store.textSize) to begin with, in stage units */
 export const DEFAULT_TEXT_SIZE = 20
-
-export const TEXT_PALETTE = ['#241b30', '#ffffff', '#ff6fb0', '#78d2d2', '#de3c8d']
 
 export interface TextFont {
   label: string

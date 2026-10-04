@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import CustomColorSwatch from './CustomColorSwatch.vue'
 import type { MenuChoice } from '@/lib/contextMenu'
 
-// A menu row's choices: color swatches, a grid of small buttons (e.g. a
-// speech bubble's tail spots), or else one segmented control, its active
-// choice raised.
+// A menu row's choices: a grid of small buttons (e.g. a speech bubble's
+// tail spots), or else one segmented control, its active choice raised.
+// (Colors have their own row, ColorChoices.)
 const props = defineProps<{
   options: (MenuChoice | null)[]
   label: string
@@ -20,7 +19,7 @@ const emit = defineEmits<{
 
 const labelOf = (o: MenuChoice) => (typeof o.label === 'function' ? o.label() : o.label)
 
-const segmented = computed(() => !props.columns && props.options.every((o) => o && !o.swatch && !o.pickColor))
+const segmented = computed(() => !props.columns)
 
 function pick(o: MenuChoice) {
   o.pick()
@@ -38,25 +37,16 @@ function pick(o: MenuChoice) {
   >
     <template v-for="(o, j) in options" :key="j">
       <span v-if="!o" class="spacer" />
-      <CustomColorSwatch
-        v-else-if="o.pickColor"
-        class="custom-color"
-        :model-value="o.pickColor.value()"
-        :active="o.active?.() ?? false"
-        :label="o.title ?? labelOf(o)"
-        @update:model-value="o.pickColor.set"
-      />
       <button
         v-else
         role="menuitemradio"
         :aria-checked="o.active?.() ?? false"
         :aria-label="o.title ?? labelOf(o)"
         :title="o.title ?? labelOf(o)"
-        :class="{ active: o.active?.(), swatch: o.swatch }"
-        :style="o.swatch ? { background: o.swatch } : undefined"
+        :class="{ active: o.active?.() }"
         @click="pick(o)"
       >
-        <template v-if="!o.swatch">{{ labelOf(o) }}</template>
+        {{ labelOf(o) }}
       </button>
     </template>
   </div>
@@ -85,32 +75,28 @@ function pick(o: MenuChoice) {
     }
   }
 
-  // a word among swatches (e.g. Auto), or the small separate buttons of a grid (e.g. the tail spots)
-  &:not(.segmented) button:not(.swatch) {
-    height: 22px;
-    padding: 0 8px;
-    border: 1px solid $line;
-    color: $text-dim;
-
-    &:hover {
-      color: $text-main;
-      background: $accent-soft;
-    }
-
-    &.active {
-      border-color: $accent;
-      color: $accent-ink;
-      background: $accent-soft;
-    }
-  }
-
+  // small separate buttons, e.g. the tail spots
   &.grid {
     display: grid;
     gap: 2px;
 
     button {
       min-width: 26px;
+      height: 22px;
       padding: 0 4px;
+      border: 1px solid $line;
+      color: $text-dim;
+
+      &:hover {
+        color: $text-main;
+        background: $accent-soft;
+      }
+
+      &.active {
+        border-color: $accent;
+        color: $accent-ink;
+        background: $accent-soft;
+      }
     }
   }
 
@@ -138,42 +124,6 @@ function pick(o: MenuChoice) {
         color: $accent-ink;
         box-shadow: 0 1px 2px rgba($shade, 0.18);
       }
-    }
-  }
-
-  button.swatch {
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    border: 1px solid rgba($shade, 0.25);
-    border-radius: 50%;
-
-    &.active {
-      box-shadow:
-        0 0 0 2px $bg-panel-alt,
-        0 0 0 3px $accent,
-        0 0 10px $accent-dim;
-    }
-  }
-
-  // a swatch like the others (a rainbow until a custom color is chosen), opening the color picker
-  .custom-color {
-    flex: none;
-    width: 22px;
-    height: 22px;
-    border: 1px solid rgba($shade, 0.25);
-    border-radius: 50%;
-
-    &:hover,
-    &:focus-visible {
-      background: none;
-    }
-
-    &.active {
-      box-shadow:
-        0 0 0 2px $bg-panel-alt,
-        0 0 0 3px $accent,
-        0 0 10px $accent-dim;
     }
   }
 }

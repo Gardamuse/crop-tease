@@ -148,7 +148,7 @@ function onContextMenu(e: MouseEvent) {
         { label: 'Remove image', icon: 'close', danger: true, visible: () => !!el.frame, action: () => (el.frame = null) },
       ],
     },
-    ...photoMenuEntries(el, () => el.frame, () => [el.d / 2, el.d / 2], `photo-${el.id}`),
+    ...photoMenuEntries(el, () => el.frame, () => [el.d / 2, el.d / 2], el.id),
     { kind: 'separator' },
     { label: 'Duplicate', icon: 'duplicate', action: () => duplicateElement(el.id) },
     { label: 'Delete close-up', icon: 'trash', danger: true, action: () => removeElement(el.id) },

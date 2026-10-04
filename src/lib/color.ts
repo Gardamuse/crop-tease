@@ -49,3 +49,19 @@ export function hsvToHex({ h, s, v }: Hsv): string {
   }
   return `#${[f(5), f(3), f(1)].map((c) => Math.round(c * 255).toString(16).padStart(2, '0')).join('')}`
 }
+
+/**
+ * HSL's saturation and lightness (0-1) for a color given as HSV; the hue is
+ * the same in both. At black or white HSL's saturation is undefined: 0.
+ */
+export function hsvToHsl({ s, v }: Hsv): { s: number; l: number } {
+  const l = v * (1 - s / 2)
+  const m = Math.min(l, 1 - l)
+  return { s: m > 0 ? (v - l) / m : 0, l }
+}
+
+/** The HSV saturation and value of a color given as HSL's saturation and lightness (0-1). */
+export function hslToHsv(s: number, l: number): { s: number; v: number } {
+  const v = l + s * Math.min(l, 1 - l)
+  return { s: v > 0 ? 2 * (1 - l / v) : 0, v }
+}

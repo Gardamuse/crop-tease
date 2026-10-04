@@ -271,8 +271,9 @@ Text that doesn't fit is cut off at the box edge, so size boxes generously:
 roughly, one line is `1.25 * fontSize` tall, and a character is about
 `0.55 * fontSize` wide in the classic font. Add the padding and the border.
 
-Text color palette used by the app: `#241b30` (ink), `#ffffff`, `#ff6fb0`,
-`#78d2d2`, `#de3c8d`.
+New text is ink (`#241b30`, a dark purple). The app's color rows offer ink and white,
+then the colors the project already uses most, so reusing a few colors keeps
+them at hand.
 
 ### Page numbers
 

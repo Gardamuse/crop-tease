@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
-import { SWATCH_COLORS } from './constants'
 import type { MenuChoice, MenuEntry } from './contextMenu'
+import { INK } from './constants'
 import { rotateFrame, type ImageFrame } from './imageFrame'
 import { clamp, ROTATE_SNAP, turnDegrees } from './math'
 import { stageSize, store } from './store'
@@ -574,13 +574,15 @@ export function photoMenuEntries(
   target: PhotoEffects,
   frame: () => ImageFrame | null,
   middle: () => [number, number],
-  memoryKey: string,
+  /** the panel's or close-up's id */
+  id: number,
 ): MenuEntry[] {
+  const memoryKey = `photo-${id}`
   const hasPhoto = () => frame() !== null
   // like levels and color balance, an overlay set to None this session comes back as it was
   const memory = `${memoryKey}:overlay`
   const set = (change: Partial<ImageOverlay>) => {
-    const fresh: ImageOverlay = { from: 'top', angle: 0, color: SWATCH_COLORS[0]!.color, ...DEFAULT_OVERLAY }
+    const fresh: ImageOverlay = { from: 'top', angle: 0, color: INK, ...DEFAULT_OVERLAY }
     const start = target.overlay ?? (switchedOff.get(memory) as ImageOverlay | undefined) ?? fresh
     target.overlay = { ...copy(start), ...change }
   }
@@ -589,7 +591,6 @@ export function photoMenuEntries(
     switchedOff.set(memory, copy(target.overlay))
     target.overlay = null
   }
-  const isPreset = () => SWATCH_COLORS.some((c) => c.color === target.overlay?.color.toLowerCase())
   return [
     { kind: 'separator', visible: hasPhoto },
     {
@@ -686,22 +687,11 @@ export function photoMenuEntries(
           set: (pct) => set({ strength: clamp(pct, 5, 100) }),
         },
         {
-          kind: 'choices',
+          kind: 'color',
           label: 'Color',
-          options: [
-            ...SWATCH_COLORS.map((c) => ({
-              label: c.label,
-              swatch: c.color,
-              active: () => target.overlay?.color.toLowerCase() === c.color,
-              pick: () => set({ color: c.color }),
-            })),
-            {
-              label: 'Custom color',
-              active: () => target.overlay !== null && !isPreset(),
-              pick: () => {},
-              pickColor: { value: () => target.overlay?.color ?? '#000000', set: (color: string) => set({ color }) },
-            },
-          ],
+          ownKey: `overlay:${id}`,
+          value: () => target.overlay?.color ?? INK,
+          set: (color) => set({ color: color ?? INK }),
         },
       ],
     },

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
+import ColorChoices from './ColorChoices.vue'
 import MenuChoiceButtons from './MenuChoiceButtons.vue'
 import MenuDropdown from './MenuDropdown.vue'
 import PixelSlider from './PixelSlider.vue'
@@ -133,6 +134,18 @@ function onSwitched(g: MenuGroup) {
           <span class="row-label">{{ item.label }}</span>
           <MenuChoiceButtons :options="item.options" :label="item.label" :columns="item.columns" />
         </div>
+        <div v-else-if="item.kind === 'color'" class="choices-row">
+          <span class="row-label">{{ item.label }}</span>
+          <ColorChoices
+            :model-value="item.value()"
+            :label="item.label"
+            :own-key="item.ownKey"
+            :none="item.none"
+            :none-title="item.noneTitle"
+            :start-color="item.startColor?.()"
+            @update:model-value="item.set"
+          />
+        </div>
         <div v-else-if="item.kind === 'select'" class="choices-row">
           <span class="row-label">{{ item.label }}</span>
           <MenuDropdown :model-value="item.value()" :options="item.options" :label="item.label" @update:model-value="item.set" />
@@ -149,6 +162,8 @@ function onSwitched(g: MenuGroup) {
 .menu-entries {
   display: flex;
   flex-direction: column;
+  // the menu's background, for the ring around a chosen color
+  --swatch-gap: #{$bg-panel-alt};
 }
 
 button {

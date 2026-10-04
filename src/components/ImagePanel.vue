@@ -3,7 +3,6 @@ import { computed, ref, useTemplateRef } from 'vue'
 
 import PhotoFilter from './PhotoFilter.vue'
 import { isDark } from '@/lib/color'
-import { SWATCH_COLORS } from '@/lib/constants'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { firstDroppedFile, frameTransform, zoomFrame } from '@/lib/imageFrame'
 import { addImageFile } from '@/lib/images'
@@ -80,37 +79,28 @@ function onContextMenu(e: MouseEvent) {
       props.panel.leaf,
       () => frame.value,
       () => [props.panel.bbox.x + props.panel.bbox.w / 2, props.panel.bbox.y + props.panel.bbox.h / 2],
-      `photo-${props.panel.leaf.id}`,
+      props.panel.leaf.id,
     ),
   ])
 }
 
-// Without a photo, the panel's color: its placeholder color (Auto), a
-// preset or a custom one.
+// Without a photo, the panel's color: its placeholder color (Auto), or
+// one of its own.
 function fillEntries(): MenuEntry[] {
   const leaf = props.panel.leaf
   const empty = () => !frame.value
   return [
     { kind: 'separator', visible: empty },
     {
-      kind: 'choices',
+      kind: 'color',
       label: 'Color',
       visible: empty,
-      options: [
-        { label: 'Auto', title: 'A placeholder color', active: () => leaf.fill === null, pick: () => (leaf.fill = null) },
-        ...SWATCH_COLORS.map((c) => ({
-          label: c.label,
-          swatch: c.color,
-          active: () => leaf.fill === c.color,
-          pick: () => (leaf.fill = c.color),
-        })),
-        {
-          label: 'Custom color',
-          active: () => leaf.fill !== null && !SWATCH_COLORS.some((c) => c.color === leaf.fill),
-          pick: () => {},
-          pickColor: { value: () => fillColor.value, set: (color: string) => (leaf.fill = color) },
-        },
-      ],
+      ownKey: `fill:${leaf.id}`,
+      none: 'auto',
+      noneTitle: 'A placeholder color',
+      startColor: () => fillColor.value,
+      value: () => leaf.fill,
+      set: (color) => (leaf.fill = color),
     },
   ]
 }

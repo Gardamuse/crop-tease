@@ -3,9 +3,9 @@ import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import {
   FONT_SIZE_STEPS,
+  INK,
   MAX_TYPED_FONT_PX,
   MIN_TYPED_FONT_PX,
-  TEXT_PALETTE,
   TEXT_STYLES,
   type TailPosition,
 } from '@/lib/constants'
@@ -319,22 +319,11 @@ function onContextMenu(e: MouseEvent) {
       set: (deg) => (el.rot = turnDegrees(deg)),
     },
     {
-      kind: 'choices',
+      kind: 'color',
       label: 'Color',
-      options: [
-        ...TEXT_PALETTE.map((c) => ({
-          label: c,
-          swatch: c,
-          active: () => el.color.toLowerCase() === c,
-          pick: () => (el.color = c),
-        })),
-        {
-          label: 'Custom color',
-          active: () => !TEXT_PALETTE.includes(el.color.toLowerCase()),
-          pick: () => {},
-          pickColor: { value: () => el.color, set: (color: string) => (el.color = color) },
-        },
-      ],
+      ownKey: `text:${el.id}`,
+      value: () => el.color,
+      set: (color) => (el.color = color ?? INK),
     },
     {
       kind: 'select',

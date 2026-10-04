@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 
-import { hexToHsv, hsvToHex, normalizeHex, type Hsv } from '@/lib/color'
+import PixelSlider from './PixelSlider.vue'
+import { hexToHsv, hslToHsv, hsvToHex, hsvToHsl, normalizeHex, type Hsv } from '@/lib/color'
 import { clamp } from '@/lib/math'
 
-// The app's own color picker: a saturation/brightness square, a hue bar and
-// a hex field. The color changes as either is dragged, so there's nothing to
-// confirm.
+// The app's own color picker: a saturation/brightness square, a hue bar, a
+// hex field, and hue, saturation and lightness (HSL) sliders for fine
+// tweaks. The color changes as any is used, so there's nothing to confirm.
 const props = defineProps<{ modelValue: string }>()
 const emit = defineEmits<{ 'update:modelValue': [color: string] }>()
 
@@ -25,6 +26,35 @@ watch(
 
 const hex = computed(() => hsvToHex(hsv.value))
 const hueColor = computed(() => hsvToHex({ h: hsv.value.h, s: 1, v: 1 }))
+
+// HSL, from the HSV kept above. At black or white HSL's saturation has no
+// meaning, so the last one is kept for when the lightness comes back.
+let lastHslS = hsvToHsl(hsv.value).s
+const hsl = computed(() => {
+  const { s, l } = hsvToHsl(hsv.value)
+  const extreme = l <= 0 || l >= 1
+  return { h: hsv.value.h, s: extreme ? lastHslS : s, l }
+})
+watch(hsl, ({ s, l }) => {
+  if (l > 0 && l < 1) lastHslS = s
+})
+
+function setHsl(change: { h?: number; s?: number; l?: number }) {
+  const next = { ...hsl.value, ...change }
+  lastHslS = next.s
+  set({ h: next.h, ...hslToHsv(next.s, next.l) })
+}
+
+// each slider's track: the range it runs through, the other two as they are
+const hslTracks = computed(() => {
+  const { h, s, l } = hsl.value
+  const css = (h2: number, s2: number, l2: number) => `hsl(${h2} ${s2 * 100}% ${l2 * 100}%)`
+  return {
+    h: `linear-gradient(to right, ${[0, 60, 120, 180, 240, 300, 360].map((x) => css(x, s, l)).join(', ')})`,
+    s: `linear-gradient(to right, ${css(h, 0, l)}, ${css(h, 1, l)})`,
+    l: `linear-gradient(to right, #000, ${css(h, s, 0.5)}, #fff)`,
+  }
+})
 
 function set(change: Partial<Hsv>) {
   hsv.value = { ...hsv.value, ...change }
@@ -124,6 +154,35 @@ function onHex(e: Event) {
         @keydown.enter="onHex"
       />
     </div>
+    <div class="hsl">
+      <span class="hsl-label" title="Hue">H</span>
+      <PixelSlider
+        :model-value="Math.round(hsl.h)"
+        :max="359"
+        unit="°"
+        :track="hslTracks.h"
+        label="Hue"
+        @update:model-value="setHsl({ h: (($event % 360) + 360) % 360 })"
+      />
+      <span class="hsl-label" title="Saturation">S</span>
+      <PixelSlider
+        :model-value="Math.round(hsl.s * 100)"
+        :max="100"
+        unit="%"
+        :track="hslTracks.s"
+        label="Saturation"
+        @update:model-value="setHsl({ s: clamp($event, 0, 100) / 100 })"
+      />
+      <span class="hsl-label" title="Lightness">L</span>
+      <PixelSlider
+        :model-value="Math.round(hsl.l * 100)"
+        :max="100"
+        unit="%"
+        :track="hslTracks.l"
+        label="Lightness"
+        @update:model-value="setHsl({ l: clamp($event, 0, 100) / 100 })"
+      />
+    </div>
   </div>
 </template>
 
@@ -132,7 +191,31 @@ function onHex(e: Event) {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 208px;
+  width: 224px;
+}
+
+// a letter, then a slider with its number box, per row
+.hsl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 8px;
+  padding-top: 8px;
+  border-top: 1px solid $line;
+
+  .hsl-label {
+    @include micro-label;
+    width: 1em;
+  }
+
+  :deep(.pixel-slider) {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  :deep(input[type='number']) {
+    width: 58px;
+  }
 }
 
 .square {
