@@ -8,6 +8,7 @@ import { computeLayout } from '@/lib/layout'
 import { hasPhotoFilter, overlayGradient } from '@/lib/photoEffects'
 import { fontVars } from '@/lib/textFonts'
 import {
+  barStageWidth,
   dividerStageWidth,
   pageBorderWidth,
   panelFill,
@@ -127,7 +128,7 @@ const clipId = (kind: string, id: number) => `thumb-${page.id}-${kind}-${id}`
       :x2="b.b[0]"
       :y2="b.b[1]"
       :stroke="store.border.color"
-      :stroke-width="dividerStageWidth"
+      :stroke-width="barStageWidth(b.bar)"
     />
     <rect
       v-if="border > 0"

@@ -139,6 +139,9 @@ A **split** cuts a region in two with one straight bar:
 }
 ```
 
+A bar can also have `"width"`: its own thickness in output pixels, 0..100
+(null or missing: the project's divider width, `border.dividerWidth`).
+
 The root region is the whole page. Each split cuts the region it sits in (a
 convex polygon) along the straight line from end `a` to end `b`, so every
 panel is a convex polygon. A single-panel page is just a leaf.

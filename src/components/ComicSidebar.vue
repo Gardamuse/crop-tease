@@ -342,7 +342,7 @@ onBeforeUnmount(() => {
           <span class="field-label" title="Runs around the page edge">Border</span>
           <PixelSlider v-model="borderWidth" :max="MAX_BORDER_WIDTH" label="Border width" />
 
-          <span class="field-label" title="The split bars and close-up rings">Dividers</span>
+          <span class="field-label" title="The split bars (except those with a width of their own) and close-up rings">Dividers</span>
           <PixelSlider v-model="dividerWidth" :max="MAX_DIVIDER_WIDTH" label="Divider thickness" />
 
           <span class="field-label" title="Applies to the border and dividers">Color</span>

@@ -13,6 +13,7 @@ export const PATCH_NOTES: { version: string; notes: string[] }[] = [
       "The overlay's Rotate slider is now called Angle.",
       'The Font dropdown in the text right-click menu now shows each font in its own typeface.',
       'Fonts are now listed by name, after Classic, in the Text section and the Font dropdown.',
+      'A divider can now have its own width: right-click it and choose Local.',
       'Added Color splash, which turns a photo gray except for one color (right-click the photo, or the Filters section for all photos).',
       "Levels, Color balance and Color splash in a photo's right-click menu can now be set to None, which turns off the Filters section's for that photo.",
       'Fixed: splitting a panel could open the image picker.',

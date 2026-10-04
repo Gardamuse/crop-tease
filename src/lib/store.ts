@@ -35,6 +35,7 @@ import {
   pointInPoly,
   replaceNode,
   shareEdge,
+  type Bar,
   type Leaf,
   type Point,
   type Region,
@@ -117,7 +118,7 @@ function newLeaf(frame: ImageFrame | null = null): Leaf {
 function starterLayout(): Region {
   return {
     kind: 'split',
-    bar: { id: nextId++, a: { host: 'border', t: 0.5 }, b: { host: 'border', t: 2.5 } },
+    bar: { id: nextId++, a: { host: 'border', t: 0.5 }, b: { host: 'border', t: 2.5 }, width: null },
     front: newLeaf(),
     back: newLeaf(),
   }
@@ -301,8 +302,13 @@ export function togglePageBorder(index: number): void {
   if (!page.border && index === store.pageIndex && store.selectedId === store.pageNumber?.id) store.selectedId = null
 }
 
-/** The split bars' and close-up rings' width in stage units. */
+/** The split bars' (those without their own) and close-up rings' width in stage units. */
 export const dividerStageWidth = computed(() => store.border.dividerWidth / stageSize.value.exportScale)
+
+/** A split bar's width in stage units: its own, or the project's. */
+export function barStageWidth(bar: Bar): number {
+  return bar.width === null ? dividerStageWidth.value : bar.width / stageSize.value.exportScale
+}
 
 /** The border outline's color and width in stage units, or null for none. */
 export const outlineStyle = computed(() => {
@@ -401,6 +407,11 @@ export function setOutlineWidth(width: number): void {
 
 export function setDividerWidth(width: number): void {
   store.border.dividerWidth = Math.round(clamp(width, 0, MAX_DIVIDER_WIDTH))
+}
+
+/** Gives a split bar its own width (output pixels), or null to follow the project's. */
+export function setBarWidth(bar: Bar, width: number | null): void {
+  bar.width = width === null ? null : Math.round(clamp(width, 0, MAX_DIVIDER_WIDTH))
 }
 
 export function selectElement(id: number): void {
@@ -557,6 +568,7 @@ export function splitPanelAt(point: Point, freshSide?: SplitSide): boolean {
     id: nextId++,
     a: anchorAt(chord.a.host, chord.a.point, segs, size),
     b: anchorAt(chord.b.host, chord.b.point, segs, size),
+    width: null,
   }
   // the existing photo stays on the other side
   const kept = panel.leaf

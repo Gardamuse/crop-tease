@@ -2,11 +2,22 @@
 import { computed, ref, useTemplateRef } from 'vue'
 
 import ElementHandle from './ElementHandle.vue'
-import { openContextMenu } from '@/lib/contextMenu'
+import { openContextMenu, type MenuEntry } from '@/lib/contextMenu'
 import { NO_EXPORT_ATTR } from '@/lib/exportImage'
 import { centroid, type BarGeom, type Point } from '@/lib/layout'
 import { trackPointer } from '@/lib/pointer'
-import { dividerStageWidth, layout, moveBarEnd, removeBar, selectBar, stageSize, store, translateBar } from '@/lib/store'
+import { MAX_DIVIDER_WIDTH } from '@/lib/constants'
+import {
+  barStageWidth,
+  layout,
+  moveBarEnd,
+  removeBar,
+  selectBar,
+  setBarWidth,
+  stageSize,
+  store,
+  translateBar,
+} from '@/lib/store'
 
 const props = defineProps<{
   /** where a split would go while picking a panel to split, and the side that would become the new panel */
@@ -42,15 +53,61 @@ const bars = computed(() =>
         y2: g.b[1] + uy * OVERSHOOT,
       },
       mid: [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2] as Point,
+      width: barStageWidth(g.bar),
     }
   }),
 )
 
 const selectedBar = computed(() => bars.value.find((b) => b.id === store.selectedBarId))
 
+// a bar's own width set back to Global this session, by bar id: Local brings it back
+const switchedOff = new Map<number, number>()
+
 function onBarContextMenu(e: MouseEvent, id: number) {
   selectBar(id)
-  openContextMenu(e, [{ label: 'Delete divider', icon: 'trash', danger: true, action: () => removeBar(id) }])
+  const bar = layout.value.bars.find((g) => g.bar.id === id)?.bar
+  if (!bar) return
+  const entries: MenuEntry[] = [
+    {
+      kind: 'group',
+      label: 'Width',
+      on: () => bar.width !== null,
+      options: [
+        {
+          label: 'Local',
+          title: 'A width for this divider only',
+          active: () => bar.width !== null,
+          pick: () => {
+            if (bar.width === null) setBarWidth(bar, switchedOff.get(id) ?? store.border.dividerWidth)
+          },
+        },
+        {
+          label: 'Global',
+          title: `Follow the project's (${store.border.dividerWidth} px, in the sidebar's Lines section)`,
+          active: () => bar.width === null,
+          pick: () => {
+            if (bar.width === null) return
+            switchedOff.set(id, bar.width)
+            setBarWidth(bar, null)
+          },
+        },
+      ],
+      entries: [
+        {
+          kind: 'slider',
+          label: 'Divider',
+          title: 'This divider\'s thickness',
+          min: 0,
+          max: MAX_DIVIDER_WIDTH,
+          value: () => bar.width ?? store.border.dividerWidth,
+          set: (px) => setBarWidth(bar, px),
+        },
+      ],
+    },
+    { kind: 'separator' },
+    { label: 'Delete divider', icon: 'trash', danger: true, action: () => removeBar(id) },
+  ]
+  openContextMenu(e, entries)
 }
 
 /** Pointer position in stage coordinates. */
@@ -100,7 +157,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
       v-bind="b.line"
       :clip-path="`url(#${b.clipId})`"
       :stroke="store.border.color"
-      :stroke-width="dividerStageWidth"
+      :stroke-width="b.width"
     />
     <g v-bind="{ [NO_EXPORT_ATTR]: '' }">
       <line
@@ -110,7 +167,7 @@ function dragBar(e: PointerEvent, geom: BarGeom) {
         class="bar-hit"
         :class="{ active: b.id === store.selectedBarId || b.id === hoverId }"
         :clip-path="`url(#${b.clipId})`"
-        :stroke-width="Math.max(36, dividerStageWidth + 16)"
+        :stroke-width="Math.max(36, b.width + 16)"
         @pointerenter="hoverId = b.id"
         @pointerleave="hoverId = null"
         @pointerdown.prevent.stop="dragBar($event, b.geom)"

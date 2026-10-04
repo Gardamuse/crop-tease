@@ -33,6 +33,8 @@ export interface Bar {
   id: number
   a: Anchor
   b: Anchor
+  /** its own width in output pixels, or null to follow the project's (store.border.dividerWidth) */
+  width: number | null
 }
 
 /** A panel; its photo effects stay when the photo changes. */

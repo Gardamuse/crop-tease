@@ -139,7 +139,7 @@ type SavedRegion =
   | z.infer<typeof LeafSchema>
   | {
       kind: 'split'
-      bar: { id: number; a: z.infer<typeof AnchorSchema>; b: z.infer<typeof AnchorSchema> }
+      bar: { id: number; a: z.infer<typeof AnchorSchema>; b: z.infer<typeof AnchorSchema>; width: number | null }
       front: SavedRegion
       back: SavedRegion
     }
@@ -149,7 +149,12 @@ const RegionSchema: z.ZodType<SavedRegion> = z.lazy(() =>
     LeafSchema,
     z.object({
       kind: z.literal('split'),
-      bar: z.object({ id: z.number().int(), a: AnchorSchema, b: AnchorSchema }),
+      bar: z.object({
+        id: z.number().int(),
+        a: AnchorSchema,
+        b: AnchorSchema,
+        width: z.number().min(0).max(MAX_DIVIDER_WIDTH).nullable().default(null), // added later
+      }),
       front: RegionSchema,
       back: RegionSchema,
     }),
@@ -297,7 +302,7 @@ function saveRegion(node: Region): SavedRegion {
   }
   return {
     kind: 'split',
-    bar: { id: node.bar.id, a: { ...node.bar.a }, b: { ...node.bar.b } },
+    bar: { id: node.bar.id, a: { ...node.bar.a }, b: { ...node.bar.b }, width: node.bar.width },
     front: saveRegion(node.front),
     back: saveRegion(node.back),
   }
