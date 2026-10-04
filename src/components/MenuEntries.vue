@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 
 import MenuChoiceButtons from './MenuChoiceButtons.vue'
+import MenuDropdown from './MenuDropdown.vue'
 import PixelSlider from './PixelSlider.vue'
 import RangeSlider from './RangeSlider.vue'
 import UiIcon from './UiIcon.vue'
@@ -132,19 +133,10 @@ function onSwitched(g: MenuGroup) {
           <span class="row-label">{{ item.label }}</span>
           <MenuChoiceButtons :options="item.options" :label="item.label" :columns="item.columns" />
         </div>
-        <label v-else-if="item.kind === 'select'" class="choices-row">
+        <div v-else-if="item.kind === 'select'" class="choices-row">
           <span class="row-label">{{ item.label }}</span>
-          <select
-            class="select"
-            :value="item.value()"
-            :style="{ fontFamily: item.options.find((o) => o.value === item.value())?.fontFamily }"
-            @change="item.set(($event.target as HTMLSelectElement).value)"
-          >
-            <option v-for="o in item.options" :key="o.value" :value="o.value" :style="{ fontFamily: o.fontFamily }">
-              {{ o.label }}
-            </option>
-          </select>
-        </label>
+          <MenuDropdown :model-value="item.value()" :options="item.options" :label="item.label" @update:model-value="item.set" />
+        </div>
         <button v-else role="menuitem" class="item" :class="{ danger: item.danger }" @click="emit('run', item)">
           <UiIcon v-if="item.icon" :name="item.icon" class="icon" /><span v-else class="icon" />{{ item.label }}
         </button>
@@ -265,14 +257,6 @@ hr {
   justify-content: space-between;
   gap: 10px;
   padding: 4px 6px 4px 10px;
-}
-
-.select {
-  @include field;
-  min-width: 0;
-  max-width: 190px;
-  padding: 4px 6px;
-  font-size: 0.85rem;
 }
 
 .row-label {

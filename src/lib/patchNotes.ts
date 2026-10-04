@@ -11,6 +11,7 @@ export const PATCH_NOTES: { version: string; notes: string[] }[] = [
       'Photo effects in the right-click menu and the Filters section now fold under their headings, showing their settings on one line until opened.',
       "Added Remove image to a close-up's right-click menu.",
       "The overlay's Rotate slider is now called Angle.",
+      'The Font dropdown in the text right-click menu now shows each font in its own typeface.',
       'Added Color splash, which turns a photo gray except for one color (right-click the photo, or the Filters section for all photos).',
       "Levels, Color balance and Color splash in a photo's right-click menu can now be set to None, which turns off the Filters section's for that photo.",
       'Fixed: splitting a panel could open the image picker.',

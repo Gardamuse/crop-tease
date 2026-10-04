@@ -106,10 +106,10 @@ export function fontVars(id: FontId): Record<string, string> | null {
   }
 }
 
-/** A font's CSS family, for showing its name in itself. */
-export function previewFamily(id: FontId): string | undefined {
+/** A font's CSS family, for showing its name in itself (the classic look's sans for the classic one). */
+export function previewFamily(id: FontId): string {
   const { family } = resolveFont(id)
-  return family ? `${family}, ${CLASSIC_SANS}` : undefined
+  return family ? `${family}, ${CLASSIC_SANS}` : CLASSIC_SANS
 }
 
 /** Loads the available fonts among `ids` and returns their files, for embedding into an export. */

@@ -145,6 +145,13 @@ export type MenuEntry =
   | MenuSelect
   | MenuSeparator
 
+/**
+ * Marks a card a menu control opens on the page itself (a color picker, a
+ * dropdown's list), so the menu it belongs to treats presses and scrolling
+ * in it as its own.
+ */
+export const POPOVER_ATTR = 'data-menu-popover'
+
 /** The single right-click menu shared by the whole app. */
 export const contextMenu = reactive({
   open: false,

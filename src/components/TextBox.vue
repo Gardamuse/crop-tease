@@ -340,7 +340,7 @@ function onContextMenu(e: MouseEvent) {
       kind: 'select',
       label: 'Font',
       options: [
-        { value: '', label: `Default (${resolveFont(store.textFont).label})` },
+        { value: '', label: `Default (${resolveFont(store.textFont).label})`, fontFamily: previewFamily(store.textFont) },
         ...fontChoices.value.map((f) => ({ value: f.id, label: f.label, fontFamily: previewFamily(f.id) })),
         // a font this browser doesn't have stays listed, so the setting isn't lost
         ...(el.font && isMissing(el.font) ? [{ value: el.font, label: `${resolveFont(el.font).label} (missing)` }] : []),

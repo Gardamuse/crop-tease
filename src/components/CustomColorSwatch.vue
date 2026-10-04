@@ -2,11 +2,12 @@
 import { nextTick, onBeforeUnmount, ref, useTemplateRef } from 'vue'
 
 import ColorPicker from './ColorPicker.vue'
+import { POPOVER_ATTR } from '@/lib/contextMenu'
 
 // A round swatch that opens the app's color picker in a small card beside
 // it. It shows a rainbow until a custom color is in use (active), then that
 // color. The card sits on the page itself (not inside a scrolling menu), so
-// menus treat presses on it as their own (see COLOR_POPOVER_ATTR).
+// menus treat presses on it as their own (see POPOVER_ATTR).
 const props = defineProps<{
   /** the color being edited; where the picker starts */
   modelValue: string
@@ -66,11 +67,6 @@ function onKey(e: KeyboardEvent) {
 onBeforeUnmount(close)
 </script>
 
-<script lang="ts">
-/** marks the picker's card, so a menu it belongs to doesn't close on presses in it */
-export const COLOR_POPOVER_ATTR = 'data-color-popover'
-</script>
-
 <template>
   <button
     ref="swatch"
@@ -93,7 +89,7 @@ export const COLOR_POPOVER_ATTR = 'data-color-popover'
           role="dialog"
           :aria-label="label"
           :style="{ left: `${pos.left}px`, top: `${pos.top}px` }"
-          v-bind="{ [COLOR_POPOVER_ATTR]: '' }"
+          v-bind="{ [POPOVER_ATTR]: '' }"
         >
           <ColorPicker :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)" />
         </div>

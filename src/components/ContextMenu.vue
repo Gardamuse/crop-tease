@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { COLOR_POPOVER_ATTR } from './CustomColorSwatch.vue'
 import MenuEntries from './MenuEntries.vue'
-import { closeContextMenu, contextMenu, type MenuItem } from '@/lib/contextMenu'
+import { closeContextMenu, contextMenu, POPOVER_ATTR, type MenuItem } from '@/lib/contextMenu'
 
 const EDGE_GAP = 6 // keep the menu this far inside the window
 
@@ -60,13 +59,18 @@ function onKeyDown(e: KeyboardEvent) {
   buttons[(i + step + buttons.length) % buttons.length]?.focus()
 }
 
-// a color picker a swatch in the menu opened counts as part of the menu
+// a color picker or dropdown list a control in the menu opened counts as part of the menu
 const inMenu = (target: EventTarget | null) =>
   target instanceof Node &&
-  (menuEl.value?.contains(target) || !!(target as Element).closest?.(`[${COLOR_POPOVER_ATTR}]`))
+  (menuEl.value?.contains(target) || !!(target as Element).closest?.(`[${POPOVER_ATTR}]`))
 
 // any press outside the menu, or the page changing under it, closes it
 function onOutsidePointer(e: PointerEvent) {
+  if (contextMenu.open && !inMenu(e.target)) closeContextMenu()
+}
+
+// scrolling the page closes it; scrolling the menu (or a list it opened) doesn't
+function onWheel(e: WheelEvent) {
   if (contextMenu.open && !inMenu(e.target)) closeContextMenu()
 }
 
@@ -75,7 +79,7 @@ onMounted(() => {
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('blur', closeContextMenu)
   window.addEventListener('resize', closeContextMenu)
-  window.addEventListener('wheel', closeContextMenu, { passive: true })
+  window.addEventListener('wheel', onWheel, { passive: true })
 })
 onBeforeUnmount(() => {
   resizeObserver.disconnect()
@@ -83,7 +87,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('blur', closeContextMenu)
   window.removeEventListener('resize', closeContextMenu)
-  window.removeEventListener('wheel', closeContextMenu)
+  window.removeEventListener('wheel', onWheel)
 })
 </script>
 
